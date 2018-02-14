@@ -1,0 +1,102 @@
+/* font */
+
+@import url(https://fonts.googleapis.com/css?family=Signika:400,300);
+
+*:not(i) {
+    font-family: 'Signika', sans-serif !important;
+}
+
+a {
+    color: #BB2222;
+}
+
+
+/* body */
+
+body {
+    background:
+        linear-gradient(
+          rgba(40, 0, 5, 0.75),
+          rgba(5, 0, 40, 0.75)
+          /*rgba(20, 0, 100, 0.45),
+          rgba(100, 0, 20, 0.45)*/
+        ),
+        url('./background.jpg');
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    background-size: cover;
+}
+
+#page-container {
+    padding-top: 5vh;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 1400px;
+}
+
+
+/* profile segment */
+
+#name {
+    margin-bottom: 0;
+}
+
+#headline{
+    color: #BB2222;
+}
+
+#profile {
+    text-align: center;
+    width: 60%;
+    margin-top: 10px;
+    margin-bottom: 19px;
+}
+
+.button {
+    margin: 4px !important;
+    font-size: 1em !important;
+    min-width: 150px;
+}
+
+.button-icon {
+    font-size: 1.2em !important;
+}
+
+.button-text {
+    display: inline-block;
+    margin-top: .05em;
+}
+
+
+/* project segment */
+
+.odd.project {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+.even.project {
+    background-color: rgba(80, 80, 80, 0.1);
+}
+
+.project-title {
+    display: inline-block;
+    font-weight: bold;
+}
+
+.project-meta {
+    float: right;
+}
+
+.description {
+    font-weight: lighter;
+    padding-bottom: 5px;
+}
+
+.fitted.divider {
+    padding-bottom: 5px;
+}
+
+.project .label {
+    background-color: rgba(20, 20, 20, 0.1) !important;
+}
