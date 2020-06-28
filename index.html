@@ -118,348 +118,604 @@
 <!-- project segment -->
 <div class="ui ten wide column">
   <div class="ui center aligned segment">
-    <h2>Projects</h2>
-    <div class="ui left aligned container">
-      <div class="ui message odd project">
-        <h3 class="project-title">TravelScout | <a href="https://devpost.com/software/travelscout-smallerworld">Qloo, Buzz Angle Music Prizes</a></h3>
-        <span class="project-meta">
-          <em><a href="https://sxswhackathon2019.devpost.com/"><img src="/images/sxsw-1.png" height="95" width="auto" align="top"></img></a></em>&nbsp;&nbsp;
-          <div class="ui label">3/2019</div>
-        </span>
+    <button class="tablinks ui icon large button" onclick="openCity(event, 'Projects')" id="defaultOpen">Projects</button>
+    <button class="tablinks ui icon large button" onclick="openCity(event, 'Bio')">Bio</button>
+    <button class="tablinks ui icon large button" onclick="openCity(event, 'Work')">Work</button>
 
-        <br>
+    <!-- Projects Tab content -->
+    <div id="Projects" class="tabcontent">
+      <h2>Projects</h2>
+      <div class="ui left aligned container">
+        <div class="ui message odd project">
+          <h3 class="project-title">TravelScout | <a href="https://devpost.com/software/travelscout-smallerworld">Qloo, Buzz Angle Music Prizes</a></h3>
+          <span class="project-meta">
+            <em><a href="https://sxswhackathon2019.devpost.com/"><img src="/images/sxsw-1.png" height="95" width="auto" align="top"></img></a></em>&nbsp;&nbsp;
+            <div class="ui label">3/2019</div>
+          </span>
 
-        <div class="description">
-          TravelScout is a mobile app which uses cultural AI to help users discover new places, venues, artists and events based on the music they like. <br>Python, Flask, Rest API.</br>⠀
+          <br>
+
+          <div class="description">
+            TravelScout is a mobile app which uses cultural AI to help users discover new places, venues, artists and events based on the music they like. <br>Python, Flask, Rest API.</br>⠀
+          </div>
+
+          <div class="ui fitted divider"></div>
+
+          <div class="project-links">
+            <a href="https://j24d.com/sxsw">website</a>,
+            <a href="https://devpost.com/software/travelscout-smallerworld">devpost</a>, <a href="https://github.com/jcastle13/TravelScout">backend repo</a>, <a href="https://github.com/peterIrving/Smaller-World-Travel-Scout">iOS repo</a>
+          </div>
         </div>
 
-        <div class="ui fitted divider"></div>
+        <!-- split -->
 
-        <div class="project-links">
-          <a href="https://j24d.com/sxsw">website</a>,
-          <a href="https://devpost.com/software/travelscout-smallerworld">devpost</a>, <a href="https://github.com/jcastle13/TravelScout">backend repo</a>, <a href="https://github.com/peterIrving/Smaller-World-Travel-Scout">iOS repo</a>
-        </div>
-      </div>
+        <div class="ui message even project">
+          <h3 class="project-title">Smart Ping Pong Paddle | <a href="https://devpost.com/software/smart-ping-pong-paddle">Global Innovation Exchange Project</a></h3>
+          <span class="project-meta">
+            <em></em>&nbsp;&nbsp;
+            <div class="ui label">3/2019</div>
+          </span>
 
-      <!-- split -->
+          <br>
 
-      <div class="ui message even project">
-        <h3 class="project-title">Smart Ping Pong Paddle | <a href="https://devpost.com/software/smart-ping-pong-paddle">Global Innovation Exchange Project</a></h3>
-        <span class="project-meta">
-          <em></em>&nbsp;&nbsp;
-          <div class="ui label">3/2019</div>
-        </span>
+          <div class="description">
+            The Smart Ping Pong Paddle is an IoT device with on-board machine learning to help beginners learn professional table tennis skills without paying expensive rates for tutoring. <br>Raspberry Pi, Autodesk Fusion 360, Python, C, Javascript, Tensorflow, TF-lite, charts.js, d3.js.
+          </div>
 
-        <br>
+          <div class="ui fitted divider"></div>
 
-        <div class="description">
-          The Smart Ping Pong Paddle is an IoT device with on-board machine learning to help beginners learn professional table tennis skills without paying expensive rates for tutoring. <br>Raspberry Pi, Autodesk Fusion 360, Python, C, Javascript, Tensorflow, TF-lite, charts.js, d3.js.
-        </div>
-
-        <div class="ui fitted divider"></div>
-
-        <div class="project-links">
-          <a href="https://devpost.com/software/smart-ping-pong-paddle">devpost</a>
-        </div>
-      </div>
-
-      <!-- split -->
-
-      <div class="ui message odd project">
-        <h3 class="project-title">Homeless In Seattle | <a href="https://devpost.com/software/dubhacks2018">Google Cloud Platform Prize</a></h3>
-        <span class="project-meta">
-          <em><a href="https://dubhacks18f.devpost.com/"><img src="/images/dh18.png" height="80" width="auto" align="top"></img></a></em>&nbsp;&nbsp;
-          <div class="ui label">10/2018</div>
-        </span>
-
-        <br>
-
-        <div class="description">
-          Homeless in Seattle is a social project creating data visualizations to <br> promote social change. Javascript, d3.js, Google Maps API.</br>⠀
+          <div class="project-links">
+            <a href="https://devpost.com/software/smart-ping-pong-paddle">devpost</a>
+          </div>
         </div>
 
-        <div class="ui fitted divider"></div>
+        <!-- split -->
 
-        <div class="project-links">
-          <a href="https://bellevue.tech/HomelessInSeattle">live version</a>,
-          <a href="https://devpost.com/software/dubhacks2018">devpost</a>, <a href="https://github.com/jamesylgan/HomelessInSeattle">repo</a>
-        </div>
-      </div>
+        <div class="ui message odd project">
+          <h3 class="project-title">Homeless In Seattle | <a href="https://devpost.com/software/dubhacks2018">Google Cloud Platform Prize</a></h3>
+          <span class="project-meta">
+            <em><a href="https://dubhacks18f.devpost.com/"><img src="/images/dh18.png" height="80" width="auto" align="top"></img></a></em>&nbsp;&nbsp;
+            <div class="ui label">10/2018</div>
+          </span>
 
-      <!-- split -->
+          <br>
 
-      <div class="ui message even project">
-        <h3 class="project-title">Bancor Research Paper</h3>
-        <span class="project-meta">
-          <em><a href="http://www.cs.cornell.edu/courses/cs6466/2018sp/">CS6466</a></em>&nbsp;&nbsp;
-          <div class="ui label">5/2018</div>
-        </span>
+          <div class="description">
+            Homeless in Seattle is a social project creating data visualizations to <br> promote social change. Javascript, d3.js, Google Maps API.</br>⠀
+          </div>
 
-        <br>
+          <div class="ui fitted divider"></div>
 
-        <div class="description">
-          <b>Shortened Abstract.</b> We detail how the foundational equations with which Bancor determines reserves and prices is fundamentally flawed. We confirm the existence of price inaccuracies - specifically, price inaccuracies from distributed lag, and missing terms for price volatility and price shocks. Second, we derive an improved pricing formula which will more accurately represent the price of a given token with fewer arbitrage opportunities.</p><b>This paper highlighted a vulnerability two months before it was exploited to hack $25m USD from the Bancor exchange.</b>
-        </div>
-
-        <div class="ui fitted divider"></div>
-
-        <div class="project-links">
-          <a href="./Bancor_Paper.pdf">research paper</a>, <a href="./Bancor_Slides.pdf">slides</a>
-        </div>
-      </div>
-
-      <div class="ui message odd project">
-        <h3 class="project-title">STRAT | <a href="https://devpost.com/software/szechuantech">BlackRock Prize</a></h3>
-        <span class="project-meta">
-          <em><a href="https://hackgt2017.devpost.com"><img src="/images/hackgt.png" height="80" width="auto" align="top"></img></a></em>&nbsp;&nbsp;
-          <div class="ui label">10/2017</div>
-        </span>
-
-        <br>
-
-        <div class="description">
-          RoboAdvisor chat bot for risk-based investment suggestions using <br> BlackRock data. Python, Azure, Aladdin API, Microsoft Bot Framework.
+          <div class="project-links">
+            <a href="https://bellevue.tech/HomelessInSeattle">live version</a>,
+            <a href="https://devpost.com/software/dubhacks2018">devpost</a>, <a href="https://github.com/jamesylgan/HomelessInSeattle">repo</a>
+          </div>
         </div>
 
-        <div class="ui fitted divider"></div>
+        <!-- split -->
 
-        <div class="project-links">
-          <a href="https://devpost.com/software/szechuantech">devpost</a>, <a href="https://github.com/jamesylgan/szechuantech">repo</a>
-        </div>
-      </div>
+        <div class="ui message even project">
+          <h3 class="project-title">Bancor Research Paper</h3>
+          <span class="project-meta">
+            <em><a href="http://www.cs.cornell.edu/courses/cs6466/2018sp/">CS6466</a></em>&nbsp;&nbsp;
+            <div class="ui label">5/2018</div>
+          </span>
 
-      <div class="ui message even project">
-        <h3 class="project-title">NYCDOE SCHOOL BUDGET SCRAPER</h3>
-        <span class="project-meta">
-          <em><a href="https://www.practicemakesperfect.org">internship</a></em>&nbsp;&nbsp;
-          <div class="ui label">7/2017</div>
-        </span>
+          <br>
 
-        <br>
+          <div class="description">
+            <b>Shortened Abstract.</b> We detail how the foundational equations with which Bancor determines reserves and prices is fundamentally flawed. We confirm the existence of price inaccuracies - specifically, price inaccuracies from distributed lag, and missing terms for price volatility and price shocks. Second, we derive an improved pricing formula which will more accurately represent the price of a given token with fewer arbitrage opportunities.</p><b>This paper highlighted a vulnerability two months before it was exploited to hack $25m USD from the Bancor exchange.</b>
+          </div>
 
-        <div class="description">
-          Web scraping application to analyze data from the New York City Department of Education. Python, BS4, Selenium Webdriver.
-        </div>
+          <div class="ui fitted divider"></div>
 
-        <div class="ui fitted divider"></div>
-
-        <div class="project-links">
-          <a href="https://github.com/jamesylgan/budgetScrape">repo</a>
-        </div>
-      </div>
-
-      <div class="ui message odd project">
-        <h3 class="project-title">Easy Composites</h3>
-        <span class="project-meta">
-          <em>personal</em>&nbsp;&nbsp;
-          <div class="ui label">2016-2017</div>
-        </span>
-
-        <br>
-
-        <div class="description">
-          Automated generation of photography composites. Python, svgwrite.
+          <div class="project-links">
+            <a href="./Bancor_Paper.pdf">research paper</a>, <a href="./Bancor_Slides.pdf">slides</a>
+          </div>
         </div>
 
-        <div class="ui fitted divider"></div>
+        <div class="ui message odd project">
+          <h3 class="project-title">STRAT | <a href="https://devpost.com/software/szechuantech">BlackRock Prize</a></h3>
+          <span class="project-meta">
+            <em><a href="https://hackgt2017.devpost.com"><img src="/images/hackgt.png" height="80" width="auto" align="top"></img></a></em>&nbsp;&nbsp;
+            <div class="ui label">10/2017</div>
+          </span>
 
-        <div class="project-links">
-          <a href="http://easycomposit.es/"> company website</a>
-        </div>
-      </div>
+          <br>
 
+          <div class="description">
+            RoboAdvisor chat bot for risk-based investment suggestions using <br> BlackRock data. Python, Azure, Aladdin API, Microsoft Bot Framework.
+          </div>
 
-      <div class="ui message even project">
-        <h3 class="project-title">Wakawhitti | <a href="https://devpost.com/software/wakawhitti">Bloomberg Prize</a></h3>
-        <span class="project-meta">
-          <em><a href="https://bigredhacks.devpost.com"><img src="/images/brh.png" height="80" width="auto" align="top"></img></a></em>&nbsp;&nbsp;
-          <div class="ui label">9/2014</div>
-        </span>
+          <div class="ui fitted divider"></div>
 
-        <br>
-
-        <div class="description">
-          Web app recommendation engine for vacation destinations, based on <br> relative changes in foreign exchange rates. Python, Django.
-        </div>
-
-        <div class="ui fitted divider"></div>
-
-        <div class="project-links">
-          <a href="http://devpost.com/software/wakawhitti">devpost,</a> <a href="https://github.com/jamesylgan/Wakawhitti-BigRedHacks">repo</a>
-        </div>
-      </div>
-
-      <div class="ui message odd project">
-        <h3 class="project-title">ImpactToken</h3>
-        <span class="project-meta">
-          <em><a href="https://mitbitcoinhack.devpost.com">MIT Bitcoin Expo Hackathon</a></em>&nbsp;&nbsp;
-          <div class="ui label">3/2018</div>
-        </span>
-
-        <br>
-
-        <div class="description">
-          E-commerce platform operated by a smart contract to foster an engaged community of consumers, donors, and entrepreneurs, with the benefit of facilitating non-financial assets donations to non-profit organizations without payment fees. Solidity, Javascript.
+          <div class="project-links">
+            <a href="https://devpost.com/software/szechuantech">devpost</a>, <a href="https://github.com/jamesylgan/szechuantech">repo</a>
+          </div>
         </div>
 
-        <div class="ui fitted divider"></div>
+        <div class="ui message even project">
+          <h3 class="project-title">NYCDOE SCHOOL BUDGET SCRAPER</h3>
+          <span class="project-meta">
+            <em><a href="https://www.practicemakesperfect.org">internship</a></em>&nbsp;&nbsp;
+            <div class="ui label">7/2017</div>
+          </span>
 
-        <div class="project-links">
-          <a href="https://github.com/jamesylgan/ImpactToken">repo</a>, <a href="https://devpost.com/software/impact-token">devpost</a>
-        </div>
-      </div>
+          <br>
 
-      <div class="ui message even project">
-        <h3 class="project-title">Does A Risk Premium Exist?</h3>
-        <span class="project-meta">
-          <em><a href="https://mimno.infosci.cornell.edu/info3300/">CS3300: Data-Driven Web Apps (Data Visualization)</a></em>&nbsp;&nbsp;
-          <div class="ui label">3/2018</div>
-        </span>
+          <div class="description">
+            Web scraping application to analyze data from the New York City Department of Education. Python, BS4, Selenium Webdriver.
+          </div>
 
-        <br>
+          <div class="ui fitted divider"></div>
 
-        <div class="description">
-          Web visualization which shows the mortality rates of various occupations to analyze whether or not dangerous occupations are well compensated, with annotations regarding the OSHA's relevant work. Javascript, d3.
-        </div>
-
-        <div class="ui fitted divider"></div>
-
-        <div class="project-links">
-          <a href="https://github.com/jamesylgan/3300-1">repo</a>, <a href="http://bellevue.tech/risk_premium/index.html">live version</a>
-        </div>
-      </div>
-
-      <div class="ui message odd project">
-        <h3 class="project-title">Camel Chat</h3>
-        <span class="project-meta">
-          <em><a href="www.cs.cornell.edu/courses/cs3110/2017fa/">CS3110: Functional Programming</a></em>&nbsp;&nbsp;
-          <div class="ui label">12/2017</div>
-        </span>
-
-        <br>
-
-        <div class="description">
-          Asynchronous chat messenger application. OCaml.
+          <div class="project-links">
+            <a href="https://github.com/jamesylgan/budgetScrape">repo</a>
+          </div>
         </div>
 
-        <div class="ui fitted divider"></div>
+        <div class="ui message odd project">
+          <h3 class="project-title">Easy Composites</h3>
+          <span class="project-meta">
+            <em>personal</em>&nbsp;&nbsp;
+            <div class="ui label">2016-2017</div>
+          </span>
 
-        <div class="project-links">
-          <a href="https://github.com/jamesylgan/Camel-Chat">repo</a>
-        </div>
-      </div>
+          <br>
 
+          <div class="description">
+            Automated generation of photography composites. Python, svgwrite.
+          </div>
 
-      <div class="ui message even project">
-        <h3 class="project-title">LinkedIn View Bot</h3>
-        <span class="project-meta">
-          <em>personal</em>&nbsp;&nbsp;
-          <div class="ui label">7/2017</div>
-        </span>
+          <div class="ui fitted divider"></div>
 
-        <br>
-
-        <div class="description">
-          Software to automate viewing LinkedIn profiles and help boost user's own profile rank.
-        </div>
-
-        <div class="ui fitted divider"></div>
-
-        <div class="project-links">
-          <a href="https://github.com/jamesylgan/ViewBot-LinkedIn">repo</a>
-        </div>
-      </div>
-
-
-      <div class="ui message odd project">
-        <h3 class="project-title">DubCredit</h3>
-        <span class="project-meta">
-          <em><a href="https://dubhacks17f.devpost.com">DubHacks</a></em>&nbsp;&nbsp;
-          <div class="ui label">10/2017</div>
-        </span>
-
-        <br>
-
-        <div class="description">
-          Mobile app that allows users to create real contracts for verbal agreements and manages a credit history and score for them. Java, firebase, LUIS, Microsoft Cognitive Services, android.
+          <div class="project-links">
+            <a href="http://easycomposit.es/"> company website</a>
+          </div>
         </div>
 
-        <div class="ui fitted divider"></div>
 
-        <div class="project-links">
-          <a href="https://devpost.com/software/dubcredit">devpost</a>, <a href="https://github.com/jamesylgan/DubCredit">repo</a>
-        </div>
-      </div>
+        <div class="ui message even project">
+          <h3 class="project-title">Wakawhitti | <a href="https://devpost.com/software/wakawhitti">Bloomberg Prize</a></h3>
+          <span class="project-meta">
+            <em><a href="https://bigredhacks.devpost.com"><img src="/images/brh.png" height="80" width="auto" align="top"></img></a></em>&nbsp;&nbsp;
+            <div class="ui label">9/2014</div>
+          </span>
 
+          <br>
 
-      <div class="ui message even project">
-        <h3 class="project-title">Frlrm</h3>
-        <span class="project-meta">
-          <em><a href="http://yhack.org/">YHack</a></em>&nbsp;&nbsp;
-          <div class="ui label">11/2017</div>
-        </span>
+          <div class="description">
+            Web app recommendation engine for vacation destinations, based on <br> relative changes in foreign exchange rates. Python, Django.
+          </div>
 
-        <br>
+          <div class="ui fitted divider"></div>
 
-        <div class="description">
-          Web app that allows travellers to book whole travel experiences relevant to their interests at the best price available. Google APIs, JetBlue data, Python.
-        </div>
-
-        <div class="ui fitted divider"></div>
-
-        <div class="project-links">
-          <a href="https://devpost.com/software/frlrm">devpost</a>, <a href="https://github.com/jamesylgan/frlrm">repo</a>
-        </div>
-      </div>
-
-
-      <div class="ui message odd project">
-        <h3 class="project-title">Anomalies</h3>
-        <span class="project-meta">
-          <em><a href="https://hiltonhackathon.splashthat.com">Hilton Hackathon</a></em>&nbsp;&nbsp;
-          <div class="ui label">9/2017</div>
-        </span>
-
-        <br>
-
-        <div class="description">
-          ML System Design to manage big data to determine customer preferences and optimize hospitality personalization. Python, HTML, CSS.
+          <div class="project-links">
+            <a href="http://devpost.com/software/wakawhitti">devpost,</a> <a href="https://github.com/jamesylgan/Wakawhitti-BigRedHacks">repo</a>
+          </div>
         </div>
 
-        <div class="ui fitted divider"></div>
+        <div class="ui message odd project">
+          <h3 class="project-title">ImpactToken</h3>
+          <span class="project-meta">
+            <em><a href="https://mitbitcoinhack.devpost.com">MIT Bitcoin Expo Hackathon</a></em>&nbsp;&nbsp;
+            <div class="ui label">3/2018</div>
+          </span>
 
-        <div class="project-links">
-          <a href="https://devpost.com/software/anomalies-hiltonhack">devpost</a>, <a href="https://docs.google.com/presentation/d/e/2PACX-1vTJJYilNrSl20jbyeBsQxVd0dS2xGY2A3JuuR9kHp4EYEBYpPramVpDXDRbll_znIAIaivpkAD7aymY/pub?start=false&loop=false&delayms=3000">pitch deck</a>
+          <br>
+
+          <div class="description">
+            E-commerce platform operated by a smart contract to foster an engaged community of consumers, donors, and entrepreneurs, with the benefit of facilitating non-financial assets donations to non-profit organizations without payment fees. Solidity, Javascript.
+          </div>
+
+          <div class="ui fitted divider"></div>
+
+          <div class="project-links">
+            <a href="https://github.com/jamesylgan/ImpactToken">repo</a>, <a href="https://devpost.com/software/impact-token">devpost</a>
+          </div>
         </div>
-      </div>
 
+        <div class="ui message even project">
+          <h3 class="project-title">Does A Risk Premium Exist?</h3>
+          <span class="project-meta">
+            <em><a href="https://mimno.infosci.cornell.edu/info3300/">CS3300: Data-Driven Web Apps (Data Visualization)</a></em>&nbsp;&nbsp;
+            <div class="ui label">3/2018</div>
+          </span>
 
-      <div class="ui message even project">
-        <h3 class="project-title">AgnosticTalk</h3>
-        <span class="project-meta">
-          <em>personal</em>&nbsp;&nbsp;
-          <div class="ui label">2009-2013</div>
-        </span>
+          <br>
 
-        <br>
+          <div class="description">
+            Web visualization which shows the mortality rates of various occupations to analyze whether or not dangerous occupations are well compensated, with annotations regarding the OSHA's relevant work. Javascript, d3.
+          </div>
 
-        <div class="description">
-          Online community to discuss religious philosophy - 25,000 active users on website at peak. Now defunct.
+          <div class="ui fitted divider"></div>
+
+          <div class="project-links">
+            <a href="https://github.com/jamesylgan/3300-1">repo</a>, <a href="http://bellevue.tech/risk_premium/index.html">live version</a>
+          </div>
         </div>
 
-        <div class="ui fitted divider"></div>
+        <div class="ui message odd project">
+          <h3 class="project-title">Camel Chat</h3>
+          <span class="project-meta">
+            <em><a href="www.cs.cornell.edu/courses/cs3110/2017fa/">CS3110: Functional Programming</a></em>&nbsp;&nbsp;
+            <div class="ui label">12/2017</div>
+          </span>
 
-        <div class="project-links">
-          <a href="https://www.facebook.com/AgnosticTalk/">Facebook Page</a>
+          <br>
+
+          <div class="description">
+            Asynchronous chat messenger application. OCaml.
+          </div>
+
+          <div class="ui fitted divider"></div>
+
+          <div class="project-links">
+            <a href="https://github.com/jamesylgan/Camel-Chat">repo</a>
+          </div>
+        </div>
+
+
+        <div class="ui message even project">
+          <h3 class="project-title">LinkedIn View Bot</h3>
+          <span class="project-meta">
+            <em>personal</em>&nbsp;&nbsp;
+            <div class="ui label">7/2017</div>
+          </span>
+
+          <br>
+
+          <div class="description">
+            Software to automate viewing LinkedIn profiles and help boost user's own profile rank.
+          </div>
+
+          <div class="ui fitted divider"></div>
+
+          <div class="project-links">
+            <a href="https://github.com/jamesylgan/ViewBot-LinkedIn">repo</a>
+          </div>
+        </div>
+
+
+        <div class="ui message odd project">
+          <h3 class="project-title">DubCredit</h3>
+          <span class="project-meta">
+            <em><a href="https://dubhacks17f.devpost.com">DubHacks</a></em>&nbsp;&nbsp;
+            <div class="ui label">10/2017</div>
+          </span>
+
+          <br>
+
+          <div class="description">
+            Mobile app that allows users to create real contracts for verbal agreements and manages a credit history and score for them. Java, firebase, LUIS, Microsoft Cognitive Services, android.
+          </div>
+
+          <div class="ui fitted divider"></div>
+
+          <div class="project-links">
+            <a href="https://devpost.com/software/dubcredit">devpost</a>, <a href="https://github.com/jamesylgan/DubCredit">repo</a>
+          </div>
+        </div>
+
+
+        <div class="ui message even project">
+          <h3 class="project-title">Frlrm</h3>
+          <span class="project-meta">
+            <em><a href="http://yhack.org/">YHack</a></em>&nbsp;&nbsp;
+            <div class="ui label">11/2017</div>
+          </span>
+
+          <br>
+
+          <div class="description">
+            Web app that allows travellers to book whole travel experiences relevant to their interests at the best price available. Google APIs, JetBlue data, Python.
+          </div>
+
+          <div class="ui fitted divider"></div>
+
+          <div class="project-links">
+            <a href="https://devpost.com/software/frlrm">devpost</a>, <a href="https://github.com/jamesylgan/frlrm">repo</a>
+          </div>
+        </div>
+
+
+        <div class="ui message odd project">
+          <h3 class="project-title">Anomalies</h3>
+          <span class="project-meta">
+            <em><a href="https://hiltonhackathon.splashthat.com">Hilton Hackathon</a></em>&nbsp;&nbsp;
+            <div class="ui label">9/2017</div>
+          </span>
+
+          <br>
+
+          <div class="description">
+            ML System Design to manage big data to determine customer preferences and optimize hospitality personalization. Python, HTML, CSS.
+          </div>
+
+          <div class="ui fitted divider"></div>
+
+          <div class="project-links">
+            <a href="https://devpost.com/software/anomalies-hiltonhack">devpost</a>, <a href="https://docs.google.com/presentation/d/e/2PACX-1vTJJYilNrSl20jbyeBsQxVd0dS2xGY2A3JuuR9kHp4EYEBYpPramVpDXDRbll_znIAIaivpkAD7aymY/pub?start=false&loop=false&delayms=3000">pitch deck</a>
+          </div>
+        </div>
+
+
+        <div class="ui message even project">
+          <h3 class="project-title">AgnosticTalk</h3>
+          <span class="project-meta">
+            <em>personal</em>&nbsp;&nbsp;
+            <div class="ui label">2009-2013</div>
+          </span>
+
+          <br>
+
+          <div class="description">
+            Online community to discuss religious philosophy - 25,000 active users on website at peak. Now defunct.
+          </div>
+
+          <div class="ui fitted divider"></div>
+
+          <div class="project-links">
+            <a href="https://www.facebook.com/AgnosticTalk/">Facebook Page</a>
+          </div>
         </div>
       </div>
     </div>
+    <!-- end project Tab content -->
+
+    <!-- bio tab content -->
+    <div id="Bio" class="tabcontent">
+      <h2>James</h2>
+
+      <!-- split -->
+
+      <div class="ui left aligned container">
+        <div class="ui message odd project">
+          <h3 class="project-title">Born in Boston</h3>
+          <span class="project-meta">
+            <div class="ui label">1990s</div>
+          </span>
+
+          <br>
+        </div>
+
+        <!-- split -->
+
+        <div class="ui message even project">
+          <h3 class="project-title">Moved to Seattle</h3>
+          <span class="project-meta">
+            <em></em>&nbsp;&nbsp;
+            <div class="ui label">2000s</div>
+          </span>
+
+          <br>
+
+        </div>
+
+        <!-- split -->
+
+        <div class="ui message even project">
+          <h3 class="project-title">Dual-Enrollment at Bellevue College</h3>
+          <span class="project-meta">
+            <em></em>&nbsp;&nbsp;
+            <div class="ui label">2010-2012</div>
+          </span>
+
+          <br>
+
+          <div class="description">
+            Completed ~90 college credits in political science and typical high school topics. Ran Model United Nations club for college. Participated in numerous international collegiate Model United Nations conferences.
+          </div>
+
+        </div>
+
+        <!-- split -->
+
+        <div class="ui message even project">
+          <h3 class="project-title">High School Study Abroad: France, 1 year</h3>
+          <span class="project-meta">
+            <em></em>&nbsp;&nbsp;
+            <div class="ui label">2012-2013</div>
+          </span>
+
+          <br>
+
+          <div class="description">
+            ASSE Scholarship Recipient
+          </div>
+
+        </div>
+
+        <!-- split -->
+
+        <div class="ui message even project">
+          <h3 class="project-title">High School Study Abroad: Germany, 1 year</h3>
+          <span class="project-meta">
+            <em></em>&nbsp;&nbsp;
+            <div class="ui label">2013-2014</div>
+          </span>
+
+          <br>
+
+          <div class="description">
+            Congress Bundestag Youth Exchange Scholarship Recipient
+          </div>
+
+        </div>
+
+        <!-- split -->
+
+        <div class="ui message even project">
+          <h3 class="project-title">Cornell University: Began Undergrad</h3>
+          <span class="project-meta">
+            <em></em>&nbsp;&nbsp;
+            <div class="ui label">2014</div>
+          </span>
+
+          <br>
+
+          <div class="description">
+            Major: Economics
+          </div>
+
+        </div>
+
+        <!-- split -->
+
+        <div class="ui message even project">
+          <h3 class="project-title">Cornell University: Graduated</h3>
+          <span class="project-meta">
+            <em></em>&nbsp;&nbsp;
+            <div class="ui label">2018</div>
+          </span>
+
+          <br>
+
+          <div class="description">
+            Picked up 3 minors along the way: Computer Science, Information Science, and Asian American Studies
+          </div>
+
+        </div>
+
+        <!-- split -->
+
+        <div class="ui message even project">
+          <h3 class="project-title">University of Washington: Began Graduate School</h3>
+          <span class="project-meta">
+            <em></em>&nbsp;&nbsp;
+            <div class="ui label">Fall 2018</div>
+          </span>
+
+          <br>
+
+          <div class="description">
+            UW Master's of Science in Technology Innovation, learning to create IoT devices
+          </div>
+
+        </div>
+
+        <!-- split -->
+
+        <div class="ui message even project">
+          <h3 class="project-title">Georgia Institute of Technology: Began Graduate School</h3>
+          <span class="project-meta">
+            <em></em>&nbsp;&nbsp;
+            <div class="ui label">Spring 2019</div>
+          </span>
+
+          <br>
+
+          <div class="description">
+            Concurrent with UW
+          </div>
+
+        </div>
+
+        <!-- split -->
+
+        <div class="ui message even project">
+          <h3 class="project-title">University of Washington: Left Graduate School to take PayPal Internship</h3>
+          <span class="project-meta">
+            <em></em>&nbsp;&nbsp;
+            <div class="ui label">Summer 2019</div>
+          </span>
+
+          <br>
+
+          <div class="description">
+            Still in the GT OMSCS :)
+          </div>
+
+        </div>
+
+        <!-- split -->
+
+        <div class="ui message even project">
+          <h3 class="project-title">Moved to Austin: First Job!</h3>
+          <span class="project-meta">
+            <em></em>&nbsp;&nbsp;
+            <div class="ui label">2020</div>
+          </span>
+
+          <br>
+
+          <div class="description">
+            SWE II at PayPal
+          </div>
+
+        </div>
+
+        <!-- split -->
+
+        <div class="ui message even project">
+          <h3 class="project-title">Graduate from Georgia Tech with a Master's in Computer Science</h3>
+          <span class="project-meta">
+            <em></em>&nbsp;&nbsp;
+            <div class="ui label">December 2020</div>
+          </span>
+
+          <br>
+
+          <div class="description">
+            Specialization in AI :)
+          </div>
+
+        </div>
+
+        <!-- split -->
+
+      </div>
+    </div>
+    <!-- end bio tab content -->
+
+    <!-- work tab content -->
+    <div id="Work" class="tabcontent">
+      <h2>Work</h2>
+
+      <!-- split -->
+
+      <div class="ui left aligned container">
+        <div class="ui message odd project">
+          <h3 class="project-title">PayPal</h3>
+          <span class="project-meta">
+            <em><a href="https://sxswhackathon2019.devpost.com/"><img src="/images/sxsw-1.png" height="95" width="auto" align="top"></img></a></em>&nbsp;&nbsp;
+            <div class="ui label">2020-Current</div>
+          </span>
+
+          <br>
+
+          <div class="description">
+            ???</br>⠀
+          </div>
+        </div>
+
+        <!-- split -->
+
+        <div class="ui left aligned container">
+          <div class="ui message odd project">
+            <h3 class="project-title">CodeDay</h3>
+            <span class="project-meta">
+              <em><a href="https://sxswhackathon2019.devpost.com/"><img src="/images/sxsw-1.png" height="95" width="auto" align="top"></img></a></em>&nbsp;&nbsp;
+              <div class="ui label">2020-Current</div>
+            </span>
+
+            <br>
+
+            <div class="description">
+              ???</br>⠀
+            </div>
+          </div>
+
+      </div>
+    </div>
+    <!-- end work tab content -->
+
   </div>
-</div>
 </body>
 
 <!-- scripts -->
 <script src="assets/lib/jquery.min.js"></script>
 <script src="assets/lib/semantic.min.js"></script>
+<script src="assets/tabs.js"></script>
 
 </html>
