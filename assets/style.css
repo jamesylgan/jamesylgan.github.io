@@ -141,6 +141,10 @@ body {
   animation: fadeEffect 2s; /* Fading effect takes 1 second */
 }
 
+.projectcontent {
+  animation: fadeEffect 2s; /* Fading effect takes 1 second */
+}
+
 /* Go from zero to full opacity */
 @keyframes fadeEffect {
   from {opacity: 0.1;}
