@@ -138,11 +138,15 @@ body {
 } */
 
 .tabcontent {
-  animation: fadeEffect 2s; /* Fading effect takes 1 second */
+  animation: fadeEffect 1.25s; /* Fading effect takes 1 second */
 }
 
 .projectcontent {
-  animation: fadeEffect 2s; /* Fading effect takes 1 second */
+  animation: fadeEffect 1.25s; /* Fading effect takes 1 second */
+}
+
+.hobbycontent {
+  animation: fadeEffect 1.25s; /* Fading effect takes 1 second */
 }
 
 /* Go from zero to full opacity */
