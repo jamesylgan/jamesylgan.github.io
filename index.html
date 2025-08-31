@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Single Image — Red Background</title>
+  <meta name="description" content="A minimal page with #b50000 background, a centered image, and a stylable link underneath." />
+  
+  <!--
+    Customize the link's font style, color, and size by editing the CSS variables below.
+    Examples:
+      --link-font-family: "Georgia, serif";
+      --link-font-weight: 400;
+      --link-font-style: italic;
+      --link-font-size: 20px;        // or clamp(16px, 2vw, 24px)
+      --link-color: #ffe8e8;
+      --link-hover-color: #ffffff;
+  -->
+  <style>
+    :root {
+      --link-font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      --link-font-weight: 600;
+      --link-font-style: normal;
+      --link-font-size: clamp(16px, 2vw, 24px);
+      --link-letter-spacing: 0.02em;
+      --link-color: #ffffff;
+      --link-hover-color: #ffd1d1;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      background: #b50000; /* requested background color */
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      padding: 24px;
+      text-align: center;
+    }
+
+    img.hero {
+      display: block;
+      max-width: min(90vw, 820px);
+      height: auto;
+      border-radius: 12px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.28);
+    }
+
+    a.link {
+      font-family: var(--link-font-family);
+      font-weight: var(--link-font-weight);
+      font-style: var(--link-font-style);
+      font-size: var(--link-font-size);
+      letter-spacing: var(--link-letter-spacing);
+      color: var(--link-color);
+      text-decoration: none;
+      border-bottom: 2px solid currentColor;
+      padding-bottom: 2px;
+      outline: none;
+      transition: color .2s ease;
+    }
+
+    a.link:focus-visible {
+      outline: 3px solid rgba(255,255,255,.6);
+      outline-offset: 4px;
+      border-bottom-color: transparent;
+    }
+
+    a.link:hover {
+      color: var(--link-hover-color);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <!-- Replace the src with your image file/path and update the alt text for accessibility -->
+    <img class="hero" src="invite-01.png" alt="Describe the image here" />
+
+    <!-- Update the link URL and text below -->
+    <a class="link" href="https://forms.gle/5D6W111kEJz2MauN7" target="_blank" rel="noopener">répondez s'il vous plaît (RSVP)</a>
+  </main>
+</body>
+</html>
