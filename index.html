@@ -3,25 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Single Image — Red Background</title>
-  <meta name="description" content="A minimal page with #b50000 background, a centered image, and a stylable link underneath." />
-  
-  <!--
-    Customize the link's font style, color, and size by editing the CSS variables below.
-    Examples:
-      --link-font-family: "Georgia, serif";
-      --link-font-weight: 400;
-      --link-font-style: italic;
-      --link-font-size: 20px;        // or clamp(16px, 2vw, 24px)
-      --link-color: #ffe8e8;
-      --link-hover-color: #ffffff;
-  -->
+  <title>Event Page</title>
+  <meta name="description" content="Tabs for photo, info, and schedule, with RSVP always visible." />
   <style>
     :root {
       --link-font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
       --link-font-weight: 600;
       --link-font-style: normal;
-      --link-font-size: clamp(16px, 2vw, 24px);
+      --link-font-size: clamp(18px, 2.5vw, 28px);
       --link-letter-spacing: 0.02em;
       --link-color: #ffffff;
       --link-hover-color: #ffd1d1;
@@ -31,30 +20,65 @@
 
     body {
       margin: 0;
-      background: #b50000; /* requested background color */
+      background: #b50000;
       min-height: 100vh;
-      display: grid;
-      place-items: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    nav {
+      display: flex;
+      gap: 1rem;
+      margin-top: 20px;
+    }
+
+    nav button {
+      background: #fff;
+      color: #b50000;
+      font-weight: 700;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    nav button:hover {
+      background: #ffd1d1;
     }
 
     main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      padding: 24px;
+    }
+
+    .tab-content {
+      display: none;
+      text-align: center;
+      width: 100%;
+    }
+
+    .tab-content.active {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 24px;
-      padding: 24px;
-      text-align: center;
     }
-    
+
     img.hero {
       display: block;
-      max-width: 90vw;   /* ensures it never exceeds screen width */
-      max-height: 90vh;  /* ensures it never exceeds screen height */
+      max-width: 90vw;
+      max-height: 80vh; /* leave space for RSVP link */
       height: auto;
       width: auto;
       border-radius: 12px;
       box-shadow: 0 12px 30px rgba(0,0,0,0.28);
-      object-fit: contain; /* keeps aspect ratio inside available space */
+      object-fit: contain;
     }
 
     a.link {
@@ -67,28 +91,67 @@
       text-decoration: none;
       border-bottom: 2px solid currentColor;
       padding-bottom: 2px;
-      outline: none;
       transition: color .2s ease;
-    }
-
-    a.link:focus-visible {
-      outline: 3px solid rgba(255,255,255,.6);
-      outline-offset: 4px;
-      border-bottom-color: transparent;
     }
 
     a.link:hover {
       color: var(--link-hover-color);
     }
+
+    footer {
+      margin: 20px 0;
+    }
+
+    .info-box, .schedule-box {
+      background: #fff;
+      color: #333;
+      max-width: 90vw;
+      max-height: 80vh;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.28);
+      overflow-y: auto;
+      font-size: 18px;
+      line-height: 1.6;
+    }
   </style>
 </head>
 <body>
-  <main>
-    <!-- Replace the src with your image file/path and update the alt text for accessibility -->
-    <img class="hero" src="invite-01.png" alt="Describe the image here" />
+  <nav>
+    <button onclick="showTab('photo')">Photo</button>
+    <button onclick="showTab('info')">Info</button>
+    <button onclick="showTab('schedule')">Schedule</button>
+  </nav>
 
-    <!-- Update the link URL and text below -->
-    <a class="link" href="https://forms.gle/5D6W111kEJz2MauN7" target="_blank" rel="noopener">répondez s'il vous plaît (RSVP)</a>
+  <main>
+    <div id="photo" class="tab-content active">
+      <img class="hero" src="invite-01.png" alt="Event invitation" />
+    </div>
+
+    <div id="info" class="tab-content">
+      <div class="info-box">
+        <h2>Event Information</h2>
+        <p>Here’s where you can place details about the event: date, time, location, dress code, etc.</p>
+      </div>
+    </div>
+
+    <div id="schedule" class="tab-content">
+      <div class="schedule-box">
+        <h2>Event Schedule</h2>
+        <p>Outline the timeline of the event here (e.g., arrival, dinner, speeches, dancing, etc.).</p>
+      </div>
+    </div>
   </main>
+
+  <footer>
+    <a class="link" href="https://forms.gle/5D6W111kEJz2MauN7" target="_blank" rel="noopener">répondez s'il vous plaît (RSVP)</a>
+  </footer>
+
+  <script>
+    function showTab(id) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+  </script>
 </body>
 </html>
