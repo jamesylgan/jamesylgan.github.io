@@ -45,13 +45,16 @@
       padding: 24px;
       text-align: center;
     }
-
+    
     img.hero {
       display: block;
-      max-width: min(90vw, 820px);
+      max-width: 100vw;   /* ensures it never exceeds screen width */
+      max-height: 100vh;  /* ensures it never exceeds screen height */
       height: auto;
+      width: auto;
       border-radius: 12px;
       box-shadow: 0 12px 30px rgba(0,0,0,0.28);
+      object-fit: contain; /* keeps aspect ratio inside available space */
     }
 
     a.link {
