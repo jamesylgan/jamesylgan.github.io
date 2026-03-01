@@ -176,6 +176,10 @@
             color: var(--primary);
         }
         .btn-outline:hover { background: var(--primary); color: white; }
+        .btn-outline.selected {
+            background: var(--primary);
+            color: white;
+        }
         .btn-success { background: var(--success); }
         .btn-success:hover { background: #15803d; }
         .lesson-title { font-size: 1.5rem; color: var(--text); }
@@ -247,7 +251,7 @@
         .practice-list li { margin: 8px 0; color: var(--text-muted); }
 
         /* Quiz */
-        .quiz-container { margin-top: 20px; }
+        .quiz-container { margin-top: 20px; scroll-margin-top: 40px; }
         .quiz-question {
             background: #eff6ff;
             padding: 20px;
@@ -327,9 +331,83 @@
             .tabs { flex-wrap: wrap; }
             .tab { flex: none; width: 50%; }
         }
+
+        /* Reset Confirmation Modal */
+        .reset-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .reset-modal-overlay.active {
+            display: flex;
+        }
+        .reset-modal {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        .reset-modal h3 {
+            color: #dc2626;
+            margin-bottom: 15px;
+        }
+        .reset-modal p {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        .reset-modal input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        .reset-modal input:focus {
+            outline: none;
+            border-color: #dc2626;
+        }
+        .reset-modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        .reset-modal .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+        .reset-modal .btn-danger:disabled {
+            background: #fca5a5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
+    <!-- Reset Confirmation Modal -->
+    <div class="reset-modal-overlay" id="resetModal">
+        <div class="reset-modal">
+            <h3>⚠️ Reset All Progress</h3>
+            <p>This will permanently delete all your progress, including completed lessons, quiz scores, and SRS data. This action cannot be undone.</p>
+            <p><strong>Type "I am really sure" to confirm:</strong></p>
+            <input type="text" id="resetConfirmInput" placeholder="Type confirmation here..." autocomplete="off">
+            <div class="reset-modal-buttons">
+                <button class="btn btn-outline" onclick="closeResetModal()">Cancel</button>
+                <button class="btn btn-danger" id="resetConfirmBtn" onclick="confirmReset()" disabled>Reset All</button>
+            </div>
+        </div>
+    </div>
+
     <header>
         <h1 data-i18n="pageTitle">Conversational Spanish Roadmap</h1>
         <p data-i18n="pageSubtitle">A1 to B1 in 45 Days</p>
@@ -353,26 +431,26 @@
 
         <!-- Quiz Panel -->
         <div class="panel" id="quiz-panel">
+            <div id="quizContainer" class="quiz-container"></div>
             <div class="section">
                 <h3 style="margin-bottom: 15px;" data-i18n="vocabQuizTitle">Vocabulary Quiz (Anki-style)</h3>
                 <p style="color: var(--text-muted); margin-bottom: 20px;" data-i18n="vocabQuizDesc">Test your vocabulary knowledge. Wrong answers will be repeated until you get them right.</p>
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button class="btn" onclick="startVocabQuiz(10)">10 <span data-i18n="words">Words</span></button>
-                    <button class="btn btn-outline" onclick="startVocabQuiz(20)">20 <span data-i18n="words">Words</span></button>
-                    <button class="btn btn-outline" onclick="startVocabQuiz(0)" data-i18n="allWords">All Words</button>
+                <div id="vocabCountButtons" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-outline" onclick="selectVocabCount(this, 10)">10 <span data-i18n="words">Words</span></button>
+                    <button class="btn btn-outline" onclick="selectVocabCount(this, 20)">20 <span data-i18n="words">Words</span></button>
+                    <button class="btn btn-outline" onclick="selectVocabCount(this, 0)" data-i18n="allWords">All Words</button>
                 </div>
             </div>
             <div class="section" style="margin-top: 20px;">
                 <h3 style="margin-bottom: 15px;" data-i18n="conjQuizTitle">Conjugation Quiz (Anki-style)</h3>
                 <p style="color: var(--text-muted); margin-bottom: 15px;" data-i18n="conjQuizDesc">Practice verb conjugations based on your lesson progress. Wrong answers repeat until mastered.</p>
                 <div id="conjTypeSelector" style="margin-bottom:15px;"></div>
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button class="btn" onclick="startConjugationQuiz(15)">15 <span data-i18n="questions">Questions</span></button>
-                    <button class="btn btn-outline" onclick="startConjugationQuiz(25)">25 <span data-i18n="questions">Questions</span></button>
-                    <button class="btn btn-outline" onclick="startConjugationQuiz(0)" data-i18n="allAvailable">All Available</button>
+                <div id="conjCountButtons" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-outline" data-conj-count="10" onclick="selectConjCount(this, 10)">10 <span data-i18n="questions">Questions</span></button>
+                    <button class="btn btn-outline" data-conj-count="20" onclick="selectConjCount(this, 20)">20 <span data-i18n="questions">Questions</span></button>
+                    <button class="btn btn-outline" data-conj-count="0" onclick="selectConjCount(this, 0)" data-i18n="allAvailable">All Available</button>
                 </div>
             </div>
-            <div id="quizContainer" class="quiz-container"></div>
         </div>
 
         <!-- Progress Panel -->
@@ -1123,7 +1201,7 @@
         content.innerHTML = `
             ${renderSection(lesson.day, 'phrases', t('keyPhrases'), phrases.map(p => `<p>${escapeHtml(p)}</p>`).join(''))}
             ${renderSection(lesson.day, 'grammar', t('grammarBite'), `<div class="grammar-note">${grammar.map(g => `<p>• ${escapeHtml(g)}</p>`).join('')}</div>`)}
-            ${renderSection(lesson.day, 'vocab', t('speakFirstWords'), `<table class="vocab-table">${lesson.vocab.map(([es, en]) => `<tr><td class="spanish">${escapeHtml(es)}</td><td class="english">${escapeHtml(progress.uiLanguage === 'vi' && translationsVI?.vocab?.[day]?.[es] ? translationsVI.vocab[day][es] : en)}</td></tr>`).join('')}</table>`)}
+            ${renderSection(lesson.day, 'vocab', t('speakFirstWords'), `<table class="vocab-table">${lesson.vocab.map(([es, en]) => `<tr><td class="spanish">${escapeHtml(es)}</td><td class="english">${escapeHtml(progress.uiLanguage === 'vi' && typeof translationsVI !== 'undefined' && translationsVI?.vocab?.[day]?.[es] ? translationsVI.vocab[day][es] : en)}</td></tr>`).join('')}</table>`)}
             ${renderSection(lesson.day, 'dialogue', t('miniDialogue'), `<div class="dialogue">${lesson.dialogue.map(d => `<p><span class="speaker">${d.speaker}:</span> ${escapeHtml(d.text)}</p>`).join('')}</div><p style="margin-top:10px;color:var(--text-muted);font-style:italic">${escapeHtml(dialogueNote)}</p>`)}
             ${renderSection(lesson.day, 'practice', t('twoMinPractice'), `<ul class="practice-list">${practice.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>`)}
         `;
@@ -1198,7 +1276,27 @@
     let vocabTotalAttempts = 0;
     let vocabInitialCount = 0;
 
-    function startVocabQuiz(count) {
+    function selectVocabCount(btn, count) {
+        // Start the quiz (highlighting happens inside if successful)
+        startVocabQuiz(count, btn);
+    }
+
+    function highlightVocabButton(btn) {
+        // Clear conjugation selection
+        document.querySelectorAll('#conjCountButtons button').forEach(b => {
+            b.classList.remove('selected');
+            b.classList.add('btn-outline');
+        });
+        // Highlight vocab button
+        document.querySelectorAll('#vocabCountButtons button').forEach(b => {
+            b.classList.remove('selected');
+            b.classList.add('btn-outline');
+        });
+        btn.classList.add('selected');
+        btn.classList.remove('btn-outline');
+    }
+
+    function startVocabQuiz(count, btn) {
         // Gather vocab from completed days (or first 5 if none completed)
         const daysToUse = progress.completedDays.length > 0 ? progress.completedDays : [1,2,3,4,5];
         vocabAllWords = [];
@@ -1206,7 +1304,7 @@
             const lesson = lessons.find(l => l.day === day);
             if (lesson) {
                 lesson.vocab.forEach(([es, en]) => {
-                    const vi = translationsVI?.vocab?.[day]?.[es] || null;
+                    const vi = (typeof translationsVI !== 'undefined' && translationsVI?.vocab?.[day]?.[es]) || null;
                     vocabAllWords.push({ spanish: es, english: en, vietnamese: vi, day });
                 });
             }
@@ -1240,7 +1338,15 @@
         vocabTotalAttempts = 0;
         vocabInitialCount = vocabQueue.length;
 
+        // Highlight the selected button
+        if (btn) highlightVocabButton(btn);
+
         renderVocabQuestion();
+
+        // Scroll to quiz after render
+        setTimeout(() => {
+            document.getElementById('quizContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
     }
 
     function renderVocabQuestion() {
@@ -1481,7 +1587,27 @@
         container.innerHTML = html;
     }
 
-    function startConjugationQuiz(count) {
+    function selectConjCount(btn, count) {
+        // Start the quiz (highlighting happens inside if successful)
+        startConjugationQuiz(count, btn);
+    }
+
+    function highlightConjButton(btn) {
+        // Clear vocab selection
+        document.querySelectorAll('#vocabCountButtons button').forEach(b => {
+            b.classList.remove('selected');
+            b.classList.add('btn-outline');
+        });
+        // Highlight conj button
+        document.querySelectorAll('#conjCountButtons button').forEach(b => {
+            b.classList.remove('selected');
+            b.classList.add('btn-outline');
+        });
+        btn.classList.add('selected');
+        btn.classList.remove('btn-outline');
+    }
+
+    function startConjugationQuiz(count, btn) {
         // Get selected types
         conjSelectedTypes = [];
         document.querySelectorAll('[data-conj-type]:checked').forEach(cb => {
@@ -1493,19 +1619,20 @@
             return;
         }
 
-        // Build questions from selected types
-        const allQuestions = [];
+        // Build questions grouped by category
+        const questionsByCategory = {};
         const pronouns = ['yo', 'tu', 'el', 'nosotros', 'ellos'];
 
         conjSelectedTypes.forEach(typeId => {
             const type = conjugationTypes.find(t => t.id === typeId);
             const verbs = conjugationVerbs[typeId] || [];
+            questionsByCategory[typeId] = [];
 
             verbs.forEach(v => {
                 pronouns.forEach(p => {
                     const key = `${v.verb}_${typeId}_${p}`;
                     const srs = progress.conjSRS[key] || { wrongCount: 0, lastSeen: null, ease: 2.5 };
-                    allQuestions.push({
+                    questionsByCategory[typeId].push({
                         verb: v.verb,
                         pronoun: p,
                         correct: v.forms[p],
@@ -1517,31 +1644,56 @@
                     });
                 });
             });
+
+            // Shuffle each category's questions
+            questionsByCategory[typeId].sort(() => Math.random() - 0.5);
         });
 
-        if (allQuestions.length < 5) {
+        // Count total available questions
+        const totalAvailable = Object.values(questionsByCategory).reduce((sum, arr) => sum + arr.length, 0);
+
+        if (totalAvailable < 5) {
             alert(t('notEnoughVerbs'));
             return;
         }
 
-        // Sort by SRS (harder/unseen first)
-        allQuestions.sort((a, b) => {
-            if (b.srs.wrongCount !== a.srs.wrongCount) return b.srs.wrongCount - a.srs.wrongCount;
-            if (!a.srs.lastSeen && b.srs.lastSeen) return -1;
-            if (a.srs.lastSeen && !b.srs.lastSeen) return 1;
-            return a.srs.ease - b.srs.ease;
-        });
+        // Round-robin selection from each category
+        const selected = [];
+        const targetCount = count === 0 ? totalAvailable : Math.min(count, totalAvailable);
+        const categoryIds = Object.keys(questionsByCategory);
+        let categoryIndex = 0;
 
-        // Pick questions (0 = all)
-        const selected = count === 0 ? allQuestions : allQuestions.slice(0, Math.min(count, allQuestions.length));
+        while (selected.length < targetCount) {
+            const catId = categoryIds[categoryIndex];
+            const catQuestions = questionsByCategory[catId];
 
-        // Shuffle for variety
+            if (catQuestions.length > 0) {
+                selected.push(catQuestions.shift());
+            }
+
+            categoryIndex = (categoryIndex + 1) % categoryIds.length;
+
+            // Break if all categories are exhausted
+            if (Object.values(questionsByCategory).every(arr => arr.length === 0)) {
+                break;
+            }
+        }
+
+        // Final shuffle for variety
         conjQueue = selected.sort(() => Math.random() - 0.5);
         conjCorrect = 0;
         conjTotal = 0;
         conjInitialCount = conjQueue.length;
 
+        // Highlight the selected button
+        if (btn) highlightConjButton(btn);
+
         renderConjQuestion();
+
+        // Scroll to quiz after render
+        setTimeout(() => {
+            document.getElementById('quizContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
     }
 
     function renderConjQuestion() {
@@ -1714,13 +1866,39 @@
     }
 
     function resetProgress() {
-        if (confirm('Are you sure you want to reset all progress? This cannot be undone.')) {
-            progress = { completedDays: [], sectionChecks: {}, quizScores: [], lastSaved: null };
+        // Show the confirmation modal
+        document.getElementById('resetModal').classList.add('active');
+        document.getElementById('resetConfirmInput').value = '';
+        document.getElementById('resetConfirmBtn').disabled = true;
+        document.getElementById('resetConfirmInput').focus();
+    }
+
+    function closeResetModal() {
+        document.getElementById('resetModal').classList.remove('active');
+        document.getElementById('resetConfirmInput').value = '';
+    }
+
+    function confirmReset() {
+        const input = document.getElementById('resetConfirmInput').value.trim().toLowerCase();
+        if (input === 'i am really sure') {
+            progress = { completedDays: [], sectionChecks: {}, quizScores: [], lastSaved: null, conjSRS: {}, vocabSRS: {} };
             StorageVersionManager.remove(spanishProgressSchema);
             renderDayGrid();
             updateProgressUI();
+            closeResetModal();
         }
     }
+
+    // Enable/disable reset button based on input
+    document.getElementById('resetConfirmInput').addEventListener('input', function() {
+        const btn = document.getElementById('resetConfirmBtn');
+        btn.disabled = this.value.trim().toLowerCase() !== 'i am really sure';
+    });
+
+    // Close modal on escape key
+    document.getElementById('resetModal').addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeResetModal();
+    });
 
     function escapeHtml(text) {
         const div = document.createElement('div');
@@ -1734,13 +1912,17 @@
     window.prevDay = prevDay;
     window.nextDay = nextDay;
     window.markDayComplete = markDayComplete;
+    window.selectVocabCount = selectVocabCount;
     window.startVocabQuiz = startVocabQuiz;
     window.checkVocabAnswer = checkVocabAnswer;
+    window.selectConjCount = selectConjCount;
     window.startConjugationQuiz = startConjugationQuiz;
     window.checkConjAnswer = checkConjAnswer;
     window.downloadProgress = downloadProgress;
     window.loadProgressFile = loadProgressFile;
     window.resetProgress = resetProgress;
+    window.closeResetModal = closeResetModal;
+    window.confirmReset = confirmReset;
 
     init();
     </script>
