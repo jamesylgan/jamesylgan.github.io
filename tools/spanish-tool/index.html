@@ -45,7 +45,7 @@
             position: absolute;
             top: 10px;
             right: 10px;
-            display: flex;
+            display: none;
             flex-direction: column;
             align-items: center;
             gap: 4px;
@@ -307,8 +307,25 @@
             border-radius: 0 8px 8px 0;
             margin: 10px 0;
         }
-        .practice-list { padding-left: 20px; }
-        .practice-list li { margin: 8px 0; color: var(--text-muted); }
+        .grammar-note p {
+            text-align: justify;
+            -webkit-hyphens: auto;
+            hyphens: auto;
+            margin: 6px 0;
+        }
+        .practice-list { padding-left: 0; list-style: none; }
+        .practice-list li { margin: 0; }
+        .practice-item { display: flex; align-items: flex-start; gap: 10px; margin: 8px 0; }
+        .practice-check {
+            width: 20px; height: 20px; min-width: 20px;
+            border: 2px solid var(--border); border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s; font-size: 12px; margin-top: 1px;
+        }
+        .practice-check:hover { border-color: var(--success); }
+        .practice-check.checked { background: var(--success); border-color: var(--success); color: white; }
+        .practice-item-text { color: var(--text-muted); }
+        .practice-item-text.completed { text-decoration: line-through; opacity: 0.6; }
 
         /* Quiz */
         .quiz-container { margin-top: 20px; scroll-margin-top: 40px; }
@@ -386,7 +403,7 @@
             border-radius: 50%;
         }
 
-        @medía(max-width: 600px) {
+        @media (max-width: 600px) {
             .day-grid { grid-template-columns: repeat(3, 1fr); }
             .tabs { flex-wrap: wrap; }
             .tab { flex: none; width: 50%; }
@@ -506,6 +523,152 @@
         .settings-group.expanded .settings-group-content {
             display: block;
         }
+
+        /* Word Modal */
+        .word-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1001;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+            overflow-y: auto;
+        }
+        .word-modal-overlay.active {
+            display: flex;
+        }
+        .word-modal {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            position: relative;
+            margin: auto;
+        }
+        .word-modal-close {
+            position: absolute;
+            top: 10px;
+            right: 14px;
+            background: none;
+            border: none;
+            font-size: 1.8rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 5px 10px;
+            line-height: 1;
+        }
+        .word-modal-close:hover {
+            color: var(--text);
+        }
+        .word-modal h2 {
+            font-size: 1.5rem;
+            margin-bottom: 4px;
+            padding-right: 40px;
+        }
+        .word-modal .word-translation {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+        .word-modal .word-days {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+        }
+        .word-modal .conj-tense-title {
+            font-weight: 600;
+            margin: 16px 0 6px;
+            font-size: 1rem;
+        }
+        .conj-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 8px;
+        }
+        .conj-table th, .conj-table td {
+            padding: 6px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
+        }
+        .conj-table th {
+            color: var(--text-muted);
+            font-weight: 500;
+            width: 40%;
+        }
+        @media (max-width: 480px) {
+            .word-modal-overlay { padding: 20px 10px; }
+            .word-modal { padding: 20px 16px; }
+            .word-modal-close { font-size: 2rem; top: 6px; right: 10px; padding: 8px 12px; }
+        }
+
+        /* Clickable Spanish words */
+        .spanish-word-link {
+            text-decoration: underline;
+            text-decoration-style: dashed;
+            text-underline-offset: 2px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .spanish-word-link:hover {
+            text-decoration-style: solid;
+            color: var(--primary);
+        }
+
+        /* Word Lookup search */
+        .word-lookup-input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        .word-lookup-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .word-lookup-results {
+            margin-top: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .word-result-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .word-result-item:hover {
+            background: var(--bg);
+        }
+        .word-result-spanish {
+            font-weight: 600;
+        }
+        .word-result-badge {
+            font-size: 0.7rem;
+            background: var(--primary);
+            color: white;
+            padding: 1px 6px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+        .word-result-english {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-left: auto;
+            text-align: right;
+        }
     </style>
 </head>
 <body>
@@ -520,6 +683,14 @@
                 <button class="btn btn-outline" onclick="closeResetModal()">Cancel</button>
                 <button class="btn btn-danger" id="resetConfirmBtn" onclick="confirmReset()" disabled>Reset All</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Word Detail Modal -->
+    <div class="word-modal-overlay" id="wordModal">
+        <div class="word-modal">
+            <button class="word-modal-close" onclick="closeWordModal()">&times;</button>
+            <div id="wordModalContent"></div>
         </div>
     </div>
 
@@ -542,7 +713,7 @@
     <div class="tabs">
         <button class="tab active" data-tab="lessons" data-i18n="tabLessons">Lessons</button>
         <button class="tab" data-tab="quiz" data-i18n="tabQuiz">Quiz</button>
-        <button class="tab" data-tab="progress" data-i18n="tabProgress">Progress</button>
+        <button class="tab" data-tab="extras" data-i18n="tabExtras">Extras</button>
     </div>
 
     <div class="container">
@@ -575,9 +746,15 @@
             </div>
         </div>
 
-        <!-- Progress Panel -->
-        <div class="panel" id="progress-panel">
+        <!-- Extras Panel -->
+        <div class="panel" id="extras-panel">
             <div class="section">
+                <h3 style="margin-bottom: 15px;" data-i18n="wordLookupTitle">Word Lookup</h3>
+                <p style="color: var(--text-muted); margin-bottom: 12px;" data-i18n="wordLookupDesc">Search for any Spanish word to see its definition and conjugation tables.</p>
+                <input type="text" class="word-lookup-input" data-i18n-placeholder="wordLookupPlaceholder" placeholder="Type a Spanish or English word..." oninput="filterWordLookup(this.value)">
+                <div class="word-lookup-results" id="wordLookupResults"></div>
+            </div>
+            <div class="section" style="margin-top: 20px;">
                 <h3 style="margin-bottom: 15px;" data-i18n="yourProgress">Your Progress</h3>
                 <div id="progressStats"></div>
             </div>
@@ -603,7 +780,7 @@
                     <select id="defaultTabSelect" onchange="changeDefaultTab(this.value)" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 1rem;">
                         <option value="lessons" data-i18n="tabLessons">Lessons</option>
                         <option value="quiz" data-i18n="tabQuiz">Quiz</option>
-                        <option value="progress" data-i18n="tabProgress">Progress</option>
+                        <option value="extras" data-i18n="tabExtras">Extras</option>
                     </select>
                 </div>
                 <!-- Made for Mobile Section -->
@@ -618,6 +795,14 @@
                             <label for="compactHeaderCheckbox" style="cursor: pointer;" data-i18n="compactHeader">Compact header (progress bar only)</label>
                         </div>
                     </div>
+                </div>
+                <!-- Word Lookup Conjugation Settings -->
+                <div class="settings-group" id="lookupConjSettingsGroup" style="margin-top: 0;">
+                    <div class="settings-group-header" onclick="toggleSettingsGroup('lookupConjSettingsGroup')">
+                        <span data-i18n="lookupConjSettings">Word Lookup Conjugations</span>
+                        <span class="settings-group-arrow">▼</span>
+                    </div>
+                    <div class="settings-group-content" id="lookupConjTensesContainer"></div>
                 </div>
             </div>
             <div class="save-controls">
@@ -651,6 +836,7 @@
     </div>
 
     <script src="../lib/storage-version-manager.js"></script>
+    <script src="common-words.js"></script>
     <script>
     // Lesson Data (extracted from PDF)
     const lessons = [
@@ -675,8 +861,8 @@
         {
             day: 3, level: "A1", title: "Subject pronouns + SER (present) for identity",
             phrases: ["Soy estudiante. - I'm a student.", "Soy de España. - I'm from Spain.", "¿Eres de aquí? - Are you from here?", "Mucho gusto. - Nice to meet you."],
-            grammar: ["Subject pronouns (yo, tu, el/ella, nosotros...) are often optional in Spanish.", "SER is used for identity, origin, profession, and essential characteristics.", "Quick forms: yo soy, tu eres, el/ella es, nosotros somos, ellos son."],
-            vocab: [["yo", "I"], ["tú", "you (informal)"], ["él", "he"], ["ella", "she"], ["usted", "you (formal)"], ["nosotros", "we"], ["ellos", "they (m.)"], ["ser", "to be (essential)"], ["nombre", "name"], ["país", "country"], ["ciudad", "city"]],
+            grammar: ["Subject pronouns (yo, tu, el/ella, nosotros...) are often optional in Spanish.", "SER is used for identity, origin, profession, and essential characteristics.", "Quick forms: yo soy, tu eres, el/ella es, nosotros somos, ellos son.", "Full SER conjugation with all 6 forms: yo soy, tú eres, él/ella es, nosotros somos, vosotros sois, ellos/ellas son."],
+            vocab: [["yo", "I"], ["tú", "you (informal)"], ["él", "he"], ["ella", "she"], ["usted", "you (formal)"], ["nosotros", "we"], ["ellos", "they (m.)"], ["ser", "to be (essential)"], ["nombre", "name", "m"], ["país", "country", "m"], ["ciudad", "city", "f"]],
             dialogue: [{speaker: "A", text: "Hola, soy Marta. ¿Cómo te llamas?"}, {speaker: "B", text: "Me llamo Minh. Soy de Vietnam."}, {speaker: "A", text: "Mucho gusto."}],
             dialogueNote: "Introduce yourself: name + where you're from.",
             practice: ["Say 5 sentences with SER: I am..., you are..., we are...", "Ask and answer: ¿De dónde eres? Soy de ...", "Write your mini-introduction (3 lines) and read it aloud."]
@@ -684,8 +870,8 @@
         {
             day: 4, level: "A1", title: "ESTAR (present) for location & feelings",
             phrases: ["Estoy en casa. - I'm at home.", "Estoy en Madrid. - I'm in Madrid.", "Estoy cansado/a. - I'm tired.", "¿Dónde estás? - Where are you?"],
-            grammar: ["ESTAR is used for temporary states, feelings, and locations.", "Quick forms: estoy, estas, esta, estamos, estan.", "To say where: estar + en + place (Estoy en el hotel)."],
-            vocab: [["estar", "to be (state/location)"], ["bien", "well"], ["mal", "badly / unwell"], ["cansado", "tired"], ["enfermo", "sick"], ["aquí", "here"], ["allí", "there"], ["en", "in/on/at"], ["casa", "house/home"], ["hotel", "hotel"], ["restaurante", "restaurant"]],
+            grammar: ["ESTAR is used for temporary states, feelings, and locations.", "Quick forms: estoy, estas, esta, estamos, estan.", "To say where: estar + en + place (Estoy en el hotel).", "Full conjugation: estoy, estás, está, estamos, estáis, están — note the accent mark on every form except estamos."],
+            vocab: [["estar", "to be (state/location)"], ["bien", "well"], ["mal", "badly / unwell"], ["cansado", "tired"], ["enfermo", "sick"], ["aquí", "here"], ["allí", "there"], ["en", "in/on/at"], ["casa", "house/home", "f"], ["hotel", "hotel", "m"], ["restaurante", "restaurant", "m"]],
             dialogue: [{speaker: "A", text: "¿Dónde estás?"}, {speaker: "B", text: "Estoy en el hotel."}, {speaker: "A", text: "¿Estás bien?"}],
             dialogueNote: "Ask location + check how someone is.",
             practice: ["Say 6 feeling sentences: Estoy bien/mal/cansado/a/enfermo/a.", "Ask 3 questions: ¿Dónde estás? ¿Estás bien? ¿Estás en casa?", "Make a 30-second voice note describing where you are right now."]
@@ -693,7 +879,7 @@
         {
             day: 5, level: "A1", title: "Present tense: regular -AR verbs (hablar, trabajar, estudiar)",
             phrases: ["Hablo español. - I speak Spanish.", "Trabajo hoy. - I work today.", "Estudio en casa. - I study at home.", "¿Hablas inglés? - Do you speak English?"],
-            grammar: ["Regular present: drop -ar and add endings: -o, -as, -a, -amos, -ais, -an.", "In questions, intonation often rises at the end: ¿Hablas español?", "You can omit the subject: (Yo) hablo, (Tu) trabajas."],
+            grammar: ["Regular present: drop -ar and add endings: -o, -as, -a, -amos, -ais, -an.", "In questions, intonation often rises at the end: ¿Hablas español?", "You can omit the subject: (Yo) hablo, (Tu) trabajas.", "How formation works: drop the -ar infinitive ending and add the person-specific ending — the ending alone tells you who is doing the action, which is why subject pronouns are optional."],
             vocab: [["hablar", "to speak"], ["trabajar", "to work"], ["estudiar", "to study"], ["aprender", "to learn"], ["necesitar", "to need"], ["hoy", "today"], ["ahora", "now"], ["también", "also"], ["pero", "but"], ["porque", "because"]],
             dialogue: [{speaker: "A", text: "¿Hablas español?"}, {speaker: "B", text: "Un poco. Estudio todos los días."}, {speaker: "A", text: "¡Muy bien!"}],
             dialogueNote: "Say what you do and how often (a little, every day).",
@@ -702,7 +888,7 @@
         {
             day: 6, level: "A1", title: "Present tense: regular -ER/-IR verbs (comer, vivir)",
             phrases: ["Como aquí. - I eat here.", "Vivo en Barcelona. - I live in Barcelona.", "¿Comes carne? - Do you eat meat?", "No como carne. - I don't eat meat."],
-            grammar: ["-ER endings: -o, -es, -e, -emos, -eis, -en.", "-IR endings: -o, -es, -e, -imos, -is, -en.", "Negation: put no before the verb: No como, No vivo."],
+            grammar: ["-ER endings: -o, -es, -e, -emos, -eis, -en.", "-IR endings: -o, -es, -e, -imos, -is, -en.", "Negation: put no before the verb: No como, No vivo.", "-ER and -IR share all endings except nosotros (-emos vs -imos) and vosotros (-éis vs -ís) — treat them as nearly the same conjugation."],
             vocab: [["comer", "to eat"], ["vivir", "to live"], ["leer", "to read"], ["escribir", "to write"], ["ver", "to see"], ["escuchar", "to listen"], ["con", "with"], ["sin", "without"], ["muy", "very"], ["aquí", "here"]],
             dialogue: [{speaker: "A", text: "¿Comes aquí?"}, {speaker: "B", text: "Sí, como aquí. Y vivo cerca."}, {speaker: "A", text: "Perfecto."}],
             dialogueNote: "Simple yes/no questions + negation.",
@@ -711,8 +897,8 @@
         {
             day: 7, level: "A1", title: "Present tense: common irregulars + stem-changers",
             phrases: ["Tengo tiempo. - I have time.", "Voy a casa. - I'm going home.", "Quiero café. - I want coffee.", "¿Puedes ayudarme? - Can you help me?"],
-            grammar: ["High-frequency irregulars: ser, ir, tener, hacer, venir, poder, querer.", "Stem-changers in the present (common): e->ie (querer->quiero), o->ue (poder->puedo).", "Learn them as complete chunks: quiero, puedo, tengo, voy."],
-            vocab: [["tener", "to have"], ["ir", "to go"], ["venir", "to come"], ["hacer", "to do/make"], ["poder", "can/to be able to"], ["querer", "to want/to love"], ["tiempo", "time/weather"], ["ayuda", "help"], ["ahora", "now"], ["por favor", "please"]],
+            grammar: ["High-frequency irregulars: ser, ir, tener, hacer, venir, poder, querer.", "Stem-changers in the present (common): e->ie (querer->quiero), o->ue (poder->puedo).", "Learn them as complete chunks: quiero, puedo, tengo, voy.", "Boot-verb pattern: stem changes only affect yo/tú/él/ellos — nosotros and vosotros keep the original stem (quiero vs queremos).", "Additional stem-change patterns: e->i (pedir->pido, servir->sirvo) and u->ue (jugar->juego — the only u->ue verb).", "IR (to go) is fully irregular (voy, vas, va, vamos, van); TENER adds -g in yo (tengo) plus e->ie in other boot forms (tienes, tiene, tienen)."],
+            vocab: [["tener", "to have"], ["ir", "to go"], ["venir", "to come"], ["hacer", "to do/make"], ["poder", "can/to be able to"], ["querer", "to want/to love"], ["tiempo", "time/weather", "m"], ["ayuda", "help", "f"], ["ahora", "now"], ["por favor", "please"]],
             dialogue: [{speaker: "A", text: "¿Puedes ayudarme, por favor?"}, {speaker: "B", text: "Sí, claro. ¿Qué necesitas?"}, {speaker: "A", text: "Quiero comprar un billete."}],
             dialogueNote: "Ask for help + say what you need.",
             practice: ["Say out loud: tengo, voy, quiero, puedo (10 times each).", "Make 5 sentences using these words (Tengo..., Voy a..., Quiero...).", "Ask 3 polite questions with ¿Puedes...? + por favor."]
@@ -721,7 +907,7 @@
             day: 8, level: "A1", title: "Questions: word order + question words",
             phrases: ["¿Qué es esto? - What is this?", "¿Dónde está el baño? - Where is the bathroom?", "¿Cuánto cuesta? - How much is it?", "¿Cómo se dice...? - How do you say...?"],
             grammar: ["Yes/no questions often use the same word order; intonation + question marks do the work.", "Question words usually go first: que, donde, cuando, como, quien, cual, cuanto.", "Use ¿...? at the beginning and ? at the end in writing."],
-            vocab: [["qué", "what"], ["dónde", "where"], ["cuándo", "when"], ["cómo", "how"], ["quién", "who"], ["cuál", "which"], ["cuánto", "how much/many"], ["baño", "bathroom"], ["precio", "price"], ["por favor", "please"]],
+            vocab: [["qué", "what"], ["dónde", "where"], ["cuándo", "when"], ["cómo", "how"], ["quién", "who"], ["cuál", "which"], ["cuánto", "how much/many"], ["baño", "bathroom", "m"], ["precio", "price", "m"], ["por favor", "please"]],
             dialogue: [{speaker: "A", text: "Perdón, ¿dónde está el baño?"}, {speaker: "B", text: "Allí, a la derecha."}, {speaker: "A", text: "Gracias."}],
             dialogueNote: "Ask for directions politely.",
             practice: ["Create 6 questions (one with each: que/donde/cuando/como/quien/cuanto).", "Practice intonation: say each question twice (neutral vs very curious).", "Memorize: ¿Cómo se dice '___' en español?"]
@@ -730,7 +916,7 @@
             day: 9, level: "A1", title: "Nouns, gender & adjectives (un/una, -o/-a)",
             phrases: ["Es un café. - It's a coffee.", "Es una ciudad bonita. - It's a nice city.", "Tengo un problema. - I have a problem.", "La cuenta, por favor. - The bill, please."],
             grammar: ["Articles: un/una (a/an), el/la (the). Gender is part of the noun.", "Adjectives usually agree: un hotel bonito / una casa bonita.", "Plural: -s (vowel) / -es (consonant): hoteles, ciudades."],
-            vocab: [["un", "a (masculine)"], ["una", "a (feminine)"], ["el", "the (masc.)"], ["la", "the (fem.)"], ["bueno", "good"], ["malo", "bad"], ["bonito", "pretty/nice"], ["grande", "big"], ["pequeño", "small"], ["cuenta", "bill/check"], ["problema", "problem"]],
+            vocab: [["un", "a (masculine)"], ["una", "a (feminine)"], ["el", "the (masc.)"], ["la", "the (fem.)"], ["bueno", "good"], ["malo", "bad"], ["bonito", "pretty/nice"], ["grande", "big"], ["pequeño", "small"], ["cuenta", "bill/check", "f"], ["problema", "problem", "m"]],
             dialogue: [{speaker: "A", text: "La cuenta, por favor."}, {speaker: "B", text: "Si. ¿Tarjeta o efectivo?"}, {speaker: "A", text: "Tarjeta, gracias."}],
             dialogueNote: "Paying: ask for the bill and choose card/cash.",
             practice: ["Choose 10 nouns around you and add el/la (guess the gender).", "Describe 5 things: es un/una ___ + adjective.", "Roleplay: ordering and asking for la cuenta."]
@@ -739,7 +925,7 @@
             day: 10, level: "A1", title: "Locations: hay, estar + en, basic prepositions",
             phrases: ["Hay un restaurante aquí. - There's a restaurant here.", "Está cerca. - It's near.", "Esta lejos. - It's far.", "¿Estáabierto? - Is it open?"],
             grammar: ["hay = there is/there are (existence): Hay un baño.", "estar + en = location: El baño esta en el hotel.", "Useful prepositions: en, cerca de, lejos de, delante de, detrás de."],
-            vocab: [["hay", "there is/are"], ["en", "in/on/at"], ["cerca de", "near"], ["lejos de", "far from"], ["delante de", "in front of"], ["detrás de", "behind"], ["abierto", "open"], ["cerrado", "closed"], ["derecha", "right"], ["izquierda", "left"], ["recto", "straight"]],
+            vocab: [["hay", "there is/are"], ["en", "in/on/at"], ["cerca de", "near"], ["lejos de", "far from"], ["delante de", "in front of"], ["detrás de", "behind"], ["abierto", "open"], ["cerrado", "closed"], ["derecha", "right", "f"], ["izquierda", "left", "f"], ["recto", "straight"]],
             dialogue: [{speaker: "A", text: "¿Hay un baño cerca?"}, {speaker: "B", text: "Sí, está allí, detrás del restaurante."}, {speaker: "A", text: "Perfecto, gracias."}],
             dialogueNote: "Ask if something exists and where it is.",
             practice: ["Say 5 sentences with hay (Hay un/una...).", "Describe your room with 5 prepositions (en, cerca de...).", "Ask for directions: ¿Dónde está...? ¿Estálejos?"]
@@ -747,8 +933,8 @@
         {
             day: 11, level: "A2", title: "Daily routine + reflexive verbs + telling time",
             phrases: ["¿Qué hora es? - What time is it?", "Son las dos. - It's two o'clock.", "Me levanto a las siete. - I get up at seven.", "Me acuesto tarde. - I go to bed late."],
-            grammar: ["Reflexive verbs use me/te/se/nos/se: me levanto, te levantas, se levanta...", "Time: Es la una. Son las dos/tres/cuatro...", "At + time: a la una / a las dos."],
-            vocab: [["levantarse", "to get up"], ["ducharse", "to shower"], ["acostarse", "to go to bed"], ["por la mañana", "in the morning"], ["por la tarde", "in the afternoon"], ["por la noche", "at night"], ["temprano", "early"], ["tarde", "late"], ["hora", "hour/time"], ["día", "day"], ["todos los días", "every day"]],
+            grammar: ["Reflexive verbs use me/te/se/nos/se: me levanto, te levantas, se levanta...", "Time: Es la una. Son las dos/tres/cuatro...", "At + time: a la una / a las dos.", "'Reflexive' means the action is done to yourself — common daily verbs: levantarse (get up), ducharse (shower), acostarse (go to bed), vestirse (get dressed)."],
+            vocab: [["levantarse", "to get up"], ["ducharse", "to shower"], ["acostarse", "to go to bed"], ["por la mañana", "in the morning"], ["por la tarde", "in the afternoon"], ["por la noche", "at night"], ["temprano", "early"], ["tarde", "late"], ["hora", "hour/time", "f"], ["día", "day", "m"], ["todos los días", "every day"]],
             dialogue: [{speaker: "A", text: "¿A qué hora te levantas?"}, {speaker: "B", text: "Me levanto a las siete."}, {speaker: "A", text: "Yo me levanto temprano."}],
             dialogueNote: "Talk about your schedule using 'at what time...?'",
             practice: ["Say your schedule in 5 lines (morning/afternoon/night).", "Ask and answer 3 questions with ¿A qué hora...?", "Write 6 reflexive sentences and read them aloud."]
@@ -757,7 +943,7 @@
             day: 12, level: "A2", title: "GUSTAR: talking about likes & preferences",
             phrases: ["Me gusta el café. - I like coffee.", "No me gusta el te. - I don't like tea.", "Me encanta la música. - I love music.", "¿Te gusta viajar? - Do you like traveling?"],
             grammar: ["With gustar, the thing is the subject: Me gusta el café (coffee pleases me).", "Use indirect object pronouns: me, te, le, nos, les + gusta/gustan.", "Singular thing -> gusta; plural things -> gustan."],
-            vocab: [["gustar", "to like (pleases)"], ["encantar", "to love (really like)"], ["preferir", "to prefer"], ["música", "music"], ["película", "movie"], ["libro", "book"], ["deporte", "sport"], ["viajar", "to travel"], ["también", "also"], ["pero", "but"]],
+            vocab: [["gustar", "to like (pleases)"], ["encantar", "to love (really like)"], ["preferir", "to prefer"], ["música", "music", "f"], ["película", "movie", "f"], ["libro", "book", "m"], ["deporte", "sport", "m"], ["viajar", "to travel"], ["también", "also"], ["pero", "but"]],
             dialogue: [{speaker: "A", text: "¿Te gusta la música?"}, {speaker: "B", text: "Sí, me encanta. ¿Y a ti?"}, {speaker: "A", text: "Prefiero el silencio."}],
             dialogueNote: "Ask what someone likes; answer and add preference.",
             practice: ["Make 6 sentences: Me gusta..., No me gusta..., Me encantan...", "Ask 5 people: ¿Te gusta...? (food, music, movies).", "Say one preference: Prefiero ___ a ___."]
@@ -765,7 +951,7 @@
         {
             day: 13, level: "A2", title: "Present progressive: estar + gerundio (-ando/-iendo)",
             phrases: ["Estoy estudiando. - I'm studying.", "Estoy trabajando ahora. - I'm working now.", "¿Qué estas haciendo? - What are you doing?", "Estamos hablando. - We're talking."],
-            grammar: ["Form: estar (present) + gerundio: hablando, comiendo, viviendo.", "Use it for actions happening now or around now: Estoy trabajando esta semana.", "Often you can just use the present too; progressive adds \"right now\" feel."],
+            grammar: ["Form: estar (present) + gerundio: hablando, comiendo, viviendo.", "Use it for actions happening now or around now: Estoy trabajando esta semana.", "Often you can just use the present too; progressive adds \"right now\" feel.", "Unlike English, Spanish progressive is strictly for actions happening right now — don't use it for future plans ('I'm leaving tomorrow' = me voy mañana, not estoy yendo)."],
             vocab: [["ahora", "now"], ["ahora mismo", "right now"], ["mientras", "while"], ["trabajar", "to work"], ["estudiar", "to study"], ["hablar", "to speak"], ["comer", "to eat"], ["vivir", "to live"], ["también", "also"], ["pero", "but"]],
             dialogue: [{speaker: "A", text: "Hola, ¿qué estás haciendo?"}, {speaker: "B", text: "Estoy estudiando español."}, {speaker: "A", text: "Vale, hablamos después."}],
             dialogueNote: "Ask what someone's doing; postpone politely.",
@@ -784,7 +970,7 @@
             day: 15, level: "A2", title: "Indirect object pronouns: me/te/le/nos/les (to someone)",
             phrases: ["Me puedes ayudar. - You can help me.", "Le digo la verdad. - I tell him/her the truth.", "¿Me das agua? - Can you give me water?", "Les envio un mensaje. - I send them a message."],
             grammar: ["Indirect object = to/for someone: I give you a coffee -> Te doy un café.", "Pronouns: me, te, le, nos, les (often with a + person for clarity).", "Word order: IO + verb + DO: Te lo doy (I give it to you)."],
-            vocab: [["me", "me"], ["te", "you"], ["le", "to him/her"], ["les", "to them"], ["dar", "to give"], ["decir", "to say/tell"], ["ayudar", "to help"], ["mensaje", "message"], ["verdad", "truth"], ["agua", "water"]],
+            vocab: [["me", "me"], ["te", "you"], ["le", "to him/her"], ["les", "to them"], ["dar", "to give"], ["decir", "to say/tell"], ["ayudar", "to help"], ["mensaje", "message", "m"], ["verdad", "truth", "f"], ["agua", "water", "f"]],
             dialogue: [{speaker: "A", text: "¿Me puedes dar agua, por favor?"}, {speaker: "B", text: "Sí, claro. Te doy agua."}, {speaker: "A", text: "Gracias."}],
             dialogueNote: "Use me/te/le to make requests more natural.",
             practice: ["Transform: Doy el libro a Ana -> Le doy el libro.", "Make 5 sentences with me/te/le.", "Say 3 combos: Te lo doy / Me lo dices / Se lo muestro."]
@@ -792,35 +978,35 @@
         {
             day: 16, level: "A2", title: "Past simple (preterite): regular -AR verbs",
             phrases: ["Ayer hable con mi amigo. - Yesterday I spoke with my friend.", "Trabaje mucho. - I worked a lot.", "Estudie español. - I studied Spanish.", "¿Qué hiciste ayer? - What did you do yesterday?"],
-            grammar: ["Preterite is for completed actions in the past (yesterday, last week).", "-AR endings: -e, -aste, -o, -amos, -asteis, -aron.", "Time markers help: ayer, anoche, la semana pasada, hace..."],
-            vocab: [["ayer", "yesterday"], ["anoche", "last night"], ["la semana pasada", "last week"], ["hace", "ago"], ["trabajar", "to work"], ["estudiar", "to study"], ["hablar", "to speak"], ["amigo", "friend (m.)"], ["mucho", "a lot"], ["poco", "a little"]],
-            dialogue: [{speaker: "A", text: "¿Qué hiciste ayer?"}, {speaker: "B", text: "Trabaje y estudie."}, {speaker: "A", text: "Yo descanse."}],
+            grammar: ["Preterite is for completed actions in the past (yesterday, last week).", "-AR endings: -e, -aste, -o, -amos, -asteis, -aron.", "Time markers help: ayer, anoche, la semana pasada, hace...", "Watch out: yo (-é) and él (-ó) look very similar — the accent mark is the only difference; also the nosotros form (-amos) is the same as present tense, so context tells you which."],
+            vocab: [["ayer", "yesterday"], ["anoche", "last night"], ["la semana pasada", "last week"], ["hace", "ago"], ["trabajar", "to work"], ["estudiar", "to study"], ["hablar", "to speak"], ["amigo", "friend (m.)", "m"], ["mucho", "a lot"], ["poco", "a little"]],
+            dialogue: [{speaker: "A", text: "¿Qué hiciste ayer?"}, {speaker: "B", text: "Trabajé y estudié."}, {speaker: "A", text: "Yo descansé."}],
             dialogueNote: "Ask what someone did; answer with two past actions.",
             practice: ["Conjugate HABLAR in preterite (yo/tu/el/nos/ellos).", "Say 5 sentences about yesterday using ayer/anoche.", "Ask 3 questions with ¿Qué hiciste...?"]
         },
         {
             day: 17, level: "A2", title: "Past simple (preterite): regular -ER/-IR verbs",
             phrases: ["Comi en un restaurante. - I ate in a restaurant.", "Vivi en Madrid. - I lived in Madrid.", "Bebi café. - I drank coffee.", "¿Dónde comiste? - Where did you eat?"],
-            grammar: ["-ER/-IR endings: -i, -iste, -io, -imos, -isteis, -ieron.", "Use preterite for finished events: ayer comi..., el año pasado vivi...", "Common pattern for telling a day: Primero..., luego..., finalmente..."],
-            vocab: [["comer", "to eat"], ["vivir", "to live"], ["beber", "to drink"], ["restaurante", "restaurant"], ["café", "coffee"], ["primero", "first"], ["luego", "then"], ["finalmente", "finally"], ["ayer", "yesterday"], ["descansar", "to rest"]],
-            dialogue: [{speaker: "A", text: "¿Dónde comiste?"}, {speaker: "B", text: "Comi en casa. Luego sali."}, {speaker: "A", text: "¡Qué bien!"}],
+            grammar: ["-ER/-IR endings: -i, -iste, -io, -imos, -isteis, -ieron.", "Use preterite for finished events: ayer comi..., el año pasado vivi...", "Common pattern for telling a day: Primero..., luego..., finalmente...", "Unlike present tense where -ER and -IR differ slightly, they share identical preterite endings — one less set to memorize."],
+            vocab: [["comer", "to eat"], ["vivir", "to live"], ["beber", "to drink"], ["restaurante", "restaurant", "m"], ["café", "coffee", "m"], ["primero", "first"], ["luego", "then"], ["finalmente", "finally"], ["ayer", "yesterday"], ["descansar", "to rest"]],
+            dialogue: [{speaker: "A", text: "¿Dónde comiste?"}, {speaker: "B", text: "Comí en casa. Luego salí."}, {speaker: "A", text: "¡Qué bien!"}],
             dialogueNote: "Use preterite verbs to describe a sequence.",
             practice: ["Conjugate COMER and VIVIR in preterite (yo/tu/el/nos/ellos).", "Tell your last meal in 4 sentences (Primero..., luego...).", "Ask/answer: ¿Dónde bebiste café?"]
         },
         {
             day: 18, level: "A2", title: "Preterite: common irregular verbs (fui, tuve, hice...)",
             phrases: ["Fui al restaurante. - I went to the restaurant.", "Tuve un problema. - I had a problem.", "Hice una reserva. - I made a reservation.", "Dije la verdad. - I told the truth."],
-            grammar: ["Many high-frequency verbs are irregular in the preterite: ser/ir, tener, estar, hacer, decir, poder, poner, venir, traer.", "Good news: most irregulars share the same endings: -e, -iste, -o, -imos, -isteis, -ieron.", "Learn the stems as chunks: tuv-, estuv-, hic-, dij-, pud-, pus-, vin-, traj-."],
-            vocab: [["ir", "to go"], ["tener", "to have"], ["estar", "to be (state)"], ["hacer", "to do/make"], ["decir", "to say/tell"], ["poder", "can/to be able to"], ["poner", "to put"], ["venir", "to come"], ["traer", "to bring"], ["problema", "problem"], ["verdad", "truth"]],
-            dialogue: [{speaker: "A", text: "Ayer fui al hotel."}, {speaker: "B", text: "¿Tuviste algún problema?"}, {speaker: "A", text: "Sí, pero lo resolvi."}],
+            grammar: ["Many high-frequency verbs are irregular in the preterite: ser/ir, tener, estar, hacer, decir, poder, poner, venir, traer.", "Good news: most irregulars share the same endings: -e, -iste, -o, -imos, -isteis, -ieron.", "Learn the stems as chunks: tuv-, estuv-, hic-, dij-, pud-, pus-, vin-, traj-.", "Stem groupings help memorization: 'uv' group (tuv-, estuv-), 'j' group (dij-, traj-), and hacer becomes hic- (but hizo in él/ella to keep the sound).", "J-stem verbs drop the i in the ellos form: dijeron (not dijieron), trajeron (not trajieron).", "SER and IR share the exact same preterite forms: fui, fuiste, fue, fuimos, fuisteis, fueron — context tells you which verb it is."],
+            vocab: [["ir", "to go"], ["tener", "to have"], ["estar", "to be (state)"], ["hacer", "to do/make"], ["decir", "to say/tell"], ["poder", "can/to be able to"], ["poner", "to put"], ["venir", "to come"], ["traer", "to bring"], ["problema", "problem", "m"], ["verdad", "truth", "f"]],
+            dialogue: [{speaker: "A", text: "Ayer fui al hotel."}, {speaker: "B", text: "¿Tuviste algún problema?"}, {speaker: "A", text: "Sí, pero lo resolví."}],
             dialogueNote: "Use an irregular past to describe a situation and solution.",
             practice: ["Say the key forms: fui, tuve, estuve, hice, dije, pude, puse, vine, traje.", "Make 5 sentences about yesterday with one irregular each.", "Ask: ¿Fuiste...? ¿Tuviste...? ¿Pudiste...?"]
         },
         {
             day: 19, level: "A2", title: "Imperfect past: descriptions & habits (era, iba, tenia)",
             phrases: ["Cuando era niño/a... - When I was a child...", "Siempre iba a la escuela. - I always went to school.", "Hacia buen tiempo. - The weather was nice.", "Tenia 10 años. - I was 10 years old."],
-            grammar: ["Imperfect is for background, habits, repeated actions, and descriptions in the past.", "Regular endings: -aba (AR) and -ia (ER/IR).", "Three key irregulars: ser -> era, ir -> iba, ver -> veia."],
-            vocab: [["cuando", "when"], ["siempre", "always"], ["a veces", "sometimes"], ["antes", "before"], ["mientras", "while"], ["ser", "to be (essential)"], ["ir", "to go"], ["ver", "to see"], ["tener", "to have"], ["tiempo", "time/weather"], ["año", "year"]],
+            grammar: ["Imperfect is for background, habits, repeated actions, and descriptions in the past.", "Regular endings: -aba (AR) and -ia (ER/IR).", "Three key irregulars: ser -> era, ir -> iba, ver -> veia.", "Full -AR endings: -aba, -abas, -aba, -abamos, -abais, -aban. Full -ER/-IR endings: -ia, -ias, -ia, -iamos, -iais, -ian.", "Only 3 verbs are irregular in the imperfect (ser, ir, ver) — everything else is perfectly regular, making this one of the easiest tenses to learn."],
+            vocab: [["cuando", "when"], ["siempre", "always"], ["a veces", "sometimes"], ["antes", "before"], ["mientras", "while"], ["ser", "to be (essential)"], ["ir", "to go"], ["ver", "to see"], ["tener", "to have"], ["tiempo", "time/weather", "m"], ["año", "year", "m"]],
             dialogue: [{speaker: "A", text: "¿Cómo era tu ciudad antes?"}, {speaker: "B", text: "Era pequeña y tranquila."}, {speaker: "A", text: "¡Qué interesante!"}],
             dialogueNote: "Describe how something used to be (era...).",
             practice: ["Make 5 sentences starting with Cuando era...", "Describe your hometown with 4 adjectives in imperfect (Era..., habia...).", "Contrast: Ayer fui... vs Antes iba... (one time vs habit)."]
@@ -830,7 +1016,7 @@
             phrases: ["Primero fuimos al centro. - First we went downtown.", "Luego comimos. - Then we ate.", "De repente, llovio. - Suddenly, it rained.", "Mientras caminabamos, hablamos. - While we were walking, we talked."],
             grammar: ["Imperfect = background/ongoing: hacia frio, caminabamos...", "Preterite = completed events: llegamos, comimos, llovio...", "Use connectors to sound fluent: primero, luego, después, mientras, de repente."],
             vocab: [["primero", "first"], ["luego", "then"], ["después", "after"], ["antes", "before"], ["mientras", "while"], ["entonces", "then/so"], ["de repente", "suddenly"], ["porque", "because"], ["aunque", "although"], ["por eso", "that's why"]],
-            dialogue: [{speaker: "A", text: "¿Cómo fue tu dia?"}, {speaker: "B", text: "Primero trabaje. Luego descanse. Despues sali con amigos."}, {speaker: "A", text: "¡Genial!"}],
+            dialogue: [{speaker: "A", text: "¿Cómo fue tu día?"}, {speaker: "B", text: "Primero trabajé. Luego descansé. Después salí con amigos."}, {speaker: "A", text: "¡Genial!"}],
             dialogueNote: "Answer 'How was your day?' with a clear sequence.",
             practice: ["Tell a 1-minute story using at least 5 connectors.", "Write 6 lines: 3 imperfect (background) + 3 preterite (events).", "Retell yesterday again, but slower and with more detail."]
         },
@@ -846,8 +1032,8 @@
         {
             day: 22, level: "A2", title: "Future: ir a + infinitive + future simple (-e, -as, -a...)",
             phrases: ["Voy a estudiar hoy. - I'm going to study today.", "Manana voy a viajar. - Tomorrow I'm going to travel.", "Hare una reserva. - I will make a reservation.", "¿Vendras conmigo? - Will you come with me?"],
-            grammar: ["Near future: ir (present) + a + infinitive: voy a comer, vamos a salir.", "Future simple: add endings to the infinitive: hablare, comeras, vivira...", "Some futures have irregular stems: hacer->har-, tener->tendr-, venir->vendr-."],
-            vocab: [["plan", "plan"], ["mañana", "tomorrow / morning"], ["viaje", "trip"], ["ir", "to go"], ["venir", "to come"], ["hacer", "to do/make"], ["reservar", "to reserve"], ["salir", "to go out/leave"], ["poder", "can/to be able to"], ["necesitar", "to need"]],
+            grammar: ["Near future: ir (present) + a + infinitive: voy a comer, vamos a salir.", "Future simple: add endings to the infinitive: hablare, comeras, vivira...", "Some futures have irregular stems: hacer->har-, tener->tendr-, venir->vendr-.", "Irregular future stems follow a pattern: either drop a vowel (poder->podr-, saber->sabr-) or replace with -d- (poner->pondr-, salir->saldr-, venir->vendr-)."],
+            vocab: [["plan", "plan", "m"], ["mañana", "tomorrow / morning"], ["viaje", "trip", "m"], ["ir", "to go"], ["venir", "to come"], ["hacer", "to do/make"], ["reservar", "to reserve"], ["salir", "to go out/leave"], ["poder", "can/to be able to"], ["necesitar", "to need"]],
             dialogue: [{speaker: "A", text: "¿Qué vas a hacer mañana?"}, {speaker: "B", text: "Voy a visitar la ciudad."}, {speaker: "A", text: "Genial, voy contigo."}],
             dialogueNote: "Talk about plans with 'voy a...'",
             practice: ["Say 8 future plans using voy a... (today/tomorrow/this week).", "Conjugate the future of hablar/comer/vivir (yo/tu/el).", "Ask: ¿Qué vas a hacer...? and answer in 2 sentences."]
@@ -856,7 +1042,7 @@
             day: 23, level: "A2", title: "Present perfect: he/has/ha + participle (he comido)",
             phrases: ["He comido aquí. - I've eaten here.", "He estado en España. - I've been to Spain.", "¿Has viajado a Mexico? - Have you traveled to Mexico?", "Nunca he probado eso. - I've never tried that."],
             grammar: ["Form: haber (he, has, ha, hemos, han) + past participle (comido, vivido).", "Often used for life experience and 'recent past' (especially in Spain).", "Keywords: ya (already), todavía/aun (still/yet), nunca (never), alguna vez (ever)."],
-            vocab: [["ya", "already / now"], ["todavía", "still / yet"], ["nunca", "never"], ["alguna vez", "ever (at some time)"], ["viajar", "to travel"], ["comer", "to eat"], ["vivir", "to live"], ["probar", "to try/taste"], ["verdad", "truth"], ["experiencia", "experience"]],
+            vocab: [["ya", "already / now"], ["todavía", "still / yet"], ["nunca", "never"], ["alguna vez", "ever (at some time)"], ["viajar", "to travel"], ["comer", "to eat"], ["vivir", "to live"], ["probar", "to try/taste"], ["verdad", "truth", "f"], ["experiencia", "experience", "f"]],
             dialogue: [{speaker: "A", text: "¿Has probado la paella?"}, {speaker: "B", text: "Sí, la he probado. Está muy buena."}, {speaker: "A", text: "¡Tengo que probarla!"}],
             dialogueNote: "Talk about experiences and food you've tried.",
             practice: ["Make 6 'I have...' sentences: He comido..., He visto..., He estado...", "Ask 5 'Have you ever...?' questions: ¿Has... alguna vez?", "Answer with Nunca he... / Si, he... / Todavía no he..."]
@@ -865,7 +1051,7 @@
             day: 24, level: "A2", title: "Por vs para (quick speaking rules)",
             phrases: ["Es para ti. - It's for you.", "Gracias por tu ayuda. - Thanks for your help.", "Voy por la calle. - I go along the street.", "Lo hago para aprender. - I do it to learn."],
             grammar: ["para = purpose/goal/recipient/deadline: para ti, para aprender, para mañana.", "por = reason/cause/exchange/movement: por eso, por la calle, por 10 euros.", "Common combo: gracias por... (thanks for...)."],
-            vocab: [["por", "for/by/through"], ["para", "for (purpose)"], ["porque", "because"], ["por eso", "that's why"], ["por ejemplo", "for example"], ["gracias", "thank you"], ["ayuda", "help"], ["mañana", "tomorrow / morning"], ["dinero", "money"], ["calle", "street"]],
+            vocab: [["por", "for/by/through"], ["para", "for (purpose)"], ["porque", "because"], ["por eso", "that's why"], ["por ejemplo", "for example"], ["gracias", "thank you"], ["ayuda", "help", "f"], ["mañana", "tomorrow / morning"], ["dinero", "money", "m"], ["calle", "street", "f"]],
             dialogue: [{speaker: "A", text: "Gracias por tu ayuda."}, {speaker: "B", text: "De nada. Lo hago para ti."}, {speaker: "A", text: "¡Eres muy amable!"}],
             dialogueNote: "Thank someone and explain why you do something.",
             practice: ["Make 6 sentences: 3 with para + infinitive, 3 with por + reason.", "Say 3 prices: Es por 5 euros / por 10 euros...", "Use in real life today: gracias por..."]
@@ -893,15 +1079,15 @@
             phrases: ["Dimelo. - Tell it to me.", "No me lo digas. - Don't tell it to me.", "Traemelo. - Bring it to me.", "Ayudame, por favor. - Help me, please."],
             grammar: ["Affirmative command: attach pronouns: dime + lo -> dimelo.", "Negative command: pronouns go before: No me lo digas.", "When two pronouns: (me/te/le/nos/les) + (lo/la/los/las). le/les -> se (Se lo doy)."],
             vocab: [["me", "me"], ["te", "you"], ["se", "(him/her/yourself)"], ["lo", "him/it (m.)"], ["la", "her/it (f.)"], ["dar", "to give"], ["decir", "to say/tell"], ["traer", "to bring"], ["ayudar", "to help"], ["por favor", "please"]],
-            dialogue: [{speaker: "A", text: "¿Tienes la direccion?"}, {speaker: "B", text: "Si. Dimela otra vez, por favor."}, {speaker: "A", text: "Claro: Calle Mayor, 10."}],
+            dialogue: [{speaker: "A", text: "¿Tienes la dirección?"}, {speaker: "B", text: "Si. Dimela otra vez, por favor."}, {speaker: "A", text: "Claro: Calle Mayor, 10."}],
             dialogueNote: "Ask someone to repeat information and use pronouns naturally.",
             practice: ["Combine: di + me + lo -> dimelo (say 5 combos).", "Make 4 negatives: No me lo digas / No se lo des...", "Practice with real info: phone number, address, name."]
         },
         {
             day: 28, level: "A2", title: "Conditional: polite requests (me gustaria, podrias...)",
             phrases: ["Me gustaria un café. - I'd like a coffee.", "¿Podrias ayudarme? - Could you help me?", "Querria pagar. - I would like to pay.", "¿Seria posible? - Would it be possible?"],
-            grammar: ["Conditional endings are added to the infinitive: -ia, -ias, -ia, -iamos, -iais, -ian.", "Use it for polite requests and hypotheticals: Me gustaria..., Podrias...", "It shares the same irregular stems as the future: tendr-, podr-, har-, dir-, vendr-..."],
-            vocab: [["me gustaría", "I would like"], ["podría", "I could"], ["quisiera", "I would like"], ["poder", "can/to be able to"], ["querer", "to want/to love"], ["pagar", "to pay"], ["posible", "possible"], ["por favor", "please"], ["cuenta", "bill/check"], ["tarjeta", "card"]],
+            grammar: ["Conditional endings are added to the infinitive: -ia, -ias, -ia, -iamos, -iais, -ian.", "Use it for polite requests and hypotheticals: Me gustaria..., Podrias...", "It shares the same irregular stems as the future: tendr-, podr-, har-, dir-, vendr-...", "Same irregular stems as future tense, just different endings — if you know the future, you already know the conditional stems."],
+            vocab: [["me gustaría", "I would like"], ["podría", "I could"], ["quisiera", "I would like"], ["poder", "can/to be able to"], ["querer", "to want/to love"], ["pagar", "to pay"], ["posible", "possible"], ["por favor", "please"], ["cuenta", "bill/check", "f"], ["tarjeta", "card", "f"]],
             dialogue: [{speaker: "A", text: "Me gustaria pagar, por favor."}, {speaker: "B", text: "Claro. ¿Tarjeta o efectivo?"}, {speaker: "A", text: "Tarjeta."}],
             dialogueNote: "Polite restaurant payment conversation.",
             practice: ["Turn 5 direct requests into polite ones: Quiero -> Me gustaria / Quisiera.", "Ask 5 polite questions: ¿Podrias...? ¿Seria posible...?", "Roleplay ordering: Me gustaria... / Querria..."]
@@ -918,9 +1104,9 @@
         {
             day: 30, level: "A2", title: "Conversation day: restaurant + directions + small talk",
             phrases: ["Quisiera pedir, por favor. - I'd like to order, please.", "¿Quéme recomienda? - What do you recommend?", "Perdón, ¿dónde queda...? - Excuse me, where is...?", "¿Puede repetir? - Can you repeat?"],
-            grammar: ["Today is about fluency: use what you know (present, past, future, polite forms).", "Use fillers to buy time: pues..., entonces..., o sea..., a ver...", "If stuck: ask for clarification: ¿Cómo se dice...? ¿Quésignifica...?"],
-            vocab: [["perdón", "sorry/excuse me"], ["por favor", "please"], ["gracias", "thank you"], ["claro", "sure/of course"], ["vale", "ok (Spain)"], ["o sea", "I mean"], ["entonces", "then/so"], ["por ejemplo", "for example"], ["derecha", "right"], ["izquierda", "left"], ["recto", "straight"]],
-            dialogue: [{speaker: "A", text: "Perdón, ¿dónde queda el centro?"}, {speaker: "B", text: "Recto y a la derecha. Está cerca."}, {speaker: "A", text: "Gracias. ¡Qué tenga buen dia!"}],
+            grammar: ["Today is about fluency: use what you know (present, past, future, polite forms).", "Use fillers to buy time: pues..., entonces..., o sea..., a ver...", "If stuck: ask for clarification: ¿Cómo se dice...? ¿Qué significa...?"],
+            vocab: [["perdón", "sorry/excuse me"], ["por favor", "please"], ["gracias", "thank you"], ["claro", "sure/of course"], ["vale", "ok (Spain)"], ["o sea", "I mean"], ["entonces", "then/so"], ["por ejemplo", "for example"], ["derecha", "right", "f"], ["izquierda", "left", "f"], ["recto", "straight"]],
+            dialogue: [{speaker: "A", text: "Perdón, ¿dónde queda el centro?"}, {speaker: "B", text: "Recto y a la derecha. Está cerca."}, {speaker: "A", text: "Gracias. ¡Qué tenga buen día!"}],
             dialogueNote: "Real-life micro-dialogue: directions + polite closing.",
             practice: ["Roleplay 2 minutes: order food + pay + say goodbye.", "Roleplay 2 minutes: ask directions + confirm + thank.", "Record a 1-minute 'about me' using at least 3 connectors."]
         },
@@ -928,7 +1114,7 @@
             day: 31, level: "B1", title: "Past nuance: preterite vs imperfect (storytelling upgrade)",
             phrases: ["Cuando llegué, estaba lloviendo. - When I arrived, it was raining.", "De niño, solía ir al parque. - As a child, I used to go to the park.", "Ese día conocí a mi mejor amigo. - That day I met my best friend.", "Antes pensaba eso, pero ahora no. - I used to think that, but not now."],
             grammar: ["Use imperfect for background/'used to': era, tenia, solía...", "Use preterite for the main events: llegué, conocí, decidi...", "Mix them: background (imperfect) + event (preterite) = natural storytelling."],
-            vocab: [["cuando", "when"], ["mientras", "while"], ["antes", "before"], ["después", "after"], ["de repente", "suddenly"], ["soler", "to usually do"], ["pensar", "to think"], ["conocer", "to know (people/places)"], ["mejor", "better"], ["historia", "story/history"]],
+            vocab: [["cuando", "when"], ["mientras", "while"], ["antes", "before"], ["después", "after"], ["de repente", "suddenly"], ["soler", "to usually do"], ["pensar", "to think"], ["conocer", "to know (people/places)"], ["mejor", "better"], ["historia", "story/history", "f"]],
             dialogue: [{speaker: "A", text: "¿Cómo fue tu infancia?"}, {speaker: "B", text: "Era tranquila. Solía jugar mucho en la calle."}, {speaker: "A", text: "¡Qué bonito!"}],
             dialogueNote: "Talk about 'used to' habits (solía...).",
             practice: ["Tell a 1-minute childhood story using 3 imperfect + 3 preterite verbs.", "Use solía in 5 sentences (I used to...).", "Write a short story: When I arrived..., it was..."]
@@ -937,17 +1123,17 @@
             day: 32, level: "B1", title: "Relative clauses: que, quien, donde, lo que",
             phrases: ["La persona que conocí... - The person that I met...", "El lugar donde vivo... - The place where I live...", "Lo que quiero es practicar. - What I want is to practice.", "Es algo que me gusta. - It's something I like."],
             grammar: ["que is the all-purpose relative pronoun: el libro que tengo...", "donde = where: la ciudad donde naci...", "lo que = what/that which: Lo que necesito es tiempo."],
-            vocab: [["que", "that/which"], ["quien", "who/that (relative)"], ["donde", "where (relative)"], ["lo que", "what (the thing that)"], ["algo", "something"], ["persona", "person"], ["lugar", "place"], ["idea", "idea"], ["opinión", "opinion"], ["importante", "important"]],
-            dialogue: [{speaker: "A", text: "¿Cual es el lugar donde te sientes feliz?"}, {speaker: "B", text: "Un lugar donde hay naturaleza."}, {speaker: "A", text: "Lo que dices es muy bonito."}],
+            vocab: [["que", "that/which"], ["quien", "who/that (relative)"], ["donde", "where (relative)"], ["lo que", "what (the thing that)"], ["algo", "something"], ["persona", "person", "f"], ["lugar", "place", "m"], ["idea", "idea", "f"], ["opinión", "opinion", "f"], ["importante", "important"]],
+            dialogue: [{speaker: "A", text: "¿Cuál es el lugar donde te sientes feliz?"}, {speaker: "B", text: "Un lugar donde hay naturaleza."}, {speaker: "A", text: "Lo que dices es muy bonito."}],
             dialogueNote: "Use relative clauses to sound more 'B1' immediately.",
             practice: ["Create 6 sentences: 2 with que, 2 with donde, 2 with lo que.", "Describe a person you know using que (a friend who...).", "Explain your opinion in 3 lines using lo que..."]
         },
         {
             day: 33, level: "B1", title: "Present subjunctive: formation + 'I want that...'",
-            phrases: ["Quiero que vengas. - I want you to come.", "Es importante que practiques. - It's important that you practice.", "Espero que estes bien. - I hope you're well.", "Ojala tenga tiempo. - Hopefully I have time."],
-            grammar: ["Subjunctive is used after triggers like: querer que, esperar que, es importante que...", "Formation (present): take the 'yo' present form, drop -o, add opposite endings (hablar->hable, comer->coma).", "Key irregulars: ser->sea, ir->vaya, estar->este, tener->tenga, hacer->haga."],
-            vocab: [["ojalá", "hopefully"], ["esperar", "to wait/hope"], ["querer", "to want/to love"], ["venir", "to come"], ["practicar", "to practice"], ["importante", "important"], ["posible", "possible"], ["necesario", "necessary"], ["tiempo", "time/weather"], ["verdad", "truth"]],
-            dialogue: [{speaker: "A", text: "Quiero que me ayudes con esto."}, {speaker: "B", text: "Claro. Espero que sea fácil."}, {speaker: "A", text: "Ojala."}],
+            phrases: ["Quiero que vengas. - I want you to come.", "Es importante que practiques. - It's important that you practice.", "Espero que estes bien. - I hope you're well.", "Ojalá tenga tiempo. - Hopefully I have time."],
+            grammar: ["Subjunctive is used after triggers like: querer que, esperar que, es importante que...", "Formation (present): take the 'yo' present form, drop -o, add opposite endings (hablar->hable, comer->coma).", "Key irregulars: ser->sea, ir->vaya, estar->este, tener->tenga, hacer->haga.", "What subjunctive IS: it expresses uncertainty, desire, or emotion — not facts. Compare 'I know he comes' (indicative) vs 'I want him to come' (subjunctive).", "'Opposite endings' explained: -AR verbs take -e endings (borrowed from -ER), while -ER/-IR verbs take -a endings (borrowed from -AR).", "No trigger = no subjunctive: 'Creo que viene' uses indicative (belief/fact), but 'Quiero que venga' uses subjunctive (desire/trigger)."],
+            vocab: [["ojalá", "hopefully"], ["esperar", "to wait/hope"], ["querer", "to want/to love"], ["venir", "to come"], ["practicar", "to practice"], ["importante", "important"], ["posible", "possible"], ["necesario", "necessary"], ["tiempo", "time/weather", "m"], ["verdad", "truth", "f"]],
+            dialogue: [{speaker: "A", text: "Quiero que me ayudes con esto."}, {speaker: "B", text: "Claro. Espero que sea fácil."}, {speaker: "A", text: "Ojalá."}],
             dialogueNote: "Use subjunctive after 'I want/hope'.",
             practice: ["Make 6 sentences with quiero que / espero que + subjunctive.", "Conjugate in subjunctive: hablar, comer, vivir (yo/tu/el).", "Memorize 3 irregulars: sea, vaya, tenga."]
         },
@@ -964,8 +1150,8 @@
             day: 35, level: "B1", title: "Subjunctive with doubt/denial: no creo que..., dudo que...",
             phrases: ["No creo que sea verdad. - I don't think it's true.", "Dudo que llegué a tiempo. - I doubt I'll arrive on time.", "¿Crees que es posible? - Do you think it's possible?", "No pienso que sea necesario. - I don't think it's necessary."],
             grammar: ["Affirmation (creo que...) usually takes indicative: Creo que es verdad.", "Negation/doubt (no creo que..., dudo que...) takes subjunctive: No creo que sea...", "Questions can vary: ¿Crees que...? often uses indicative if you assume yes; subjunctive if you assume doubt."],
-            vocab: [["creer", "to believe/think"], ["dudar", "to doubt"], ["verdad", "truth"], ["posible", "possible"], ["necesario", "necessary"], ["tiempo", "time/weather"], ["llegar", "to arrive"], ["importante", "important"], ["en realidad", "actually"], ["quizás", "maybe"]],
-            dialogue: [{speaker: "A", text: "¿Crees que es posible hoy?"}, {speaker: "B", text: "No creo que sea posible. Quizas mañana."}, {speaker: "A", text: "Vale."}],
+            vocab: [["creer", "to believe/think"], ["dudar", "to doubt"], ["verdad", "truth", "f"], ["posible", "possible"], ["necesario", "necessary"], ["tiempo", "time/weather", "m"], ["llegar", "to arrive"], ["importante", "important"], ["en realidad", "actually"], ["quizás", "maybe"]],
+            dialogue: [{speaker: "A", text: "¿Crees que es posible hoy?"}, {speaker: "B", text: "No creo que sea posible. Quizás mañana."}, {speaker: "A", text: "Vale."}],
             dialogueNote: "Express uncertainty politely.",
             practice: ["Make 6 pairs: Creo que es... / No creo que sea...", "Use dudo que... in 3 sentences.", "Say 5 'maybe' sentences with quizas/tal vez."]
         },
@@ -982,7 +1168,7 @@
             day: 37, level: "B1", title: "Connectors for opinions: aunque, sin embargo, ademas...",
             phrases: ["Me parece que es buena idea. - It seems like a good idea.", "Aunque es caro, vale la pena. - Although it's expensive, it's worth it.", "Sin embargo, no tengo tiempo. - However, I don't have time.", "Por lo tanto, voy mañana. - Therefore, I'll go tomorrow."],
             grammar: ["Use connectors to build longer sentences (a key B1 skill).", "aunque + indicative = fact; aunque + subjunctive = hypothetical/unknown (advanced, optional).", "Try a simple structure: Opinion + porque + reason + however + contrast."],
-            vocab: [["opinión", "opinion"], ["idea", "idea"], ["porque", "because"], ["aunque", "although"], ["sin embargo", "however"], ["además", "besides"], ["por lo tanto", "therefore"], ["en realidad", "actually"], ["en cambio", "instead/on the other hand"], ["por eso", "that's why"]],
+            vocab: [["opinión", "opinion", "f"], ["idea", "idea", "f"], ["porque", "because"], ["aunque", "although"], ["sin embargo", "however"], ["además", "besides"], ["por lo tanto", "therefore"], ["en realidad", "actually"], ["en cambio", "instead/on the other hand"], ["por eso", "that's why"]],
             dialogue: [{speaker: "A", text: "¿Te gusta vivir aquí?"}, {speaker: "B", text: "Sí, aunque es caro. Sin embargo, es muy bonito."}, {speaker: "A", text: "Entiendo."}],
             dialogueNote: "Express a balanced opinion (pros + cons).",
             practice: ["Say 5 opinions using: Me parece que... / Creo que...", "Add a contrast with aunque or sin embargo in each one.", "Record 60 seconds: an opinion about your city/work/study."]
@@ -991,7 +1177,7 @@
             day: 38, level: "B1", title: "Se structures: impersonal/passive se + accidental se",
             phrases: ["Se habla español aquí. - Spanish is spoken here.", "Se vende café. - Coffee is sold.", "Se me cayo el teléfono. - I dropped my phone.", "Se nos olvido la reserva. - We forgot the reservation."],
             grammar: ["Impersonal se: se + verb (3rd person) = 'people/one': Se vive bien aquí.", "Passive se: se + verb + thing = 'is done/sold': Se venden entradas.", "Accidental se: se + IO pronoun + verb: Se me cayo... (it fell from me)."],
-            vocab: [["se", "(him/her/yourself)"], ["se habla", "is spoken"], ["vender", "to sell"], ["entrada", "entry/ticket"], ["teléfono", "phone"], ["olvidar", "to forget"], ["caer", "to fall/drop"], ["reserva", "reservation"], ["aquí", "here"], ["en realidad", "actually"]],
+            vocab: [["se", "(him/her/yourself)"], ["se habla", "is spoken"], ["vender", "to sell"], ["entrada", "entry/ticket", "f"], ["teléfono", "phone", "m"], ["olvidar", "to forget"], ["caer", "to fall/drop"], ["reserva", "reservation", "f"], ["aquí", "here"], ["en realidad", "actually"]],
             dialogue: [{speaker: "A", text: "¿Se habla inglés aquí?"}, {speaker: "B", text: "Un poco. Pero se habla español."}, {speaker: "A", text: "Perfecto."}],
             dialogueNote: "Ask what language is spoken; use se.",
             practice: ["Make 5 impersonal se sentences: Se come bien..., Se trabaja...", "Make 3 accidental se sentences: Se me cayo..., Se me olvido...", "Read 10 signs in your mind: Se vende..., Se busca..."]
@@ -1000,25 +1186,25 @@
             day: 39, level: "B1", title: "Reported speech: dijo que..., me pregunto si...",
             phrases: ["Me dijo que estaba ocupado. - He told me he was busy.", "Me pregunto si tenia tiempo. - He asked me if I had time.", "Le conte que fui al medico. - I told him I went to the doctor.", "Segun el, es importante. - According to him, it's important."],
             grammar: ["Reported speech uses que (that) and si (if): Dijo que... / Pregunto si...", "Tense often shifts back in past reporting (basic idea): esta -> estaba; tiene -> tenia.", "Keep it simple: focus on meaning and clarity first."],
-            vocab: [["decir", "to say/tell"], ["preguntar", "to ask"], ["contar", "to tell (a story)"], ["si", "if/yes"], ["que", "that/which"], ["ocupado", "busy/occupied"], ["tiempo", "time/weather"], ["según", "according to"], ["médico", "doctor"], ["salud", "health"]],
+            vocab: [["decir", "to say/tell"], ["preguntar", "to ask"], ["contar", "to tell (a story)"], ["si", "if/yes"], ["que", "that/which"], ["ocupado", "busy/occupied"], ["tiempo", "time/weather", "m"], ["según", "according to"], ["médico", "doctor", "m"], ["salud", "health", "f"]],
             dialogue: [{speaker: "A", text: "¿Quéte dijo?"}, {speaker: "B", text: "Me dijo que llegaba tarde."}, {speaker: "A", text: "Vale, gracias."}],
             dialogueNote: "Report what someone said in one sentence.",
             practice: ["Write 5 lines: Me dijo que... (work, plans, feelings).", "Ask and report: ¿Quéte pregunto? -> Me pregunto si...", "Retell a short conversation you had today."]
         },
         {
             day: 40, level: "B1", title: "If-clauses: real vs hypothetical (si + present / si + imperfect subj.)",
-            phrases: ["Si tengo tiempo, voy. - If I have time, I'll go.", "Si llueve, no salimos. - If it rains, we don't go out.", "Si tuviera tiempo, viajaria mas. - If I had time, I would travel more.", "¿Quéharias si pudieras? - What would you do if you could?"],
+            phrases: ["Si tengo tiempo, voy. - If I have time, I'll go.", "Si llueve, no salimos. - If it rains, we don't go out.", "Si tuviera tiempo, viajaría más. - If I had time, I would travel more.", "¿Qué harías si pudieras? - What would you do if you could?"],
             grammar: ["Real/possible: si + present -> present/future/imperative: Si puedo, voy.", "Hypothetical: si + imperfect subjunctive -> conditional: Si pudiera, iria.", "Use it to talk about dreams, plans, and 'what would you do...?'"],
-            vocab: [["si", "if/yes"], ["tiempo", "time/weather"], ["posible", "possible"], ["probable", "probable/likely"], ["poder", "can/to be able to"], ["ir", "to go"], ["salir", "to go out/leave"], ["viaje", "trip"], ["plan", "plan"], ["haría", "I would do/make"]],
-            dialogue: [{speaker: "A", text: "¿Quéharias si tuvieras mas tiempo?"}, {speaker: "B", text: "Viajaria y estudiaria mas."}, {speaker: "A", text: "Yo también."}],
+            vocab: [["si", "if/yes"], ["tiempo", "time/weather", "m"], ["posible", "possible"], ["probable", "probable/likely"], ["poder", "can/to be able to"], ["ir", "to go"], ["salir", "to go out/leave"], ["viaje", "trip", "m"], ["plan", "plan", "m"], ["haría", "I would do/make"]],
+            dialogue: [{speaker: "A", text: "¿Qué harías si tuvieras más tiempo?"}, {speaker: "B", text: "Viajaría y estudiaría más."}, {speaker: "A", text: "Yo también."}],
             dialogueNote: "The classic B1 conversation: 'What would you do if...?'",
-            practice: ["Make 5 real conditions with si + present.", "Make 5 hypotheticals with si + imperfect subj. + conditional.", "Ask 3 people: ¿Quéharias si...?"]
+            practice: ["Make 5 real conditions with si + present.", "Make 5 hypotheticals with si + imperfect subj. + conditional.", "Ask 3 people: ¿Qué harías si...?"]
         },
         {
             day: 41, level: "B1", title: "Imperfect subjunctive for politeness: quisiera, pudiera, fuera",
-            phrases: ["Quisiera reservar una mesa. - I'd like to reserve a table.", "Si fuera tu, lo haria. - If I were you, I'd do it.", "¿Pudiera hablar con usted? - Could I speak with you? (very polite)", "Ojala tuviera mas tiempo. - I wish I had more time."],
-            grammar: ["Imperfect subjunctive often appears in hypotheticals (si tuviera...) and very polite requests (quisiera...).", "Formation (quick): from 3rd person plural preterite (hablaron -> hablara).", "Common irregulars to recognize: fuera (ser/ir), tuviera (tener), pudiera (poder), hiciera (hacer)."],
-            vocab: [["quisiera", "I would like"], ["pudiera", "if I could / I could (subj.)"], ["fuera", "if I were / were (subj.)"], ["tuviera", "if I had"], ["ojalá", "hopefully"], ["reservar", "to reserve"], ["mesa", "table"], ["tiempo", "time/weather"], ["posible", "possible"], ["haría", "I would do/make"]],
+            phrases: ["Quisiera reservar una mesa. - I'd like to reserve a table.", "Si fuera tu, lo haria. - If I were you, I'd do it.", "¿Pudiera hablar con usted? - Could I speak with you? (very polite)", "Ojalá tuviera mas tiempo. - I wish I had more time."],
+            grammar: ["Imperfect subjunctive often appears in hypotheticals (si tuviera...) and very polite requests (quisiera...).", "Formation (quick): from 3rd person plural preterite (hablaron -> hablara).", "Common irregulars to recognize: fuera (ser/ir), tuviera (tener), pudiera (poder), hiciera (hacer).", "Full formation: take the ellos preterite (hablaron), drop -ron, add -ra/-ras/-ra/-ramos/-rais/-ran.", "Usage contexts: past wishes (ojalá tuviera), hypotheticals (si pudiera), and ultra-polite requests (quisiera, pudiera).", "Alternate -se endings exist (hablara = hablase, tuviera = tuviese); -ra is far more common in everyday speech."],
+            vocab: [["quisiera", "I would like"], ["pudiera", "if I could / I could (subj.)"], ["fuera", "if I were / were (subj.)"], ["tuviera", "if I had"], ["ojalá", "hopefully"], ["reservar", "to reserve"], ["mesa", "table", "f"], ["tiempo", "time/weather", "m"], ["posible", "possible"], ["haría", "I would do/make"]],
             dialogue: [{speaker: "A", text: "Quisiera reservar una mesa para mañana."}, {speaker: "B", text: "Claro. ¿A qué hora?"}, {speaker: "A", text: "A las ocho, por favor."}],
             dialogueNote: "Use 'quisiera' to sound very polite.",
             practice: ["Make 5 polite requests with quisiera/pudiera.", "Create 3 'If I were you...' sentences: Si fuera tu...", "Recognize these forms in a text: fuera, tuviera, pudiera."]
@@ -1027,7 +1213,7 @@
             day: 42, level: "B1", title: "Present perfect vs preterite (usage differences & keywords)",
             phrases: ["Hoy he hablado con mi jefe. - Today I've spoken with my boss.", "Ayer hable con mi jefe. - Yesterday I spoke with my boss.", "Este ano he viajado mucho. - This year I've traveled a lot.", "En 2020 viaje a Mexico. - In 2020 I traveled to Mexico."],
             grammar: ["Both can translate as 'did/have done' in English; Spanish choice depends on time frame and region.", "In Spain, present perfect is common with 'today/this week/this year'. In many LatAm regions, preterite is used more.", "Keywords: hoy/esta semana/este año -> often present perfect; ayer/el año pasado -> preterite."],
-            vocab: [["hoy", "today"], ["ayer", "yesterday"], ["este año", "this year"], ["recientemente", "recently"], ["ya", "already / now"], ["todavía", "still / yet"], ["nunca", "never"], ["alguna vez", "ever (at some time)"], ["viajar", "to travel"], ["trabajo", "work/job"]],
+            vocab: [["hoy", "today"], ["ayer", "yesterday"], ["este año", "this year"], ["recientemente", "recently"], ["ya", "already / now"], ["todavía", "still / yet"], ["nunca", "never"], ["alguna vez", "ever (at some time)"], ["viajar", "to travel"], ["trabajo", "work/job", "m"]],
             dialogue: [{speaker: "A", text: "¿Has estado aquí hoy?"}, {speaker: "B", text: "Sí, hoy he estado aquí. Ayer no."}, {speaker: "A", text: "Entendido."}],
             dialogueNote: "Choose a tense based on the time frame (today vs yesterday).",
             practice: ["Make 6 pairs: Hoy he... / Ayer ... (same verb).", "Tell 3 'this year' experiences with he...", "Pick your target: Spain-style (more present perfect) or LatAm-style (more preterite)."]
@@ -1036,26 +1222,26 @@
             day: 43, level: "B1", title: "Probability: future/conditional as 'probably' (estara, seria)",
             phrases: ["Estara en casa. - He's probably at home.", "Sera tarde. - It's probably late.", "Seria mejor ir mañana. - It would be better to go tomorrow.", "No estoy seguro. - I'm not sure."],
             grammar: ["Spanish uses the future to express probability in the present: Sera verdad = It's probably true.", "It uses the conditional for probability in the past: Seria tarde = It was probably late.", "Pair with adverbs: quizas/tal vez, probablemente, en realidad."],
-            vocab: [["estará", "he/she will be / probably is"], ["será", "it will be / probably is"], ["sería", "it would be / probably was"], ["seguro", "safe/sure"], ["probable", "probable/likely"], ["quizás", "maybe"], ["tal vez", "maybe"], ["en realidad", "actually"], ["verdad", "truth"], ["tarde", "late"]],
-            dialogue: [{speaker: "A", text: "¿Dónde está Ana?"}, {speaker: "B", text: "Estara en casa, quizas."}, {speaker: "A", text: "Vale, la llamo."}],
+            vocab: [["estará", "he/she will be / probably is"], ["será", "it will be / probably is"], ["sería", "it would be / probably was"], ["seguro", "safe/sure"], ["probable", "probable/likely"], ["quizás", "maybe"], ["tal vez", "maybe"], ["en realidad", "actually"], ["verdad", "truth", "f"], ["tarde", "late"]],
+            dialogue: [{speaker: "A", text: "¿Dónde está Ana?"}, {speaker: "B", text: "Estará en casa, quizás."}, {speaker: "A", text: "Vale, la llamo."}],
             dialogueNote: "Guess politely instead of sounding 100% certain.",
             practice: ["Make 6 guesses: Sera... / Estara... (weather, location, time).", "Make 3 past guesses with seria...", "Respond to 5 questions with 'I'm not sure' + guess."]
         },
         {
             day: 44, level: "B1", title: "Conversation strategies: paraphrase, clarify, keep talking",
-            phrases: ["¿Quésignifica...? - What does ... mean?", "¿Me lo puedes explicar? - Can you explain it to me?", "Es decir, ... - That is / I mean, ...", "Dejame pensar... - Let me think..."],
+            phrases: ["¿Qué significa...? - What does ... mean?", "¿Me lo puedes explicar? - Can you explain it to me?", "Es decir, ... - That is / I mean, ...", "Dejame pensar... - Let me think..."],
             grammar: ["B1 is as much strategy as grammar: you can 'repair' your speech mid-sentence.", "Paraphrase with simple words: Es una cosa que... / Es como... / Se usa para...", "Use fillers to stay fluent: bueno..., pues..., entonces..., a ver..."],
             vocab: [["significar", "to mean"], ["explicar", "to explain"], ["entender", "to understand"], ["es decir", "that is / I mean"], ["o sea", "I mean"], ["por ejemplo", "for example"], ["claro", "sure/of course"], ["vale", "ok (Spain)"], ["entonces", "then/so"], ["perdón", "sorry/excuse me"]],
-            dialogue: [{speaker: "A", text: "No entiendo esta palabra."}, {speaker: "B", text: "¿Cual? ¿Quésignifica para ti?"}, {speaker: "A", text: "Es decir... necesito un ejemplo."}],
+            dialogue: [{speaker: "A", text: "No entiendo esta palabra."}, {speaker: "B", text: "¿Cuál? ¿Qué significa para ti?"}, {speaker: "A", text: "Es decir... necesito un ejemplo."}],
             dialogueNote: "Ask for meaning and keep the interaction going.",
-            practice: ["Choose 5 unknown words (from any text) and ask: ¿Quésignifica...?", "Paraphrase 3 words using: Es como... / Se usa para...", "Roleplay: ask someone to repeat/explain 3 times politely."]
+            practice: ["Choose 5 unknown words (from any text) and ask: ¿Qué significa...?", "Paraphrase 3 words using: Es como... / Se usa para...", "Roleplay: ask someone to repeat/explain 3 times politely."]
         },
         {
             day: 45, level: "B1", title: "B1 checkpoint: speak for 2-3 minutes + self-review",
-            phrases: ["En mi opinion, ... - In my opinion, ...", "Estoy de acuerdo. - I agree.", "No estoy de acuerdo. - I disagree.", "Cuentame sobre tu trabajo. - Tell me about your work."],
+            phrases: ["En mi opinión, ... - In my opinion, ...", "Estoy de acuerdo. - I agree.", "No estoy de acuerdo. - I disagree.", "Cuentame sobre tu trabajo. - Tell me about your work."],
             grammar: ["Today is performance: combine connectors + past + future + a bit of subjunctive.", "Aim for clarity, not perfection. Repair when needed: es decir..., quiero decir...", "Use a simple structure: intro -> 3 points -> example -> conclusion."],
-            vocab: [["en mi opinión", "in my opinion"], ["estoy de acuerdo", "I agree"], ["no estoy de acuerdo", "I disagree"], ["por lo tanto", "therefore"], ["sin embargo", "however"], ["además", "besides"], ["por ejemplo", "for example"], ["historia", "story/history"], ["plan", "plan"], ["idea", "idea"]],
-            dialogue: [{speaker: "A", text: "¿Quéopinas de vivir aquí?"}, {speaker: "B", text: "En mi opinion, es buena idea. Sin embargo, es caro."}, {speaker: "A", text: "Entiendo. Gracias por compartir."}],
+            vocab: [["en mi opinión", "in my opinion"], ["estoy de acuerdo", "I agree"], ["no estoy de acuerdo", "I disagree"], ["por lo tanto", "therefore"], ["sin embargo", "however"], ["además", "besides"], ["por ejemplo", "for example"], ["historia", "story/history", "f"], ["plan", "plan", "m"], ["idea", "idea", "f"]],
+            dialogue: [{speaker: "A", text: "¿Qué opinas de vivir aquí?"}, {speaker: "B", text: "En mi opinión, es buena idea. Sin embargo, es caro."}, {speaker: "A", text: "Entiendo. Gracias por compartir."}],
             dialogueNote: "Give an opinion with a contrast (B1 style).",
             practice: ["Record yourself 2-3 minutes: 'My city' or 'My work/study' with 5 connectors.", "Answer 5 B1 questions: plans, past experience, opinion, advice, hypothetical.", "Write a short checklist: my weak spots + next 2 weeks plan."]
         }
@@ -1063,10 +1249,11 @@
 
     // Storage schema with version control
     const spanishProgressSchema = StorageVersionManager.defineSchema('spanishProgress', {
-        version: 5,
+        version: 8,
         default: {
             completedDays: [],
             sectionChecks: {}, // { "1-phrases": true, "1-vocab": false, ... }
+            practiceChecks: {}, // { "1-0": true, "1-1": true, ... }
             quizScores: [],
             vocabSRS: {}, // { "spanish_word": { wrongCount: 0, lastSeen: null, ease: 2.5 } }
             conjSRS: {},  // { "verb_tense_pronoun": { wrongCount: 0, lastSeen: null, ease: 2.5 } }
@@ -1101,6 +1288,21 @@
                 ...data,
                 compactHeader: false,
                 defaultTab: 'lessons'
+            }),
+            // v6: Rename 'progress' tab to 'extras'
+            6: (data) => ({
+                ...data,
+                defaultTab: data.defaultTab === 'progress' ? 'extras' : (data.defaultTab || 'lessons')
+            }),
+            // v7: Add lookupConjTenses setting for word lookup conjugation visibility
+            7: (data) => ({
+                ...data,
+                lookupConjTenses: {}
+            }),
+            // v8: Add practiceChecks for individual practice item checkmarks
+            8: (data) => ({
+                ...data,
+                practiceChecks: {}
             })
         }
     });
@@ -1117,6 +1319,7 @@
         showLanguageFlags: true,
         compactHeader: false,
         defaultTab: 'lessons',
+        practiceChecks: {},
         lastSaved: null
     };
 
@@ -1131,7 +1334,7 @@
             // Tabs
             tabLessons: 'Lessons',
             tabQuiz: 'Quiz',
-            tabProgress: 'Progress',
+            tabExtras: 'Extras',
 
             // Quiz Panel
             vocabQuizTitle: 'Vocabulary Quiz (Anki-style)',
@@ -1210,6 +1413,18 @@
             conjFuture: 'Future',
             conjConditional: 'Conditional',
             conjSubjunctive: 'Subjunctive',
+
+            // Word Lookup
+            lookupConjSettings: 'Word Lookup Conjugations',
+            wordLookupTitle: 'Word Lookup',
+            wordLookupDesc: 'Search for any Spanish word to see its definition and conjugation tables.',
+            wordLookupPlaceholder: 'Type a Spanish or English word...',
+            noWordsFound: 'No words found.',
+            appearsInDays: 'Appears in:',
+            pronoun: 'Pronoun',
+            form: 'Form',
+            verb: 'verb',
+            conjNotAvailable: 'Conjugation data not available for this verb.',
         }
     };
 
@@ -1237,6 +1452,9 @@
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.dataset.i18n;
             el.textContent = t(key);
+        });
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            el.placeholder = t(el.dataset.i18nPlaceholder);
         });
         // Update language selector to match current setting
         const langSelect = document.getElementById('languageSelect');
@@ -1363,6 +1581,43 @@
         autoSave();
     }
 
+    // Unique tenses in display order, derived from conjugationTypes
+    const lookupTenseOrder = ['present', 'preterite', 'imperfect', 'future', 'conditional', 'subjunctive'];
+
+    function isLookupTenseVisible(tense) {
+        const setting = (progress.lookupConjTenses || {})[tense];
+        if (setting !== undefined) return setting;
+        // Default: show if any conjugation type with this tense is unlocked
+        return conjugationTypes.some(ct => ct.tense === tense && isConjTypeUnlocked(ct));
+    }
+
+    function toggleLookupConjTense(tense, checked) {
+        if (!progress.lookupConjTenses) progress.lookupConjTenses = {};
+        progress.lookupConjTenses[tense] = checked;
+        autoSave();
+    }
+
+    function renderLookupConjSettings() {
+        const container = document.getElementById('lookupConjTensesContainer');
+        if (!container) return;
+        let html = '';
+        lookupTenseOrder.forEach(tense => {
+            const unlocked = conjugationTypes.some(ct => ct.tense === tense && isConjTypeUnlocked(ct));
+            const checked = isLookupTenseVisible(tense);
+            const label = tenseLabels[tense] || tense;
+            const unlocksAt = conjugationTypes.find(ct => ct.tense === tense)?.unlocksAt;
+            html += `
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;${!unlocked ? 'opacity:0.5' : ''}">
+                    <input type="checkbox" id="lookupConj_${tense}" ${checked ? 'checked' : ''} ${!unlocked ? 'disabled' : ''}
+                        onchange="toggleLookupConjTense('${tense}', this.checked)"
+                        style="width:18px;height:18px;cursor:${unlocked ? 'pointer' : 'not-allowed'}">
+                    <label for="lookupConj_${tense}" style="cursor:${unlocked ? 'pointer' : 'not-allowed'}">${label}${!unlocked ? ` <span style="font-size:0.75rem;color:var(--text-muted)">(${t('day')} ${unlocksAt})</span>` : ''}</label>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
     function toggleSettingsGroup(groupId) {
         const group = document.getElementById(groupId);
         if (group) {
@@ -1382,6 +1637,7 @@
         setupTabs();
         updateProgressUI();
         renderConjTypeSelector();
+        renderLookupConjSettings();
         setInterval(autoSave, 30000); // Auto-save every 30 seconds
     }
 
@@ -1467,9 +1723,15 @@
         content.innerHTML = `
             ${renderSection(lesson.day, 'phrases', t('keyPhrases'), phrases.map(p => `<p>${escapeHtml(p)}</p>`).join(''))}
             ${renderSection(lesson.day, 'grammar', t('grammarBite'), `<div class="grammar-note">${grammar.map(g => `<p>• ${escapeHtml(g)}</p>`).join('')}</div>`)}
-            ${renderSection(lesson.day, 'vocab', t('speakFirstWords'), `<table class="vocab-table">${lesson.vocab.map(([es, en]) => `<tr><td class="spanish">${escapeHtml(es)}</td><td class="english">${escapeHtml(progress.uiLanguage === 'vi' && typeof translationsVI !== 'undefined' && translationsVI?.vocab?.[day]?.[es] ? translationsVI.vocab[day][es] : en)}</td></tr>`).join('')}</table>`)}
-            ${renderSection(lesson.day, 'dialogue', t('miniDialogue'), `<div class="dialogue">${lesson.dialogue.map(d => `<p><span class="speaker">${d.speaker}:</span> ${escapeHtml(d.text)}</p>`).join('')}</div><p style="margin-top:10px;color:var(--text-muted);font-style:italic">${escapeHtml(dialogueNote)}</p>`)}
-            ${renderSection(lesson.day, 'practice', t('twoMinPractice'), `<ul class="practice-list">${practice.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>`)}
+            ${renderSection(lesson.day, 'vocab', t('speakFirstWords'), `<table class="vocab-table">${lesson.vocab.map(([es, en]) => `<tr><td class="spanish spanish-word-link" onclick="openWordModal('${escapeHtml(es).replace(/'/g, "\\'")}')">${escapeHtml(es)}</td><td class="english">${escapeHtml(progress.uiLanguage === 'vi' && typeof translationsVI !== 'undefined' && translationsVI?.vocab?.[day]?.[es] ? translationsVI.vocab[day][es] : en)}</td></tr>`).join('')}</table>`)}
+            ${renderSection(lesson.day, 'dialogue', t('miniDialogue'), `<div class="dialogue">${lesson.dialogue.map(d => `<p><span class="speaker">${d.speaker}:</span> ${makeWordsClickable(d.text)}</p>`).join('')}</div><p style="margin-top:10px;color:var(--text-muted);font-style:italic">${escapeHtml(dialogueNote)}</p>`)}
+            ${renderSection(lesson.day, 'practice', t('twoMinPractice'), `<ul class="practice-list">${practice.map((p, i) => {
+                const pChecked = progress.practiceChecks[`${day}-${i}`];
+                return `<li class="practice-item">
+                    <div class="practice-check ${pChecked ? 'checked' : ''}" data-day="${day}" data-idx="${i}">${pChecked ? '✓' : ''}</div>
+                    <span class="practice-item-text ${pChecked ? 'completed' : ''}">${escapeHtml(p)}</span>
+                </li>`;
+            }).join('')}</ul>`)}
         `;
 
         // Attach check handlers
@@ -1477,6 +1739,13 @@
             check.addEventListener('click', (e) => {
                 e.stopPropagation();
                 toggleSectionCheck(check.dataset.key);
+            });
+        });
+
+        content.querySelectorAll('.practice-check').forEach(check => {
+            check.addEventListener('click', (e) => {
+                e.stopPropagation();
+                togglePracticeCheck(parseInt(check.dataset.day), parseInt(check.dataset.idx));
             });
         });
     }
@@ -1497,12 +1766,52 @@
         `;
     }
 
-    function toggleSectionCheck(key) {
-        progress.sectionChecks[key] = !progress.sectionChecks[key];
+    function updateSectionCheckUI(key, checked) {
         const el = document.querySelector(`.section-check[data-key="${key}"]`);
+        if (el) { el.classList.toggle('checked', checked); el.textContent = checked ? '✓' : ''; }
+    }
+
+    function toggleSectionCheck(key) {
+        const nowChecked = !progress.sectionChecks[key];
+        progress.sectionChecks[key] = nowChecked;
+        updateSectionCheckUI(key, nowChecked);
+        // When checking a practice section, auto-check all practice items
+        if (nowChecked && key.endsWith('-practice')) {
+            const day = parseInt(key.split('-')[0]);
+            const lesson = lessons.find(l => l.day === day);
+            if (lesson) {
+                lesson.practice.forEach((_, i) => {
+                    progress.practiceChecks[`${day}-${i}`] = true;
+                });
+                // Update practice item UI
+                document.querySelectorAll(`.practice-check[data-day="${day}"]`).forEach(el => {
+                    el.classList.add('checked'); el.textContent = '✓';
+                    const text = el.nextElementSibling;
+                    if (text) { text.classList.add('completed'); }
+                });
+            }
+        }
+        autoSave();
+    }
+
+    function togglePracticeCheck(day, idx) {
+        const pKey = `${day}-${idx}`;
+        const nowChecked = !progress.practiceChecks[pKey];
+        progress.practiceChecks[pKey] = nowChecked;
+        // Update item UI
+        const el = document.querySelector(`.practice-check[data-day="${day}"][data-idx="${idx}"]`);
         if (el) {
-            el.classList.toggle('checked');
-            el.textContent = progress.sectionChecks[key] ? '✓' : '';
+            el.classList.toggle('checked', nowChecked); el.textContent = nowChecked ? '✓' : '';
+            const text = el.nextElementSibling;
+            if (text) { text.classList.toggle('completed', nowChecked); }
+        }
+        // If unchecking an item while section is checked, uncheck the section
+        if (!nowChecked) {
+            const sectionKey = `${day}-practice`;
+            if (progress.sectionChecks[sectionKey]) {
+                progress.sectionChecks[sectionKey] = false;
+                updateSectionCheckUI(sectionKey, false);
+            }
         }
         autoSave();
     }
@@ -1514,6 +1823,13 @@
             ['phrases', 'grammar', 'vocab', 'dialogue', 'practice'].forEach(section => {
                 progress.sectionChecks[`${currentDay}-${section}`] = true;
             });
+            // Also check all practice items
+            const lesson = lessons.find(l => l.day === currentDay);
+            if (lesson) {
+                lesson.practice.forEach((_, i) => {
+                    progress.practiceChecks[`${currentDay}-${i}`] = true;
+                });
+            }
             renderDayGrid();
             updateProgressUI();
             autoSave();
@@ -1656,7 +1972,7 @@
                     ${remaining} ${t('remaining')}
                     ${vocabTotalAttempts > 0 ? ` • ${Math.round((vocabCorrectCount/vocabTotalAttempts)*100)}% ${t('accuracy')}` : ''}
                 </div>
-                <div class="quiz-prompt">${t('whatDoesMean')} "<strong>${escapeHtml(q.spanish)}</strong>" ${t('mean')}</div>
+                <div class="quiz-prompt">${t('whatDoesMean')} "<strong class="spanish-word-link" onclick="openWordModal('${escapeHtml(q.spanish).replace(/'/g, "\\'")}')">${escapeHtml(q.spanish)}</strong>" ${t('mean')}</div>
                 <div class="quiz-options">
                     ${options.map(opt => `
                         <div class="quiz-option" onclick="checkVocabAnswer(this, '${escapeHtml(opt).replace(/'/g, "\\'")}', '${escapeHtml(getTranslation(q)).replace(/'/g, "\\'")}')">${escapeHtml(opt)}</div>
@@ -1722,89 +2038,89 @@
     // Verb data organized by type
     const conjugationVerbs = {
         present_ser_estar: [
-            { verb: 'ser', forms: { yo: 'soy', tu: 'eres', el: 'es', nosotros: 'somos', ellos: 'son' }},
-            { verb: 'estar', forms: { yo: 'estoy', tu: 'estas', el: 'esta', nosotros: 'estamos', ellos: 'estan' }},
+            { verb: 'ser', forms: { yo: 'soy', tu: 'eres', el: 'es', nosotros: 'somos', vosotros: 'sois', ellos: 'son' }},
+            { verb: 'estar', forms: { yo: 'estoy', tu: 'estas', el: 'esta', nosotros: 'estamos', vosotros: 'estais', ellos: 'estan' }},
         ],
         present_ar: [
-            { verb: 'hablar', forms: { yo: 'hablo', tu: 'hablas', el: 'habla', nosotros: 'hablamos', ellos: 'hablan' }},
-            { verb: 'trabajar', forms: { yo: 'trabajo', tu: 'trabajas', el: 'trabaja', nosotros: 'trabajamos', ellos: 'trabajan' }},
-            { verb: 'estudiar', forms: { yo: 'estudio', tu: 'estudias', el: 'estudia', nosotros: 'estudiamos', ellos: 'estudian' }},
-            { verb: 'comprar', forms: { yo: 'compro', tu: 'compras', el: 'compra', nosotros: 'compramos', ellos: 'compran' }},
-            { verb: 'llamar', forms: { yo: 'llamo', tu: 'llamas', el: 'llama', nosotros: 'llamamos', ellos: 'llaman' }},
+            { verb: 'hablar', forms: { yo: 'hablo', tu: 'hablas', el: 'habla', nosotros: 'hablamos', vosotros: 'hablais', ellos: 'hablan' }},
+            { verb: 'trabajar', forms: { yo: 'trabajo', tu: 'trabajas', el: 'trabaja', nosotros: 'trabajamos', vosotros: 'trabajais', ellos: 'trabajan' }},
+            { verb: 'estudiar', forms: { yo: 'estudio', tu: 'estudias', el: 'estudia', nosotros: 'estudiamos', vosotros: 'estudiais', ellos: 'estudian' }},
+            { verb: 'comprar', forms: { yo: 'compro', tu: 'compras', el: 'compra', nosotros: 'compramos', vosotros: 'comprais', ellos: 'compran' }},
+            { verb: 'llamar', forms: { yo: 'llamo', tu: 'llamas', el: 'llama', nosotros: 'llamamos', vosotros: 'llamais', ellos: 'llaman' }},
         ],
         present_er_ir: [
-            { verb: 'comer', forms: { yo: 'como', tu: 'comes', el: 'come', nosotros: 'comemos', ellos: 'comen' }},
-            { verb: 'beber', forms: { yo: 'bebo', tu: 'bebes', el: 'bebe', nosotros: 'bebemos', ellos: 'beben' }},
-            { verb: 'vivir', forms: { yo: 'vivo', tu: 'vives', el: 'vive', nosotros: 'vivimos', ellos: 'viven' }},
-            { verb: 'escribir', forms: { yo: 'escribo', tu: 'escribes', el: 'escribe', nosotros: 'escribimos', ellos: 'escriben' }},
-            { verb: 'leer', forms: { yo: 'leo', tu: 'lees', el: 'lee', nosotros: 'leemos', ellos: 'leen' }},
+            { verb: 'comer', forms: { yo: 'como', tu: 'comes', el: 'come', nosotros: 'comemos', vosotros: 'comeis', ellos: 'comen' }},
+            { verb: 'beber', forms: { yo: 'bebo', tu: 'bebes', el: 'bebe', nosotros: 'bebemos', vosotros: 'bebeis', ellos: 'beben' }},
+            { verb: 'vivir', forms: { yo: 'vivo', tu: 'vives', el: 'vive', nosotros: 'vivimos', vosotros: 'vivis', ellos: 'viven' }},
+            { verb: 'escribir', forms: { yo: 'escribo', tu: 'escribes', el: 'escribe', nosotros: 'escribimos', vosotros: 'escribis', ellos: 'escriben' }},
+            { verb: 'leer', forms: { yo: 'leo', tu: 'lees', el: 'lee', nosotros: 'leemos', vosotros: 'leeis', ellos: 'leen' }},
         ],
         present_irregular: [
-            { verb: 'tener', forms: { yo: 'tengo', tu: 'tienes', el: 'tiene', nosotros: 'tenemos', ellos: 'tienen' }},
-            { verb: 'ir', forms: { yo: 'voy', tu: 'vas', el: 'va', nosotros: 'vamos', ellos: 'van' }},
-            { verb: 'hacer', forms: { yo: 'hago', tu: 'haces', el: 'hace', nosotros: 'hacemos', ellos: 'hacen' }},
-            { verb: 'poder', forms: { yo: 'puedo', tu: 'puedes', el: 'puede', nosotros: 'podemos', ellos: 'pueden' }},
-            { verb: 'querer', forms: { yo: 'quiero', tu: 'quieres', el: 'quiere', nosotros: 'queremos', ellos: 'quieren' }},
-            { verb: 'decir', forms: { yo: 'digo', tu: 'dices', el: 'dice', nosotros: 'decimos', ellos: 'dicen' }},
-            { verb: 'venir', forms: { yo: 'vengo', tu: 'vienes', el: 'viene', nosotros: 'venimos', ellos: 'vienen' }},
-            { verb: 'saber', forms: { yo: 'se', tu: 'sabes', el: 'sabe', nosotros: 'sabemos', ellos: 'saben' }},
+            { verb: 'tener', forms: { yo: 'tengo', tu: 'tienes', el: 'tiene', nosotros: 'tenemos', vosotros: 'teneis', ellos: 'tienen' }},
+            { verb: 'ir', forms: { yo: 'voy', tu: 'vas', el: 'va', nosotros: 'vamos', vosotros: 'vais', ellos: 'van' }},
+            { verb: 'hacer', forms: { yo: 'hago', tu: 'haces', el: 'hace', nosotros: 'hacemos', vosotros: 'haceis', ellos: 'hacen' }},
+            { verb: 'poder', forms: { yo: 'puedo', tu: 'puedes', el: 'puede', nosotros: 'podemos', vosotros: 'podeis', ellos: 'pueden' }},
+            { verb: 'querer', forms: { yo: 'quiero', tu: 'quieres', el: 'quiere', nosotros: 'queremos', vosotros: 'quereis', ellos: 'quieren' }},
+            { verb: 'decir', forms: { yo: 'digo', tu: 'dices', el: 'dice', nosotros: 'decimos', vosotros: 'decis', ellos: 'dicen' }},
+            { verb: 'venir', forms: { yo: 'vengo', tu: 'vienes', el: 'viene', nosotros: 'venimos', vosotros: 'venis', ellos: 'vienen' }},
+            { verb: 'saber', forms: { yo: 'se', tu: 'sabes', el: 'sabe', nosotros: 'sabemos', vosotros: 'sabeis', ellos: 'saben' }},
         ],
         preterite_ar: [
-            { verb: 'hablar', forms: { yo: 'hable', tu: 'hablaste', el: 'hablo', nosotros: 'hablamos', ellos: 'hablaron' }},
-            { verb: 'trabajar', forms: { yo: 'trabaje', tu: 'trabajaste', el: 'trabajo', nosotros: 'trabajamos', ellos: 'trabajaron' }},
-            { verb: 'comprar', forms: { yo: 'compre', tu: 'compraste', el: 'compro', nosotros: 'compramos', ellos: 'compraron' }},
-            { verb: 'llamar', forms: { yo: 'llame', tu: 'llamaste', el: 'llamo', nosotros: 'llamamos', ellos: 'llamaron' }},
+            { verb: 'hablar', forms: { yo: 'hable', tu: 'hablaste', el: 'hablo', nosotros: 'hablamos', vosotros: 'hablasteis', ellos: 'hablaron' }},
+            { verb: 'trabajar', forms: { yo: 'trabaje', tu: 'trabajaste', el: 'trabajo', nosotros: 'trabajamos', vosotros: 'trabajasteis', ellos: 'trabajaron' }},
+            { verb: 'comprar', forms: { yo: 'compre', tu: 'compraste', el: 'compro', nosotros: 'compramos', vosotros: 'comprasteis', ellos: 'compraron' }},
+            { verb: 'llamar', forms: { yo: 'llame', tu: 'llamaste', el: 'llamo', nosotros: 'llamamos', vosotros: 'llamasteis', ellos: 'llamaron' }},
         ],
         preterite_er_ir: [
-            { verb: 'comer', forms: { yo: 'comi', tu: 'comiste', el: 'comio', nosotros: 'comimos', ellos: 'comieron' }},
-            { verb: 'vivir', forms: { yo: 'vivi', tu: 'viviste', el: 'vivio', nosotros: 'vivimos', ellos: 'vivieron' }},
-            { verb: 'escribir', forms: { yo: 'escribi', tu: 'escribiste', el: 'escribio', nosotros: 'escribimos', ellos: 'escribieron' }},
+            { verb: 'comer', forms: { yo: 'comi', tu: 'comiste', el: 'comio', nosotros: 'comimos', vosotros: 'comisteis', ellos: 'comieron' }},
+            { verb: 'vivir', forms: { yo: 'vivi', tu: 'viviste', el: 'vivio', nosotros: 'vivimos', vosotros: 'vivisteis', ellos: 'vivieron' }},
+            { verb: 'escribir', forms: { yo: 'escribi', tu: 'escribiste', el: 'escribio', nosotros: 'escribimos', vosotros: 'escribisteis', ellos: 'escribieron' }},
         ],
         preterite_irregular: [
-            { verb: 'ser/ir', forms: { yo: 'fui', tu: 'fuiste', el: 'fue', nosotros: 'fuimos', ellos: 'fueron' }},
-            { verb: 'tener', forms: { yo: 'tuve', tu: 'tuviste', el: 'tuvo', nosotros: 'tuvimos', ellos: 'tuvieron' }},
-            { verb: 'estar', forms: { yo: 'estuve', tu: 'estuviste', el: 'estuvo', nosotros: 'estuvimos', ellos: 'estuvieron' }},
-            { verb: 'hacer', forms: { yo: 'hice', tu: 'hiciste', el: 'hizo', nosotros: 'hicimos', ellos: 'hicieron' }},
-            { verb: 'poder', forms: { yo: 'pude', tu: 'pudiste', el: 'pudo', nosotros: 'pudimos', ellos: 'pudieron' }},
-            { verb: 'decir', forms: { yo: 'dije', tu: 'dijiste', el: 'dijo', nosotros: 'dijimos', ellos: 'dijeron' }},
-            { verb: 'venir', forms: { yo: 'vine', tu: 'viniste', el: 'vino', nosotros: 'vinimos', ellos: 'vinieron' }},
+            { verb: 'ser/ir', forms: { yo: 'fui', tu: 'fuiste', el: 'fue', nosotros: 'fuimos', vosotros: 'fuisteis', ellos: 'fueron' }},
+            { verb: 'tener', forms: { yo: 'tuve', tu: 'tuviste', el: 'tuvo', nosotros: 'tuvimos', vosotros: 'tuvisteis', ellos: 'tuvieron' }},
+            { verb: 'estar', forms: { yo: 'estuve', tu: 'estuviste', el: 'estuvo', nosotros: 'estuvimos', vosotros: 'estuvisteis', ellos: 'estuvieron' }},
+            { verb: 'hacer', forms: { yo: 'hice', tu: 'hiciste', el: 'hizo', nosotros: 'hicimos', vosotros: 'hicisteis', ellos: 'hicieron' }},
+            { verb: 'poder', forms: { yo: 'pude', tu: 'pudiste', el: 'pudo', nosotros: 'pudimos', vosotros: 'pudisteis', ellos: 'pudieron' }},
+            { verb: 'decir', forms: { yo: 'dije', tu: 'dijiste', el: 'dijo', nosotros: 'dijimos', vosotros: 'dijisteis', ellos: 'dijeron' }},
+            { verb: 'venir', forms: { yo: 'vine', tu: 'viniste', el: 'vino', nosotros: 'vinimos', vosotros: 'vinisteis', ellos: 'vinieron' }},
         ],
         imperfect: [
-            { verb: 'ser', forms: { yo: 'era', tu: 'eras', el: 'era', nosotros: 'eramos', ellos: 'eran' }},
-            { verb: 'ir', forms: { yo: 'iba', tu: 'ibas', el: 'iba', nosotros: 'ibamos', ellos: 'iban' }},
-            { verb: 'ver', forms: { yo: 'veia', tu: 'veias', el: 'veia', nosotros: 'veiamos', ellos: 'veian' }},
-            { verb: 'hablar', forms: { yo: 'hablaba', tu: 'hablabas', el: 'hablaba', nosotros: 'hablabamos', ellos: 'hablaban' }},
-            { verb: 'comer', forms: { yo: 'comia', tu: 'comias', el: 'comia', nosotros: 'comiamos', ellos: 'comian' }},
-            { verb: 'vivir', forms: { yo: 'vivia', tu: 'vivias', el: 'vivia', nosotros: 'viviamos', ellos: 'vivian' }},
-            { verb: 'tener', forms: { yo: 'tenia', tu: 'tenias', el: 'tenia', nosotros: 'teniamos', ellos: 'tenian' }},
+            { verb: 'ser', forms: { yo: 'era', tu: 'eras', el: 'era', nosotros: 'eramos', vosotros: 'erais', ellos: 'eran' }},
+            { verb: 'ir', forms: { yo: 'iba', tu: 'ibas', el: 'iba', nosotros: 'ibamos', vosotros: 'ibais', ellos: 'iban' }},
+            { verb: 'ver', forms: { yo: 'veia', tu: 'veias', el: 'veia', nosotros: 'veiamos', vosotros: 'veiais', ellos: 'veian' }},
+            { verb: 'hablar', forms: { yo: 'hablaba', tu: 'hablabas', el: 'hablaba', nosotros: 'hablabamos', vosotros: 'hablabais', ellos: 'hablaban' }},
+            { verb: 'comer', forms: { yo: 'comia', tu: 'comias', el: 'comia', nosotros: 'comiamos', vosotros: 'comiais', ellos: 'comian' }},
+            { verb: 'vivir', forms: { yo: 'vivia', tu: 'vivias', el: 'vivia', nosotros: 'viviamos', vosotros: 'viviais', ellos: 'vivian' }},
+            { verb: 'tener', forms: { yo: 'tenia', tu: 'tenias', el: 'tenia', nosotros: 'teniamos', vosotros: 'teniais', ellos: 'tenian' }},
         ],
         future: [
-            { verb: 'hablar', forms: { yo: 'hablare', tu: 'hablaras', el: 'hablara', nosotros: 'hablaremos', ellos: 'hablaran' }},
-            { verb: 'comer', forms: { yo: 'comere', tu: 'comeras', el: 'comera', nosotros: 'comeremos', ellos: 'comeran' }},
-            { verb: 'vivir', forms: { yo: 'vivire', tu: 'viviras', el: 'vivira', nosotros: 'viviremos', ellos: 'viviran' }},
-            { verb: 'tener', forms: { yo: 'tendre', tu: 'tendras', el: 'tendra', nosotros: 'tendremos', ellos: 'tendran' }},
-            { verb: 'poder', forms: { yo: 'podre', tu: 'podras', el: 'podra', nosotros: 'podremos', ellos: 'podran' }},
-            { verb: 'hacer', forms: { yo: 'hare', tu: 'haras', el: 'hara', nosotros: 'haremos', ellos: 'haran' }},
+            { verb: 'hablar', forms: { yo: 'hablare', tu: 'hablaras', el: 'hablara', nosotros: 'hablaremos', vosotros: 'hablareis', ellos: 'hablaran' }},
+            { verb: 'comer', forms: { yo: 'comere', tu: 'comeras', el: 'comera', nosotros: 'comeremos', vosotros: 'comereis', ellos: 'comeran' }},
+            { verb: 'vivir', forms: { yo: 'vivire', tu: 'viviras', el: 'vivira', nosotros: 'viviremos', vosotros: 'vivireis', ellos: 'viviran' }},
+            { verb: 'tener', forms: { yo: 'tendre', tu: 'tendras', el: 'tendra', nosotros: 'tendremos', vosotros: 'tendreis', ellos: 'tendran' }},
+            { verb: 'poder', forms: { yo: 'podre', tu: 'podras', el: 'podra', nosotros: 'podremos', vosotros: 'podreis', ellos: 'podran' }},
+            { verb: 'hacer', forms: { yo: 'hare', tu: 'haras', el: 'hara', nosotros: 'haremos', vosotros: 'hareis', ellos: 'haran' }},
         ],
         conditional: [
-            { verb: 'hablar', forms: { yo: 'hablaria', tu: 'hablarias', el: 'hablaria', nosotros: 'hablariamos', ellos: 'hablarian' }},
-            { verb: 'comer', forms: { yo: 'comeria', tu: 'comerias', el: 'comeria', nosotros: 'comeriamos', ellos: 'comerian' }},
-            { verb: 'vivir', forms: { yo: 'viviria', tu: 'vivirias', el: 'viviria', nosotros: 'viviriamos', ellos: 'vivirian' }},
-            { verb: 'tener', forms: { yo: 'tendria', tu: 'tendrias', el: 'tendria', nosotros: 'tendriamos', ellos: 'tendrian' }},
-            { verb: 'poder', forms: { yo: 'podria', tu: 'podrias', el: 'podria', nosotros: 'podriamos', ellos: 'podrian' }},
-            { verb: 'gustar', forms: { yo: 'gustaria', tu: 'gustarias', el: 'gustaria', nosotros: 'gustariamos', ellos: 'gustarian' }},
+            { verb: 'hablar', forms: { yo: 'hablaria', tu: 'hablarias', el: 'hablaria', nosotros: 'hablariamos', vosotros: 'hablariais', ellos: 'hablarian' }},
+            { verb: 'comer', forms: { yo: 'comeria', tu: 'comerias', el: 'comeria', nosotros: 'comeriamos', vosotros: 'comeriais', ellos: 'comerian' }},
+            { verb: 'vivir', forms: { yo: 'viviria', tu: 'vivirias', el: 'viviria', nosotros: 'viviriamos', vosotros: 'viviriais', ellos: 'vivirian' }},
+            { verb: 'tener', forms: { yo: 'tendria', tu: 'tendrias', el: 'tendria', nosotros: 'tendriamos', vosotros: 'tendriais', ellos: 'tendrian' }},
+            { verb: 'poder', forms: { yo: 'podria', tu: 'podrias', el: 'podria', nosotros: 'podriamos', vosotros: 'podriais', ellos: 'podrian' }},
+            { verb: 'gustar', forms: { yo: 'gustaria', tu: 'gustarias', el: 'gustaria', nosotros: 'gustariamos', vosotros: 'gustariais', ellos: 'gustarian' }},
         ],
         subjunctive_present: [
-            { verb: 'hablar', forms: { yo: 'hable', tu: 'hables', el: 'hable', nosotros: 'hablemos', ellos: 'hablen' }},
-            { verb: 'comer', forms: { yo: 'coma', tu: 'comas', el: 'coma', nosotros: 'comamos', ellos: 'coman' }},
-            { verb: 'vivir', forms: { yo: 'viva', tu: 'vivas', el: 'viva', nosotros: 'vivamos', ellos: 'vivan' }},
-            { verb: 'ser', forms: { yo: 'sea', tu: 'seas', el: 'sea', nosotros: 'seamos', ellos: 'sean' }},
-            { verb: 'ir', forms: { yo: 'vaya', tu: 'vayas', el: 'vaya', nosotros: 'vayamos', ellos: 'vayan' }},
-            { verb: 'tener', forms: { yo: 'tenga', tu: 'tengas', el: 'tenga', nosotros: 'tengamos', ellos: 'tengan' }},
+            { verb: 'hablar', forms: { yo: 'hable', tu: 'hables', el: 'hable', nosotros: 'hablemos', vosotros: 'hableis', ellos: 'hablen' }},
+            { verb: 'comer', forms: { yo: 'coma', tu: 'comas', el: 'coma', nosotros: 'comamos', vosotros: 'comais', ellos: 'coman' }},
+            { verb: 'vivir', forms: { yo: 'viva', tu: 'vivas', el: 'viva', nosotros: 'vivamos', vosotros: 'vivais', ellos: 'vivan' }},
+            { verb: 'ser', forms: { yo: 'sea', tu: 'seas', el: 'sea', nosotros: 'seamos', vosotros: 'seais', ellos: 'sean' }},
+            { verb: 'ir', forms: { yo: 'vaya', tu: 'vayas', el: 'vaya', nosotros: 'vayamos', vosotros: 'vayais', ellos: 'vayan' }},
+            { verb: 'tener', forms: { yo: 'tenga', tu: 'tengas', el: 'tenga', nosotros: 'tengamos', vosotros: 'tengais', ellos: 'tengan' }},
         ],
     };
 
-    const pronounLabels = { yo: 'yo', tu: 'tú', el: 'él/ella', nosotros: 'nosotros', ellos: 'ellos' };
+    const pronounLabels = { yo: 'yo', tu: 'tú', el: 'él/ella', nosotros: 'nosotros', vosotros: 'vosotros', ellos: 'ellos' };
     const tenseLabels = { present: 'Present', preterite: 'Preterite', imperfect: 'Imperfect', future: 'Future', conditional: 'Conditional', subjunctive: 'Subjunctive' };
 
     let conjQueue = [];
@@ -1997,7 +2313,7 @@
                     ${conjTotal > 0 ? ` • ${Math.round((conjCorrect/conjTotal)*100)}% ${t('accuracy')}` : ''}
                 </div>
                 <div class="quiz-prompt">
-                    ${t('conjugateFor')} "<strong>${escapeHtml(q.verb)}</strong>" ${t('forPronoun')} <strong>${pronounLabels[q.pronoun]}</strong>
+                    ${t('conjugateFor')} "<strong class="spanish-word-link" onclick="openWordModal('${escapeHtml(q.verb).replace(/'/g, "\\'")}', {hideConjugation: true})">${escapeHtml(q.verb)}</strong>" ${t('forPronoun')} <strong>${pronounLabels[q.pronoun]}</strong>
                 </div>
                 <div style="margin-top:15px">
                     <input type="text" id="conjAnswer" class="conj-input" placeholder="${t('typeAnswer')}"
@@ -2076,6 +2392,7 @@
 
         // Update conjugation type selector (new types may have been unlocked)
         renderConjTypeSelector();
+        renderLookupConjSettings();
     }
 
     // Save/Load
@@ -2147,7 +2464,8 @@
     function confirmReset() {
         const input = document.getElementById('resetConfirmInput').value.trim().toLowerCase();
         if (input === 'i am really sure') {
-            progress = { completedDays: [], sectionChecks: {}, quizScores: [], lastSaved: null, conjSRS: {}, vocabSRS: {}, uiLanguage: 'en', moveCompletedToBottom: false, showLanguageFlags: true, compactHeader: false, defaultTab: 'lessons' };
+            progress = { completedDays: [], sectionChecks: {}, practiceChecks: {}, quizScores: [], lastSaved: null, conjSRS: {}, vocabSRS: {}, uiLanguage: 'en', moveCompletedToBottom: false, showLanguageFlags: true, compactHeader: false, defaultTab: 'lessons', lookupConjTenses: {} };
+            wordDictionary = null; conjugationIndex = null; conjugatedFormIndex = null; multiWordKeys = null;
             StorageVersionManager.remove(spanishProgressSchema);
             renderDayGrid();
             updateProgressUI();
@@ -2173,6 +2491,363 @@
         return div.innerHTML;
     }
 
+    // Common words loaded from common-words.js (lazy, on first dictionary build)
+
+    // ── Word Dictionary & Lookup ──
+    let wordDictionary = null;  // Map: lowercase spanish → { spanish, english, days[], isVerb }
+    let conjugationIndex = null; // Map: verb → [{ typeId, tense, label, forms }]
+    let conjugatedFormIndex = null; // Map: conjugated form → infinitive (e.g., "quiero" → "querer")
+    let multiWordKeys = null; // Array of multi-word dictionary keys sorted by word count (longest first)
+
+    function buildWordDictionary() {
+        if (wordDictionary) return;
+        wordDictionary = new Map();
+        conjugationIndex = new Map();
+        conjugatedFormIndex = new Map();
+
+        // Index lesson vocab
+        lessons.forEach(lesson => {
+            if (!lesson.vocab) return;
+            lesson.vocab.forEach(([es, en, gender]) => {
+                const key = es.toLowerCase();
+                if (wordDictionary.has(key)) {
+                    const entry = wordDictionary.get(key);
+                    if (!entry.days.includes(lesson.day)) entry.days.push(lesson.day);
+                    if (gender && !entry.gender) entry.gender = gender;
+                } else {
+                    wordDictionary.set(key, { spanish: es, english: en, days: [lesson.day], isVerb: false, gender: gender || null });
+                }
+            });
+        });
+
+        // Add common words (deduplicate against lesson vocab)
+        (typeof commonSpanishWords !== 'undefined' ? commonSpanishWords : []).forEach(([es, en, gender]) => {
+            const key = es.toLowerCase();
+            if (!wordDictionary.has(key)) {
+                wordDictionary.set(key, { spanish: es, english: en, days: [], isVerb: false, gender: gender || null });
+            }
+        });
+
+        // Index conjugation verbs
+        const tenseMap = {
+            present_ser_estar: 'present', present_ar: 'present', present_er_ir: 'present', present_irregular: 'present',
+            preterite_ar: 'preterite', preterite_er_ir: 'preterite', preterite_irregular: 'preterite',
+            imperfect: 'imperfect', future: 'future', conditional: 'conditional', subjunctive_present: 'subjunctive'
+        };
+        Object.entries(conjugationVerbs).forEach(([typeId, verbs]) => {
+            const tense = tenseMap[typeId] || typeId;
+            const label = tenseLabels[tense] || tense;
+            verbs.forEach(v => {
+                const verbKey = v.verb.toLowerCase();
+                if (!conjugationIndex.has(verbKey)) conjugationIndex.set(verbKey, []);
+                conjugationIndex.get(verbKey).push({ typeId, tense, label, forms: v.forms });
+                // Index conjugated forms → infinitive (e.g., "quiero" → "querer")
+                Object.values(v.forms).forEach(form => {
+                    const formKey = form.toLowerCase();
+                    if (formKey && formKey !== verbKey && !wordDictionary.has(formKey)) {
+                        conjugatedFormIndex.set(formKey, v.verb.toLowerCase());
+                    }
+                });
+                // Mark as verb in dictionary
+                if (wordDictionary.has(verbKey)) {
+                    wordDictionary.get(verbKey).isVerb = true;
+                }
+                // Also handle compound verbs like "ser/ir"
+                if (verbKey.includes('/')) {
+                    verbKey.split('/').forEach(part => {
+                        const pk = part.trim();
+                        if (wordDictionary.has(pk)) wordDictionary.get(pk).isVerb = true;
+                    });
+                }
+            });
+        });
+
+        // Mark common verbs that end in -ar, -er, -ir
+        wordDictionary.forEach((entry) => {
+            const w = entry.spanish.toLowerCase();
+            if ((w.endsWith('ar') || w.endsWith('er') || w.endsWith('ir')) && w.length > 3) {
+                if (entry.english.toLowerCase().startsWith('to ')) entry.isVerb = true;
+            }
+        });
+
+        // Collect multi-word dictionary keys, sorted longest first
+        multiWordKeys = [];
+        wordDictionary.forEach((entry, key) => {
+            if (key.includes(' ')) multiWordKeys.push(key);
+        });
+        multiWordKeys.sort((a, b) => b.split(' ').length - a.split(' ').length);
+    }
+
+    // Resolve a word to its dictionary key — tries multiple strategies
+    const cliticPattern = /(?:(?:me|te|se|nos|le)(?:lo|la|los|las)|me|te|se|nos|le|lo|la|les|los|las)$/;
+    function stripAccents(s) {
+        return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+    function tryResolveKey(key) {
+        // Direct match
+        if (wordDictionary.has(key)) return key;
+        if (conjugatedFormIndex.has(key)) return conjugatedFormIndex.get(key);
+        // Plural → singular (e.g., "días" → "día", "amigos" → "amigo")
+        const singular = key.endsWith('es') && key.length > 4 ? key.slice(0, -2) :
+                         key.endsWith('s') && key.length > 3 ? key.slice(0, -1) : null;
+        if (singular) {
+            if (wordDictionary.has(singular)) return singular;
+            if (conjugatedFormIndex.has(singular)) return conjugatedFormIndex.get(singular);
+        }
+        // Feminine → masculine (e.g., "pequeña" → "pequeño")
+        if (key.endsWith('a') && key.length > 3) {
+            const masc = key.slice(0, -1) + 'o';
+            if (wordDictionary.has(masc)) return masc;
+        }
+        // Apocopated forms (e.g., "algún" → "alguno", "buen" → "bueno")
+        if (wordDictionary.has(key + 'o')) return key + 'o';
+        // Strip clitic pronouns (e.g., "ayudarme" → "ayudar", "dimela" → "di" → "decir")
+        const stripped = key.replace(cliticPattern, '');
+        if (stripped !== key && stripped.length >= 2) {
+            if (wordDictionary.has(stripped)) return stripped;
+            if (conjugatedFormIndex.has(stripped)) return conjugatedFormIndex.get(stripped);
+            const strippedInf = guessInfinitive(stripped);
+            if (strippedInf) return strippedInf;
+        }
+        // Guess infinitive from conjugation suffix (e.g., "necesitas" → "necesitar")
+        return guessInfinitive(key);
+    }
+    function resolveWord(word) {
+        const key = word.toLowerCase();
+        // Try with original accents first
+        const result = tryResolveKey(key);
+        if (result) return result;
+        // Try accent-stripped (e.g., "está" → "esta" → "estar")
+        const noAccent = stripAccents(key);
+        if (noAccent !== key) return tryResolveKey(noAccent);
+        return null;
+    }
+    function guessInfinitive(form) {
+        // Each ending is tried with all three conjugation suffixes
+        const endings = [
+            /ando$/, /iendo$/, /aste$/, /iste$/, /amos$/, /imos$/,
+            /áis$/, /éis$/, /ís$/, /aron$/, /ieron$/,
+            /aba$/, /abas$/, /ábamos$/, /aban$/,
+            /ía$/, /ías$/, /íamos$/, /ían$/,
+            /aré$/, /eré$/, /arás$/, /erás$/, /ará$/, /erá$/,
+            /aremos$/, /eremos$/, /arán$/, /erán$/,
+            /aría$/, /ería$/, /arías$/, /erías$/,
+            /aríamos$/, /eríamos$/, /arían$/, /erían$/,
+            /ado$/, /ido$/,
+            /as$/, /es$/, /a$/, /e$/, /an$/, /en$/, /o$/, /i$/,
+        ];
+        const suffixes = ['ar', 'er', 'ir'];
+        const patterns = [];
+        for (const ending of endings) {
+            for (const suffix of suffixes) {
+                patterns.push([ending, suffix]);
+            }
+        }
+        // Stem-change reversals: ie→e, ie→i, ue→o, ue→u, i→e (e.g., "prefier"→"prefer", "pid"→"ped")
+        const stemChanges = [[/ie/, 'e'], [/ie/, 'i'], [/ue/, 'o'], [/ue/, 'u'], [/i(?=[^aeiouáéíóú])/, 'e']];
+        for (const [ending, suffix] of patterns) {
+            const stem = form.replace(ending, '');
+            if (stem !== form && stem.length >= 2) {
+                const candidate = stem + suffix;
+                if (wordDictionary.has(candidate)) {
+                    const entry = wordDictionary.get(candidate);
+                    if (entry.isVerb) return candidate;
+                }
+                // Try reversing stem changes
+                for (const [from, to] of stemChanges) {
+                    if (from.test(stem)) {
+                        const fixedStem = stem.replace(from, to);
+                        const fixedCandidate = fixedStem + suffix;
+                        if (wordDictionary.has(fixedCandidate)) {
+                            const entry = wordDictionary.get(fixedCandidate);
+                            if (entry.isVerb) return fixedCandidate;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    // Find Vietnamese translation for a Spanish word by searching all days + common vocab
+    function getViTranslation(spanishWord) {
+        if (typeof translationsVI === 'undefined') return null;
+        // Check day-specific vocab first
+        if (translationsVI?.vocab) {
+            for (const day in translationsVI.vocab) {
+                if (translationsVI.vocab[day][spanishWord]) {
+                    return translationsVI.vocab[day][spanishWord];
+                }
+            }
+        }
+        // Check common vocab translations
+        if (translationsVI?.commonVocab?.[spanishWord]) {
+            return translationsVI.commonVocab[spanishWord];
+        }
+        return null;
+    }
+
+    // Get display translation for a word entry based on current language
+    function getWordTranslation(entry) {
+        if (progress.uiLanguage === 'vi' && typeof translationsVI !== 'undefined') {
+            const vi = getViTranslation(entry.spanish);
+            if (vi) return vi;
+        }
+        return entry.english;
+    }
+
+    function openWordModal(spanishWord, options) {
+        buildWordDictionary();
+        const cleaned = spanishWord.toLowerCase().replace(/[¿¡.,!?;:"""()]/g, '');
+        const key = resolveWord(cleaned);
+        if (!key) return;
+        const entry = wordDictionary.get(key);
+        if (!entry) return;
+
+        const modal = document.getElementById('wordModal');
+        const content = document.getElementById('wordModalContent');
+
+        const translation = getWordTranslation(entry);
+
+        let html = `<h2>${escapeHtml(entry.spanish)}`;
+        if (entry.gender) html += ` <span class="word-result-badge">${entry.gender === 'm' ? 'masc' : 'fem'}</span>`;
+        else if (entry.isVerb) html += ` <span class="word-result-badge">${t('verb')}</span>`;
+        html += `</h2>`;
+        html += `<div class="word-translation">${escapeHtml(translation)}</div>`;
+
+        if (entry.days.length > 0) {
+            html += `<div class="word-days">${t('appearsInDays')} ${entry.days.map(d => `${t('day')} ${d}`).join(', ')}</div>`;
+        }
+
+        // Show conjugation tables if verb (unless suppressed)
+        if (entry.isVerb && !options?.hideConjugation) {
+            const verbKey = key;
+            const conjData = conjugationIndex.get(verbKey);
+            if (conjData && conjData.length > 0) {
+                // Group by tense (deduplicate), filter by user's lookup tense settings
+                const seen = new Set();
+                let shownAny = false;
+                conjData.forEach(c => {
+                    const tenseKey = c.tense;
+                    if (seen.has(tenseKey)) return;
+                    seen.add(tenseKey);
+                    if (!isLookupTenseVisible(tenseKey)) return;
+                    shownAny = true;
+                    html += `<div class="conj-tense-title">${escapeHtml(c.label)}</div>`;
+                    html += `<table class="conj-table">`;
+                    html += `<tr><th>${t('pronoun')}</th><th>${t('form')}</th></tr>`;
+                    Object.entries(c.forms).forEach(([pKey, form]) => {
+                        html += `<tr><td>${escapeHtml(pronounLabels[pKey] || pKey)}</td><td>${escapeHtml(form)}</td></tr>`;
+                    });
+                    html += `</table>`;
+                });
+                if (!shownAny) {
+                    html += `<p style="color:var(--text-muted);margin-top:12px;font-style:italic">${t('conjNotAvailable')}</p>`;
+                }
+            } else {
+                html += `<p style="color:var(--text-muted);margin-top:12px;font-style:italic">${t('conjNotAvailable')}</p>`;
+            }
+        }
+
+        content.innerHTML = html;
+        modal.classList.add('active');
+    }
+
+    function closeWordModal() {
+        document.getElementById('wordModal').classList.remove('active');
+    }
+
+    // Close word modal on Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && document.getElementById('wordModal').classList.contains('active')) {
+            closeWordModal();
+        }
+    });
+
+    // Close word modal on overlay click (desktop only)
+    document.getElementById('wordModal').addEventListener('click', function(e) {
+        if (e.target === this && !window.matchMedia('(max-width: 768px)').matches) {
+            closeWordModal();
+        }
+    });
+
+    function filterWordLookup(query) {
+        buildWordDictionary();
+        const results = document.getElementById('wordLookupResults');
+        const q = query.trim().toLowerCase();
+
+        if (!q) {
+            results.innerHTML = '';
+            return;
+        }
+
+        // Search in both Spanish and English
+        let matches = [];
+        const matchedKeys = new Set();
+        wordDictionary.forEach((entry) => {
+            const es = entry.spanish.toLowerCase();
+            const en = entry.english.toLowerCase();
+            if (es.includes(q) || en.includes(q)) {
+                // Score: exact match > starts-with > contains
+                let score = 0;
+                if (es === q) score = 3;
+                else if (es.startsWith(q)) score = 2;
+                else if (en === q) score = 1.5;
+                else if (en.startsWith(q)) score = 1;
+                matches.push({ entry, score });
+                matchedKeys.add(es);
+            }
+        });
+        // Also match conjugated forms / clitic forms → show the infinitive verb
+        const resolved = resolveWord(q);
+        if (resolved && !matchedKeys.has(resolved) && wordDictionary.has(resolved)) {
+            matches.push({ entry: wordDictionary.get(resolved), score: 2.5 });
+        }
+
+        matches.sort((a, b) => b.score - a.score);
+        matches = matches.slice(0, 50);
+
+        if (matches.length === 0) {
+            results.innerHTML = `<p style="color:var(--text-muted);padding:8px">${t('noWordsFound')}</p>`;
+            return;
+        }
+
+        results.innerHTML = matches.map(({ entry }) => `
+            <div class="word-result-item" onclick="openWordModal('${escapeHtml(entry.spanish).replace(/'/g, "\\'")}')">
+                <span class="word-result-spanish">${escapeHtml(entry.spanish)}</span>
+                ${entry.gender ? `<span class="word-result-badge">${entry.gender === 'm' ? 'masc' : 'fem'}</span>` : entry.isVerb ? `<span class="word-result-badge">${t('verb')}</span>` : ''}
+                <span class="word-result-english">${escapeHtml(getWordTranslation(entry))}</span>
+            </div>
+        `).join('');
+    }
+
+    function makeWordsClickable(text) {
+        buildWordDictionary();
+        // First, replace multi-word phrases with placeholders to prevent splitting them
+        let processed = text;
+        const phraseSlots = [];
+        for (const phrase of multiWordKeys) {
+            const re = new RegExp('(^|[^a-záéíóúüñ])(' + phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')([^a-záéíóúüñ]|$)', 'gi');
+            processed = processed.replace(re, (m, pre, match, post) => {
+                const idx = phraseSlots.length;
+                phraseSlots.push(match);
+                return pre + '\x00PHRASE' + idx + '\x00' + post;
+            });
+        }
+        // Now split into word and non-word segments
+        return processed.replace(/\x00PHRASE(\d+)\x00|([a-záéíóúüñ]+)|([^a-záéíóúüñ\x00]+)/gi, (match, phraseIdx, word, nonWord) => {
+            if (phraseIdx !== undefined) {
+                const original = phraseSlots[parseInt(phraseIdx)];
+                return `<span class="spanish-word-link" onclick="openWordModal('${escapeHtml(original).replace(/'/g, "\\'")}')">${escapeHtml(original)}</span>`;
+            }
+            if (nonWord) return escapeHtml(nonWord);
+            if (resolveWord(word) !== null) {
+                return `<span class="spanish-word-link" onclick="openWordModal('${escapeHtml(word).replace(/'/g, "\\'")}')">${escapeHtml(word)}</span>`;
+            }
+            return escapeHtml(word);
+        });
+    }
+
     // Make functions global
     window.openLesson = openLesson;
     window.closeLessonView = closeLessonView;
@@ -2193,6 +2868,10 @@
     window.toggleCompactHeader = toggleCompactHeader;
     window.changeDefaultTab = changeDefaultTab;
     window.toggleSettingsGroup = toggleSettingsGroup;
+    window.openWordModal = openWordModal;
+    window.closeWordModal = closeWordModal;
+    window.filterWordLookup = filterWordLookup;
+    window.toggleLookupConjTense = toggleLookupConjTense;
 
     init();
     </script>
