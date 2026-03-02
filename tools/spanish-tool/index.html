@@ -1413,6 +1413,15 @@
             conjFuture: 'Future',
             conjConditional: 'Conditional',
             conjSubjunctive: 'Subjunctive',
+            conjPresentPerfect: 'Present Perfect',
+            conjPastPerfect: 'Past Perfect',
+            conjFuturePerfect: 'Future Perfect',
+            conjConditionalPerfect: 'Conditional Perfect',
+            conjSubjunctiveImperfect: 'Subjunctive (Imperfect)',
+            conjSubjunctivePresentPerfect: 'Subjunctive (Pres. Perfect)',
+            conjSubjunctivePluperfect: 'Subjunctive (Pluperfect)',
+            conjImperativeAffirmative: 'Imperative (Affirmative)',
+            conjImperativeNegative: 'Imperative (Negative)',
 
             // Word Lookup
             lookupConjSettings: 'Word Lookup Conjugations',
@@ -1582,7 +1591,7 @@
     }
 
     // Unique tenses in display order, derived from conjugationTypes
-    const lookupTenseOrder = ['present', 'preterite', 'imperfect', 'future', 'conditional', 'subjunctive'];
+    const lookupTenseOrder = ['present', 'present_perfect', 'preterite', 'imperfect', 'past_perfect', 'future', 'future_perfect', 'conditional', 'conditional_perfect', 'subjunctive', 'subjunctive_imperfect', 'subjunctive_present_perfect', 'subjunctive_pluperfect', 'imperative_affirmative', 'imperative_negative'];
 
     function isLookupTenseVisible(tense) {
         const setting = (progress.lookupConjTenses || {})[tense];
@@ -2033,6 +2042,16 @@
         { id: 'future', label: 'Future Simple', unlocksAt: 22, tense: 'future', category: 'regular' },
         { id: 'conditional', label: 'Conditional', unlocksAt: 28, tense: 'conditional', category: 'regular' },
         { id: 'subjunctive_present', label: 'Subjunctive (Present)', unlocksAt: 33, tense: 'subjunctive', category: 'mixed' },
+        // Advanced tenses — unlock after completing all 45 lessons
+        { id: 'present_perfect', label: 'Present Perfect', unlocksAt: 45, tense: 'present_perfect', category: 'compound' },
+        { id: 'past_perfect', label: 'Past Perfect', unlocksAt: 45, tense: 'past_perfect', category: 'compound' },
+        { id: 'future_perfect', label: 'Future Perfect', unlocksAt: 45, tense: 'future_perfect', category: 'compound' },
+        { id: 'conditional_perfect', label: 'Conditional Perfect', unlocksAt: 45, tense: 'conditional_perfect', category: 'compound' },
+        { id: 'subjunctive_imperfect', label: 'Subjunctive (Imperfect)', unlocksAt: 45, tense: 'subjunctive_imperfect', category: 'mixed' },
+        { id: 'subjunctive_present_perfect', label: 'Subjunctive (Present Perfect)', unlocksAt: 45, tense: 'subjunctive_present_perfect', category: 'compound' },
+        { id: 'subjunctive_pluperfect', label: 'Subjunctive (Pluperfect)', unlocksAt: 45, tense: 'subjunctive_pluperfect', category: 'compound' },
+        { id: 'imperative_affirmative', label: 'Imperative (Affirmative)', unlocksAt: 45, tense: 'imperative_affirmative', category: 'mixed' },
+        { id: 'imperative_negative', label: 'Imperative (Negative)', unlocksAt: 45, tense: 'imperative_negative', category: 'mixed' },
     ];
 
     // Verb data organized by type
@@ -2118,10 +2137,95 @@
             { verb: 'ir', forms: { yo: 'vaya', tu: 'vayas', el: 'vaya', nosotros: 'vayamos', vosotros: 'vayais', ellos: 'vayan' }},
             { verb: 'tener', forms: { yo: 'tenga', tu: 'tengas', el: 'tenga', nosotros: 'tengamos', vosotros: 'tengais', ellos: 'tengan' }},
         ],
+        // Compound tenses (haber + past participle)
+        present_perfect: [
+            { verb: 'hablar', forms: { yo: 'he hablado', tu: 'has hablado', el: 'ha hablado', nosotros: 'hemos hablado', vosotros: 'habeis hablado', ellos: 'han hablado' }},
+            { verb: 'comer', forms: { yo: 'he comido', tu: 'has comido', el: 'ha comido', nosotros: 'hemos comido', vosotros: 'habeis comido', ellos: 'han comido' }},
+            { verb: 'vivir', forms: { yo: 'he vivido', tu: 'has vivido', el: 'ha vivido', nosotros: 'hemos vivido', vosotros: 'habeis vivido', ellos: 'han vivido' }},
+            { verb: 'hacer', forms: { yo: 'he hecho', tu: 'has hecho', el: 'ha hecho', nosotros: 'hemos hecho', vosotros: 'habeis hecho', ellos: 'han hecho' }},
+            { verb: 'escribir', forms: { yo: 'he escrito', tu: 'has escrito', el: 'ha escrito', nosotros: 'hemos escrito', vosotros: 'habeis escrito', ellos: 'han escrito' }},
+            { verb: 'ver', forms: { yo: 'he visto', tu: 'has visto', el: 'ha visto', nosotros: 'hemos visto', vosotros: 'habeis visto', ellos: 'han visto' }},
+            { verb: 'decir', forms: { yo: 'he dicho', tu: 'has dicho', el: 'ha dicho', nosotros: 'hemos dicho', vosotros: 'habeis dicho', ellos: 'han dicho' }},
+        ],
+        past_perfect: [
+            { verb: 'hablar', forms: { yo: 'habia hablado', tu: 'habias hablado', el: 'habia hablado', nosotros: 'habiamos hablado', vosotros: 'habiais hablado', ellos: 'habian hablado' }},
+            { verb: 'comer', forms: { yo: 'habia comido', tu: 'habias comido', el: 'habia comido', nosotros: 'habiamos comido', vosotros: 'habiais comido', ellos: 'habian comido' }},
+            { verb: 'vivir', forms: { yo: 'habia vivido', tu: 'habias vivido', el: 'habia vivido', nosotros: 'habiamos vivido', vosotros: 'habiais vivido', ellos: 'habian vivido' }},
+            { verb: 'hacer', forms: { yo: 'habia hecho', tu: 'habias hecho', el: 'habia hecho', nosotros: 'habiamos hecho', vosotros: 'habiais hecho', ellos: 'habian hecho' }},
+            { verb: 'decir', forms: { yo: 'habia dicho', tu: 'habias dicho', el: 'habia dicho', nosotros: 'habiamos dicho', vosotros: 'habiais dicho', ellos: 'habian dicho' }},
+            { verb: 'escribir', forms: { yo: 'habia escrito', tu: 'habias escrito', el: 'habia escrito', nosotros: 'habiamos escrito', vosotros: 'habiais escrito', ellos: 'habian escrito' }},
+        ],
+        future_perfect: [
+            { verb: 'hablar', forms: { yo: 'habre hablado', tu: 'habras hablado', el: 'habra hablado', nosotros: 'habremos hablado', vosotros: 'habreis hablado', ellos: 'habran hablado' }},
+            { verb: 'comer', forms: { yo: 'habre comido', tu: 'habras comido', el: 'habra comido', nosotros: 'habremos comido', vosotros: 'habreis comido', ellos: 'habran comido' }},
+            { verb: 'vivir', forms: { yo: 'habre vivido', tu: 'habras vivido', el: 'habra vivido', nosotros: 'habremos vivido', vosotros: 'habreis vivido', ellos: 'habran vivido' }},
+            { verb: 'hacer', forms: { yo: 'habre hecho', tu: 'habras hecho', el: 'habra hecho', nosotros: 'habremos hecho', vosotros: 'habreis hecho', ellos: 'habran hecho' }},
+            { verb: 'escribir', forms: { yo: 'habre escrito', tu: 'habras escrito', el: 'habra escrito', nosotros: 'habremos escrito', vosotros: 'habreis escrito', ellos: 'habran escrito' }},
+        ],
+        conditional_perfect: [
+            { verb: 'hablar', forms: { yo: 'habria hablado', tu: 'habrias hablado', el: 'habria hablado', nosotros: 'habriamos hablado', vosotros: 'habriais hablado', ellos: 'habrian hablado' }},
+            { verb: 'comer', forms: { yo: 'habria comido', tu: 'habrias comido', el: 'habria comido', nosotros: 'habriamos comido', vosotros: 'habriais comido', ellos: 'habrian comido' }},
+            { verb: 'vivir', forms: { yo: 'habria vivido', tu: 'habrias vivido', el: 'habria vivido', nosotros: 'habriamos vivido', vosotros: 'habriais vivido', ellos: 'habrian vivido' }},
+            { verb: 'hacer', forms: { yo: 'habria hecho', tu: 'habrias hecho', el: 'habria hecho', nosotros: 'habriamos hecho', vosotros: 'habriais hecho', ellos: 'habrian hecho' }},
+            { verb: 'poder', forms: { yo: 'habria podido', tu: 'habrias podido', el: 'habria podido', nosotros: 'habriamos podido', vosotros: 'habriais podido', ellos: 'habrian podido' }},
+        ],
+        // Subjunctive mood
+        subjunctive_imperfect: [
+            { verb: 'hablar', forms: { yo: 'hablara', tu: 'hablaras', el: 'hablara', nosotros: 'hablaramos', vosotros: 'hablarais', ellos: 'hablaran' }},
+            { verb: 'comer', forms: { yo: 'comiera', tu: 'comieras', el: 'comiera', nosotros: 'comieramos', vosotros: 'comierais', ellos: 'comieran' }},
+            { verb: 'vivir', forms: { yo: 'viviera', tu: 'vivieras', el: 'viviera', nosotros: 'vivieramos', vosotros: 'vivierais', ellos: 'vivieran' }},
+            { verb: 'ser', forms: { yo: 'fuera', tu: 'fueras', el: 'fuera', nosotros: 'fueramos', vosotros: 'fuerais', ellos: 'fueran' }},
+            { verb: 'tener', forms: { yo: 'tuviera', tu: 'tuvieras', el: 'tuviera', nosotros: 'tuvieramos', vosotros: 'tuvierais', ellos: 'tuvieran' }},
+            { verb: 'poder', forms: { yo: 'pudiera', tu: 'pudieras', el: 'pudiera', nosotros: 'pudieramos', vosotros: 'pudierais', ellos: 'pudieran' }},
+            { verb: 'hacer', forms: { yo: 'hiciera', tu: 'hicieras', el: 'hiciera', nosotros: 'hicieramos', vosotros: 'hicierais', ellos: 'hicieran' }},
+        ],
+        subjunctive_present_perfect: [
+            { verb: 'hablar', forms: { yo: 'haya hablado', tu: 'hayas hablado', el: 'haya hablado', nosotros: 'hayamos hablado', vosotros: 'hayais hablado', ellos: 'hayan hablado' }},
+            { verb: 'comer', forms: { yo: 'haya comido', tu: 'hayas comido', el: 'haya comido', nosotros: 'hayamos comido', vosotros: 'hayais comido', ellos: 'hayan comido' }},
+            { verb: 'vivir', forms: { yo: 'haya vivido', tu: 'hayas vivido', el: 'haya vivido', nosotros: 'hayamos vivido', vosotros: 'hayais vivido', ellos: 'hayan vivido' }},
+            { verb: 'hacer', forms: { yo: 'haya hecho', tu: 'hayas hecho', el: 'haya hecho', nosotros: 'hayamos hecho', vosotros: 'hayais hecho', ellos: 'hayan hecho' }},
+            { verb: 'escribir', forms: { yo: 'haya escrito', tu: 'hayas escrito', el: 'haya escrito', nosotros: 'hayamos escrito', vosotros: 'hayais escrito', ellos: 'hayan escrito' }},
+        ],
+        subjunctive_pluperfect: [
+            { verb: 'hablar', forms: { yo: 'hubiera hablado', tu: 'hubieras hablado', el: 'hubiera hablado', nosotros: 'hubieramos hablado', vosotros: 'hubierais hablado', ellos: 'hubieran hablado' }},
+            { verb: 'comer', forms: { yo: 'hubiera comido', tu: 'hubieras comido', el: 'hubiera comido', nosotros: 'hubieramos comido', vosotros: 'hubierais comido', ellos: 'hubieran comido' }},
+            { verb: 'vivir', forms: { yo: 'hubiera vivido', tu: 'hubieras vivido', el: 'hubiera vivido', nosotros: 'hubieramos vivido', vosotros: 'hubierais vivido', ellos: 'hubieran vivido' }},
+            { verb: 'hacer', forms: { yo: 'hubiera hecho', tu: 'hubieras hecho', el: 'hubiera hecho', nosotros: 'hubieramos hecho', vosotros: 'hubierais hecho', ellos: 'hubieran hecho' }},
+            { verb: 'decir', forms: { yo: 'hubiera dicho', tu: 'hubieras dicho', el: 'hubiera dicho', nosotros: 'hubieramos dicho', vosotros: 'hubierais dicho', ellos: 'hubieran dicho' }},
+        ],
+        // Imperative (no yo form; el=usted, ellos=ustedes)
+        imperative_affirmative: [
+            { verb: 'hablar', forms: { tu: 'habla', el: 'hable', nosotros: 'hablemos', vosotros: 'hablad', ellos: 'hablen' }},
+            { verb: 'comer', forms: { tu: 'come', el: 'coma', nosotros: 'comamos', vosotros: 'comed', ellos: 'coman' }},
+            { verb: 'vivir', forms: { tu: 'vive', el: 'viva', nosotros: 'vivamos', vosotros: 'vivid', ellos: 'vivan' }},
+            { verb: 'tener', forms: { tu: 'ten', el: 'tenga', nosotros: 'tengamos', vosotros: 'tened', ellos: 'tengan' }},
+            { verb: 'hacer', forms: { tu: 'haz', el: 'haga', nosotros: 'hagamos', vosotros: 'haced', ellos: 'hagan' }},
+            { verb: 'ir', forms: { tu: 've', el: 'vaya', nosotros: 'vayamos', vosotros: 'id', ellos: 'vayan' }},
+            { verb: 'decir', forms: { tu: 'di', el: 'diga', nosotros: 'digamos', vosotros: 'decid', ellos: 'digan' }},
+        ],
+        imperative_negative: [
+            { verb: 'hablar', forms: { tu: 'no hables', el: 'no hable', nosotros: 'no hablemos', vosotros: 'no hableis', ellos: 'no hablen' }},
+            { verb: 'comer', forms: { tu: 'no comas', el: 'no coma', nosotros: 'no comamos', vosotros: 'no comais', ellos: 'no coman' }},
+            { verb: 'vivir', forms: { tu: 'no vivas', el: 'no viva', nosotros: 'no vivamos', vosotros: 'no vivais', ellos: 'no vivan' }},
+            { verb: 'tener', forms: { tu: 'no tengas', el: 'no tenga', nosotros: 'no tengamos', vosotros: 'no tengais', ellos: 'no tengan' }},
+            { verb: 'hacer', forms: { tu: 'no hagas', el: 'no haga', nosotros: 'no hagamos', vosotros: 'no hagais', ellos: 'no hagan' }},
+            { verb: 'ir', forms: { tu: 'no vayas', el: 'no vaya', nosotros: 'no vayamos', vosotros: 'no vayais', ellos: 'no vayan' }},
+            { verb: 'decir', forms: { tu: 'no digas', el: 'no diga', nosotros: 'no digamos', vosotros: 'no digais', ellos: 'no digan' }},
+        ],
     };
 
     const pronounLabels = { yo: 'yo', tu: 'tú', el: 'él/ella', nosotros: 'nosotros', vosotros: 'vosotros', ellos: 'ellos' };
-    const tenseLabels = { present: 'Present', preterite: 'Preterite', imperfect: 'Imperfect', future: 'Future', conditional: 'Conditional', subjunctive: 'Subjunctive' };
+    const imperativePronounLabels = { tu: 'tú', el: 'usted', nosotros: 'nosotros', vosotros: 'vosotros', ellos: 'ustedes' };
+    function getPronounLabel(pronoun, tense) {
+        if (tense && tense.startsWith('imperative_')) return imperativePronounLabels[pronoun] || pronoun;
+        return pronounLabels[pronoun] || pronoun;
+    }
+    const tenseLabels = {
+        present: 'Present', preterite: 'Preterite', imperfect: 'Imperfect', future: 'Future', conditional: 'Conditional', subjunctive: 'Subjunctive',
+        present_perfect: 'Present Perfect', past_perfect: 'Past Perfect', future_perfect: 'Future Perfect', conditional_perfect: 'Conditional Perfect',
+        subjunctive_imperfect: 'Subjunctive (Imperfect)', subjunctive_present_perfect: 'Subjunctive (Pres. Perfect)', subjunctive_pluperfect: 'Subjunctive (Pluperfect)',
+        imperative_affirmative: 'Imperative (Affirmative)', imperative_negative: 'Imperative (Negative)'
+    };
 
     let conjQueue = [];
     let conjCorrect = 0;
@@ -2204,14 +2308,17 @@
         // Build questions grouped by category
         const questionsByCategory = {};
         const pronouns = ['yo', 'tu', 'el', 'nosotros', 'ellos'];
+        const imperativePronouns = ['tu', 'el', 'nosotros', 'vosotros', 'ellos'];
 
         conjSelectedTypes.forEach(typeId => {
             const type = conjugationTypes.find(t => t.id === typeId);
             const verbs = conjugationVerbs[typeId] || [];
+            const isImperative = typeId.startsWith('imperative_');
+            const typePronouns = isImperative ? imperativePronouns : pronouns;
             questionsByCategory[typeId] = [];
 
             verbs.forEach(v => {
-                pronouns.forEach(p => {
+                typePronouns.forEach(p => {
                     const key = `${v.verb}_${typeId}_${p}`;
                     const srs = progress.conjSRS[key] || { wrongCount: 0, lastSeen: null, ease: 2.5 };
                     questionsByCategory[typeId].push({
@@ -2313,7 +2420,7 @@
                     ${conjTotal > 0 ? ` • ${Math.round((conjCorrect/conjTotal)*100)}% ${t('accuracy')}` : ''}
                 </div>
                 <div class="quiz-prompt">
-                    ${t('conjugateFor')} "<strong class="spanish-word-link" onclick="openWordModal('${escapeHtml(q.verb).replace(/'/g, "\\'")}', {hideConjugation: true})">${escapeHtml(q.verb)}</strong>" ${t('forPronoun')} <strong>${pronounLabels[q.pronoun]}</strong>
+                    ${t('conjugateFor')} "<strong class="spanish-word-link" onclick="openWordModal('${escapeHtml(q.verb).replace(/'/g, "\\'")}', {hideConjugation: true})">${escapeHtml(q.verb)}</strong>" ${t('forPronoun')} <strong>${getPronounLabel(q.pronoun, q.tense)}</strong>
                 </div>
                 <div style="margin-top:15px">
                     <input type="text" id="conjAnswer" class="conj-input" placeholder="${t('typeAnswer')}"
@@ -2737,7 +2844,7 @@
                     html += `<table class="conj-table">`;
                     html += `<tr><th>${t('pronoun')}</th><th>${t('form')}</th></tr>`;
                     Object.entries(c.forms).forEach(([pKey, form]) => {
-                        html += `<tr><td>${escapeHtml(pronounLabels[pKey] || pKey)}</td><td>${escapeHtml(form)}</td></tr>`;
+                        html += `<tr><td>${escapeHtml(getPronounLabel(pKey, tenseKey))}</td><td>${escapeHtml(form)}</td></tr>`;
                     });
                     html += `</table>`;
                 });
