@@ -62,6 +62,9 @@ const translationsVI = {
     // Settings
     settings: 'Cài đặt',
     uiLanguage: 'Ngôn ngữ giao diện',
+    moveCompletedToBottom: 'Chuyển bài học đã hoàn thành xuống cuối',
+    showLanguageFlags: 'Hiển thị cờ ngôn ngữ ở đầu trang',
+    completedLessons: 'Bài học đã hoàn thành',
 
     // Lesson View
     previous: '← Trước',
