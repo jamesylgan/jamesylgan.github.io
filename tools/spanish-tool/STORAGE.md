@@ -5,7 +5,7 @@ This tool uses versioned local storage via `StorageVersionManager`. **If you mod
 ## Current Schema
 
 **Key:** `spanishProgress`
-**Version:** 4
+**Version:** 5
 
 ```javascript
 {
@@ -15,6 +15,8 @@ This tool uses versioned local storage via `StorageVersionManager`. **If you mod
     vocabSRS: {},                // Anki-style SRS data: { "word": { wrongCount, lastSeen, ease } }
     conjSRS: {},                 // Conjugation SRS data: { "verb_type_pronoun": { wrongCount, lastSeen, ease } }
     uiLanguage: 'en',            // UI language preference: 'en' (English) or 'vi' (Vietnamese)
+    compactHeader: false,        // Hide title/subtitle in header, show only progress bar
+    defaultTab: 'lessons',       // Default tab to show on load: 'lessons', 'quiz', or 'progress'
     lastSaved: null              // ISO date string or null
 }
 ```
