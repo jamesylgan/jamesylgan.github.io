@@ -5,18 +5,20 @@ This tool uses versioned local storage via `StorageVersionManager`. **If you mod
 ## Current Schema
 
 **Key:** `spanishProgress`
-**Version:** 5
+**Version:** 8
 
 ```javascript
 {
     completedDays: [],           // Array of day numbers (e.g., [1, 2, 5])
     sectionChecks: {},           // Object like { "1-phrases": true, "1-vocab": false }
+    practiceChecks: {},          // Object like { "1-0": true, "1-1": true } — per-item practice checks
     quizScores: [],              // Array of quiz score objects (vocab or conjugation)
     vocabSRS: {},                // Anki-style SRS data: { "word": { wrongCount, lastSeen, ease } }
     conjSRS: {},                 // Conjugation SRS data: { "verb_type_pronoun": { wrongCount, lastSeen, ease } }
     uiLanguage: 'en',            // UI language preference: 'en' (English) or 'vi' (Vietnamese)
     compactHeader: false,        // Hide title/subtitle in header, show only progress bar
-    defaultTab: 'lessons',       // Default tab to show on load: 'lessons', 'quiz', or 'progress'
+    defaultTab: 'lessons',       // Default tab to show on load: 'lessons', 'quiz', or 'extras'
+    lookupConjTenses: {},        // { tense: bool } — which conjugation tenses to show in word lookup modal
     lastSaved: null              // ISO date string or null
 }
 ```
@@ -70,6 +72,19 @@ This tool uses versioned local storage via `StorageVersionManager`. **If you mod
 | future | Future Simple | Day 22 |
 | conditional | Conditional | Day 28 |
 | subjunctive_present | Subjunctive (Present) | Day 33 |
+
+### Migration History
+
+| Version | Change |
+|---------|--------|
+| 1 | Initial versioned schema |
+| 2 | Add `vocabSRS` |
+| 3 | Add `conjSRS` |
+| 4 | Add `uiLanguage` |
+| 5 | Add `compactHeader`, `defaultTab` |
+| 6 | Rename "Progress" tab to "Extras": remap `defaultTab: 'progress'` → `'extras'` |
+| 7 | Add `lookupConjTenses` for word lookup conjugation visibility |
+| 8 | Add `practiceChecks` for individual practice item checkmarks |
 
 ## How to Make Schema Changes
 
