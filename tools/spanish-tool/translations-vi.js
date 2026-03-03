@@ -91,6 +91,15 @@ const translationsVI = {
     conjFuture: 'Tương lai',
     conjConditional: 'Điều kiện',
     conjSubjunctive: 'Giả định',
+    conjPresentPerfect: 'Hiện tại hoàn thành',
+    conjPastPerfect: 'Quá khứ hoàn thành',
+    conjFuturePerfect: 'Tương lai hoàn thành',
+    conjConditionalPerfect: 'Điều kiện hoàn thành',
+    conjSubjunctiveImperfect: 'Giả định (Quá khứ)',
+    conjSubjunctivePresentPerfect: 'Giả định (HT hoàn thành)',
+    conjSubjunctivePluperfect: 'Giả định (QK hoàn thành)',
+    conjImperativeAffirmative: 'Mệnh lệnh (Khẳng định)',
+    conjImperativeNegative: 'Mệnh lệnh (Phủ định)',
 
     // Word Lookup
     lookupConjSettings: 'Chia động từ trong tra từ',
