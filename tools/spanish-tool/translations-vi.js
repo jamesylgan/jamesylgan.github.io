@@ -64,6 +64,9 @@ const translationsVI = {
     uiLanguage: 'Ngôn ngữ giao diện',
     moveCompletedToBottom: 'Chuyển bài học đã hoàn thành xuống cuối',
     showLanguageFlags: 'Hiển thị cờ ngôn ngữ ở đầu trang',
+    defaultTab: 'Tab mặc định',
+    madeForMobile: 'Tối ưu cho điện thoại',
+    compactHeader: 'Đầu trang gọn (chỉ hiện thanh tiến độ)',
     completedLessons: 'Bài học đã hoàn thành',
 
     // Lesson View
