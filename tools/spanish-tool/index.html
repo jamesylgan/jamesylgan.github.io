@@ -2961,19 +2961,20 @@
             return;
         }
 
-        // Search in both Spanish and English
+        // Search in Spanish + the active UI language (English or Vietnamese)
+        const useVi = progress.uiLanguage === 'vi' && typeof translationsVI !== 'undefined';
         let matches = [];
         const matchedKeys = new Set();
         wordDictionary.forEach((entry) => {
             const es = entry.spanish.toLowerCase();
-            const en = entry.english.toLowerCase();
-            if (es.includes(q) || en.includes(q)) {
+            const tr = useVi ? (getViTranslation(entry.spanish) || '').toLowerCase() : entry.english.toLowerCase();
+            if (es.includes(q) || tr.includes(q)) {
                 // Score: exact match > starts-with > contains
                 let score = 0;
                 if (es === q) score = 3;
                 else if (es.startsWith(q)) score = 2;
-                else if (en === q) score = 1.5;
-                else if (en.startsWith(q)) score = 1;
+                else if (tr === q) score = 1.5;
+                else if (tr.startsWith(q)) score = 1;
                 matches.push({ entry, score });
                 matchedKeys.add(es);
             }
