@@ -1,0 +1,9 @@
+# ai.txt - AI Training Opt-Out
+# See https://site.spawning.ai/spawning-ai-txt
+
+User-Agent: *
+Disallow: /
+
+# No content on this site may be used for AI/ML training,
+# fine-tuning, or any form of machine learning data collection.
+# All rights reserved. Copyright James Gan.
