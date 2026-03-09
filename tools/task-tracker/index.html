@@ -2676,9 +2676,8 @@ function checkResetSettingsConfirm() {
 function doResetSettings() {
     settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
     localStorage.setItem('task-tracker-settings-v1', JSON.stringify(settings));
-    applySettings();
     closeResetSettingsModal();
-    renderSettingsMenu();
+    applySettings();
     render();
     toast('Settings reset to defaults');
 }
