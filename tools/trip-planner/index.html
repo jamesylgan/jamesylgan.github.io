@@ -1772,14 +1772,14 @@
                 const ll = (trip.lodging || []).filter(l => l.legId === leg.id);
                 const hoCount = (trip.hotelOptions || []).filter(ho => ho.city === leg.city).length;
                 const optSuffix = hoCount > 0 ? ` (${hoCount} option${hoCount !== 1 ? 's' : ''})` : '';
-                if (ll.length === 0) items.push({ text:`Add lodging for ${leg.city}${optSuffix}`, type:'lodging', action:'openLodgingModal()', priority:1 });
-                else if (!ll.some(l => l.booked)) items.push({ text:`Book lodging for ${leg.city}${optSuffix}`, type:'lodging', action:'openLodgingModal()', priority:1 });
+                if (ll.length === 0) items.push({ text:`Add lodging for ${leg.city}${optSuffix}`, type:'lodging', action:`openLodgingModalForDate('${leg.startDate || ''}','${leg.id}','${leg.endDate || ''}')`, priority:1 });
+                else if (!ll.some(l => l.booked)) items.push({ text:`Book lodging for ${leg.city}${optSuffix}`, type:'lodging', action:`openLodgingModalForDate('${leg.startDate || ''}','${leg.id}','${leg.endDate || ''}')`, priority:1 });
             }
         }
         for (let i = 1; i < legs.length; i++) {
             const lt = (trip.transport || []).filter(t => t.toLegId === legs[i].id || t.fromLegId === legs[i-1].id);
-            if (lt.length === 0) items.push({ text:`Add transport to ${legs[i].city}`, type:'transport', action:'openTransportModal()', priority:2 });
-            else if (!lt.some(t => t.booked)) items.push({ text:`Book transport to ${legs[i].city}`, type:'transport', action:'openTransportModal()', priority:2 });
+            if (lt.length === 0) items.push({ text:`Add transport to ${legs[i].city}`, type:'transport', action:`openTransportModalByLeg('${legs[i-1].id}','${legs[i].id}','${legs[i].startDate || ''}')`, priority:2 });
+            else if (!lt.some(t => t.booked)) items.push({ text:`Book transport to ${legs[i].city}`, type:'transport', action:`openTransportModalByLeg('${legs[i-1].id}','${legs[i].id}','${legs[i].startDate || ''}')`, priority:2 });
         }
         if (trip._transportNeedsReview) {
             for (const t of trip.transport || []) {
@@ -1789,7 +1789,7 @@
             items.push({ text:'Dismiss transport review', type:'transport', action:`dismissTransportReview()`, priority:0 });
         }
         for (const act of trip.activities || []) { if (act.reservationNeeded && !act.booked) items.push({ text:`Book ${act.name}`, type:'activity', action:`openActivityModal('${act.id}')`, priority:3 }); }
-        for (const leg of legs) { const lt3 = leg.legType || 'default'; if (lt3 !== 'home' && lt3 !== 'chill' && !(trip.activities || []).some(a => a.legId === leg.id)) items.push({ text:`Add activities for ${leg.city}`, type:'activity', action:'openActivityModal()', priority:3 }); }
+        for (const leg of legs) { const lt3 = leg.legType || 'default'; if (lt3 !== 'home' && lt3 !== 'chill' && !(trip.activities || []).some(a => a.legId === leg.id)) items.push({ text:`Add activities for ${leg.city}`, type:'activity', action:`openActivityModal(null,'${leg.startDate || ''}','${leg.id}')`, priority:3 }); }
         items.sort((a, b) => a.priority - b.priority);
         return items;
     }
@@ -2172,12 +2172,14 @@
         openActivityModal(null, dateStr, legId);
     }
 
-    function openLodgingModalForDate(dateStr, legId) {
+    function openLodgingModalForDate(dateStr, legId, endDateStr) {
         openLodgingModal();
         setTimeout(() => {
             const ciEl = document.getElementById('lodgingCheckIn');
+            const coEl = document.getElementById('lodgingCheckOut');
             const legEl = document.getElementById('lodgingLeg');
             if (ciEl && dateStr) ciEl.value = dateStr;
+            if (coEl && endDateStr) coEl.value = endDateStr;
             if (legEl && legId) legEl.value = legId;
         }, 50);
     }
@@ -2731,6 +2733,18 @@
         }, 50);
     }
 
+    function openTransportModalByLeg(fromLegId, toLegId, dateStr) {
+        openTransportModal();
+        setTimeout(() => {
+            const fromEl = document.getElementById('transportFromLeg');
+            const toEl = document.getElementById('transportToLeg');
+            const depEl = document.getElementById('transportDeparture');
+            if (fromEl && fromLegId) fromEl.value = fromLegId;
+            if (toEl && toLegId) toEl.value = toLegId;
+            if (depEl && dateStr) depEl.value = dateStr + 'T12:00';
+        }, 50);
+    }
+
     function _renderDayPlanCard(dp, trip, days, opts) {
         const isExpanded = state.expandedDayPlans.has(dp.id);
         const actNames = (dp.activityIds || []).map(aid => { const a = (trip.activities || []).find(x => x.id === aid); return a ? esc(a.name) : '?'; });
@@ -2745,7 +2759,7 @@
                 if (settings.showPhotos && a.photos?.length > 0) {
                     photoStrip = `<div style="display:flex;gap:4px;margin:4px 0 8px 28px;overflow-x:auto">${a.photos.map(p => `<img src="${esc(p.url)}" style="height:50px;border-radius:4px;object-fit:cover;flex-shrink:0">`).join('')}</div>`;
                 }
-                return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border-light)"><span class="category-icon">${catIcon}</span><div style="flex:1"><div style="font-size:13px;font-weight:500">${esc(a.name)}</div><div style="font-size:12px;color:var(--text-muted)">${a.time ? formatTime(a.time) : ''}${a.time && a.duration ? ' \u00B7 ' : ''}${a.duration ? formatDuration(a.duration) : ''}</div></div></div>${photoStrip}`;
+                return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border-light);cursor:pointer" onclick="openActivityModal('${a.id}')"><span class="category-icon">${catIcon}</span><div style="flex:1"><div style="font-size:13px;font-weight:500">${esc(a.name)}</div><div style="font-size:12px;color:var(--text-muted)">${a.time ? formatTime(a.time) : ''}${a.time && a.duration ? ' \u00B7 ' : ''}${a.duration ? formatDuration(a.duration) : ''}</div></div></div>${photoStrip}`;
             }).join('');
         }
         const collapsedContent = !isExpanded ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">${actNames.length > 0 ? actNames.join(' &rarr; ') : 'No activities'}</div>` : '';
@@ -3362,6 +3376,8 @@
             maxZoom: 19
         }).addTo(map);
 
+        map.on('zoomend moveend', resolveMarkerOverlaps);
+
         setTimeout(() => {
             if (map) map.invalidateSize();
         }, 200);
@@ -3491,7 +3507,70 @@
             addHomeMarker(trip.endLocationCoords, trip.endLocation || 'End');
         }
 
+        resolveMarkerOverlaps();
         fitMapBounds();
+    }
+
+    function resolveMarkerOverlaps() {
+        if (!map || !mapMarkers) return;
+        const markers = [];
+        mapMarkers.eachLayer(layer => {
+            if (layer instanceof L.Marker && layer.options.icon) markers.push(layer);
+        });
+        if (markers.length < 2) return;
+
+        const rects = markers.map(m => {
+            const pt = map.latLngToContainerPoint(m.getLatLng());
+            const size = m.options.icon.options.iconSize || [24, 24];
+            const anchor = m.options.icon.options.iconAnchor || [size[0]/2, size[1]/2];
+            return {
+                marker: m,
+                x: pt.x - anchor[0],
+                y: pt.y - anchor[1],
+                w: size[0],
+                h: size[1],
+                anchorX: anchor[0],
+                anchorY: anchor[1]
+            };
+        });
+
+        for (let pass = 0; pass < 3; pass++) {
+            let moved = false;
+            for (let i = 0; i < rects.length; i++) {
+                for (let j = i + 1; j < rects.length; j++) {
+                    const a = rects[i], b = rects[j];
+                    const overlapX = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+                    const overlapY = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+                    if (overlapX > 0 && overlapY > 0) {
+                        const shift = Math.min(overlapX, overlapY) / 2 + 2;
+                        if (overlapX < overlapY) {
+                            const dir = (a.x + a.w/2) < (b.x + b.w/2) ? -1 : 1;
+                            a.x += dir * shift; b.x -= dir * shift;
+                        } else {
+                            const dir = (a.y + a.h/2) < (b.y + b.h/2) ? -1 : 1;
+                            a.y += dir * shift; b.y -= dir * shift;
+                        }
+                        moved = true;
+                    }
+                }
+            }
+            if (!moved) break;
+        }
+
+        rects.forEach(r => {
+            const pt = map.latLngToContainerPoint(r.marker.getLatLng());
+            const origOpts = r.marker.options.icon.options;
+            const origAnchor = origOpts.iconAnchor || [origOpts.iconSize[0]/2, origOpts.iconSize[1]/2];
+            const newAnchorX = pt.x - r.x;
+            const newAnchorY = pt.y - r.y;
+            if (Math.abs(newAnchorX - origAnchor[0]) > 1 || Math.abs(newAnchorY - origAnchor[1]) > 1) {
+                const newIcon = L.divIcon({
+                    ...origOpts,
+                    iconAnchor: [newAnchorX, newAnchorY]
+                });
+                r.marker.setIcon(newIcon);
+            }
+        });
     }
 
     function buildLodgingPopup(lodging) {
@@ -3802,7 +3881,7 @@
 
         try {
             const coordStr = coords.map(c => `${c[0]},${c[1]}`).join(';');
-            const url = `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson&steps=false`;
+            const url = `https://router.project-osrm.org/route/v1/walking/${coordStr}?overview=full&geometries=geojson&steps=false`;
 
             const response = await fetch(url);
             if (!response.ok) return null;
