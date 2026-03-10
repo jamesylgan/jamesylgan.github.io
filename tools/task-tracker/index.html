@@ -1734,11 +1734,12 @@ function render() {
 function renderGroups() {
     const container = document.getElementById('groupsContainer');
     container.innerHTML = '';
-    if (data.groups.length === 0) {
+    const visibleGroups = data.groups.filter(g => !g.archived);
+    if (visibleGroups.length === 0) {
         container.innerHTML = '<div class="empty-state"><p>No groups yet. Create one above to get started.</p></div>';
         return;
     }
-    data.groups.forEach(group => {
+    visibleGroups.forEach(group => {
         const activeTasks = group.tasks.filter(t => !t.archived);
         const doneTasks = activeTasks.filter(t => t.done);
         const el = document.createElement('div');
@@ -1818,7 +1819,7 @@ function renderGroups() {
                     ${settings.progress ? `<span class="group-progress">${doneTasks.length}/${activeTasks.length}</span>` : ''}
                     <div class="group-actions">
                         <button class="icon-btn" onclick="editGroup('${group.id}')" title="Edit group">${esc(settings.labels.editIcon)}</button>
-                        ${settings.archive ? `<button class="icon-btn" onclick="archiveGroup('${group.id}')" title="Archive all tasks in group">${esc(settings.labels.archiveIcon)}</button>` : ''}
+                        ${settings.archive ? `<button class="icon-btn" onclick="archiveGroup('${group.id}')" title="Archive group">${esc(settings.labels.archiveIcon)}</button>` : ''}
                         <button class="icon-btn icon-btn-danger" onclick="deleteGroup('${group.id}')" title="Delete group">${esc(settings.labels.deleteIcon)}</button>
                     </div>
                 </div>
@@ -2053,31 +2054,56 @@ function confirmDeleteTrash(index) {
 
 function renderArchived() {
     const container = document.getElementById('archivedContainer');
-    const allArchived = [];
-    data.groups.forEach(g => {
-        g.tasks.filter(t => t.archived).forEach(t => allArchived.push({ task: t, groupId: g.id, groupName: g.name }));
-    });
-    if (allArchived.length === 0) {
+    const archivedGroups = data.groups.filter(g => g.archived);
+    const activeGroupsWithArchivedTasks = data.groups.filter(g => !g.archived && g.tasks.some(t => t.archived));
+    const hasContent = archivedGroups.length > 0 || activeGroupsWithArchivedTasks.length > 0;
+    if (!hasContent) {
         container.innerHTML = '<div class="empty-state"><p>No archived tasks.</p></div>';
         return;
     }
-    container.innerHTML = `
-        <div style="margin-bottom:12px;text-align:right;">
-            <button class="btn-danger" onclick="clearArchived()" style="font-size:12px;padding:6px 12px;border-radius:6px;border:none;cursor:pointer;">Delete All Archived</button>
-        </div>
-        ${allArchived.map(({ task, groupId, groupName }) => `
-            <div class="task" style="opacity:0.7;">
+    let html = `<div style="margin-bottom:12px;text-align:right;">
+        <button class="btn-danger" onclick="clearArchived()" style="font-size:12px;padding:6px 12px;border-radius:6px;border:none;cursor:pointer;">Delete All Archived</button>
+    </div>`;
+    // Archived groups
+    archivedGroups.forEach(g => {
+        html += `<div class="group" style="opacity:0.8;margin-bottom:16px;">
+            <div class="group-header" style="padding:10px 14px;">
+                <div><h2 style="margin:0;">${esc(g.name)}</h2></div>
+                <div class="task-actions" id="arc-group-actions-${g.id}">
+                    <button onclick="restoreGroup('${g.id}')" title="Restore group" style="font-size:13px;">${esc(settings.labels.restoreIcon)}</button>
+                    <button class="btn-delete" onclick="confirmDeleteArchivedGroup('${g.id}')" title="Delete group permanently">${esc(settings.labels.deleteIcon)}</button>
+                </div>
+            </div>`;
+        g.tasks.filter(t => t.archived).forEach(t => {
+            html += `<div class="task" style="opacity:0.7;margin-left:16px;">
                 <div class="task-body">
-                    <div class="task-title" style="text-decoration:line-through;">${esc(task.title)}</div>
-                    <div class="task-meta"><span>From: ${esc(groupName)}</span></div>
+                    <div class="task-title" style="text-decoration:line-through;">${esc(t.title)}</div>
                 </div>
-                <div class="task-actions" id="arc-actions-${task.id}">
-                    <button onclick="restoreTask('${groupId}','${task.id}')" title="Restore" style="font-size:13px;">${esc(settings.labels.restoreIcon)}</button>
-                    <button class="btn-delete" onclick="confirmDeleteArchived('${groupId}','${task.id}')" title="Delete permanently">${esc(settings.labels.deleteIcon)}</button>
+                <div class="task-actions" id="arc-actions-${t.id}">
+                    <button class="btn-delete" onclick="confirmDeleteArchived('${g.id}','${t.id}')" title="Delete permanently">${esc(settings.labels.deleteIcon)}</button>
                 </div>
-            </div>
-        `).join('')}
-    `;
+            </div>`;
+        });
+        html += `</div>`;
+    });
+    // Active groups with archived tasks
+    activeGroupsWithArchivedTasks.forEach(g => {
+        html += `<div style="margin-bottom:16px;">
+            <div style="padding:8px 14px;font-weight:600;color:var(--accent);font-size:0.95rem;">From: ${esc(g.name)}</div>`;
+        g.tasks.filter(t => t.archived).forEach(t => {
+            html += `<div class="task" style="opacity:0.7;">
+                <div class="task-body">
+                    <div class="task-title" style="text-decoration:line-through;">${esc(t.title)}</div>
+                </div>
+                <div class="task-actions" id="arc-actions-${t.id}">
+                    <button onclick="restoreTask('${g.id}','${t.id}')" title="Restore" style="font-size:13px;">${esc(settings.labels.restoreIcon)}</button>
+                    <button class="btn-delete" onclick="confirmDeleteArchived('${g.id}','${t.id}')" title="Delete permanently">${esc(settings.labels.deleteIcon)}</button>
+                </div>
+            </div>`;
+        });
+        html += `</div>`;
+    });
+    container.innerHTML = html;
 }
 
 function renderProgress() {
@@ -2191,9 +2217,14 @@ function deleteGroup(gid) {
 function archiveGroup(gid) {
     const group = data.groups.find(g => g.id === gid);
     if (!group) return;
+    const prevTaskStates = group.tasks.map(t => ({ id: t.id, archived: !!t.archived }));
+    const nextEntries = (data.nextTasks || []).filter(nt => group.tasks.some(t => t.id === nt.taskId)).map(nt => ({...nt}));
+    group.archived = true;
     group.tasks.forEach(t => { t.archived = true; });
+    if (data.nextTasks) data.nextTasks = data.nextTasks.filter(nt => !group.tasks.some(t => t.id === nt.taskId));
+    undoStack.push({ type: 'archiveGroup', gid, prevTaskStates, nextEntries });
     save();
-    toast(`All tasks in "${group.name}" archived`);
+    toast('Group archived — Ctrl+Z to undo');
 }
 
 function editGroup(gid) {
@@ -2355,8 +2386,31 @@ function restoreTask(gid, tid) {
     if (!task) return;
     task.archived = false;
     task.done = false;
+    undoStack.push({ type: 'unarchiveTask', gid, tid });
     save();
-    toast('Task restored');
+    toast('Task restored — Ctrl+Z to undo');
+}
+
+function restoreGroup(gid) {
+    const group = data.groups.find(g => g.id === gid);
+    if (!group) return;
+    group.archived = false;
+    undoStack.push({ type: 'unarchiveGroup', gid });
+    save();
+    toast('Group restored — Ctrl+Z to undo');
+}
+
+function deleteArchivedGroup(gid) {
+    if (!confirm('Permanently delete this group and all its tasks?')) return;
+    data.groups = data.groups.filter(g => g.id !== gid);
+    save();
+    toast('Group permanently deleted');
+}
+
+function confirmDeleteArchivedGroup(gid) {
+    const el = document.getElementById('arc-group-actions-' + gid);
+    if (!el) return;
+    el.innerHTML = `<span class="confirm-inline">Delete? <button class="confirm-yes" onclick="deleteArchivedGroup('${gid}')">Yes</button><button class="confirm-no" onclick="render()">No</button></span>`;
 }
 
 function deleteTask(gid, tid) {
@@ -2422,10 +2476,11 @@ function purgeExpiredTrash() {
 }
 
 function clearArchived() {
-    if (!confirm('Permanently delete all archived tasks?')) return;
+    if (!confirm('Permanently delete all archived groups and tasks?')) return;
+    data.groups = data.groups.filter(g => !g.archived);
     data.groups.forEach(g => { g.tasks = g.tasks.filter(t => !t.archived); });
     save();
-    toast('Archived tasks cleared');
+    toast('Archived groups and tasks cleared');
 }
 
 // ---------- Edit Modal ----------
@@ -3614,6 +3669,36 @@ function undo() {
             if (action.nextEntry && data.nextTasks) data.nextTasks.push(action.nextEntry);
             save();
             toast('Undo: task restored to new group');
+        }
+    } else if (action.type === 'archiveGroup') {
+        const group = data.groups.find(g => g.id === action.gid);
+        if (group) {
+            group.archived = false;
+            action.prevTaskStates.forEach(ps => {
+                const t = group.tasks.find(t => t.id === ps.id);
+                if (t) t.archived = ps.archived;
+            });
+            if (action.nextEntries && data.nextTasks) {
+                action.nextEntries.forEach(ne => data.nextTasks.push(ne));
+            }
+            save();
+            toast('Undo: group unarchived');
+        }
+    } else if (action.type === 'unarchiveGroup') {
+        const group = data.groups.find(g => g.id === action.gid);
+        if (group) {
+            group.archived = true;
+            save();
+            toast('Undo: group re-archived');
+        }
+    } else if (action.type === 'unarchiveTask') {
+        const group = data.groups.find(g => g.id === action.gid);
+        const task = group?.tasks.find(t => t.id === action.tid);
+        if (task) {
+            task.archived = true;
+            task.done = true;
+            save();
+            toast('Undo: task re-archived');
         }
     } else if (action.type === 'deleteGroup') {
         // Remove tasks from trash if they were moved there
