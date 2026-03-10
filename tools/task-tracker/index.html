@@ -1,0 +1,2293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <meta name="ai-training" content="disallow">
+    <meta name="CCBot" content="nofollow">
+    <meta name="GPTBot" content="nofollow">
+    <title>Task Tracker</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #f0f2f5; --bg-card: white; --bg-task: #fafbfc; --text: #1a1a1a;
+            --text-muted: #6b7280; --border: #e5e7eb; --border-light: #f3f4f6;
+            --accent: #2563eb; --accent-hover: #1d4ed8;
+        }
+        [data-theme="dark"] {
+            --bg: #111827; --bg-card: #1f2937; --bg-task: #1f2937; --text: #f3f4f6;
+            --text-muted: #9ca3af; --border: #374151; --border-light: #374151;
+            --accent: #3b82f6; --accent-hover: #2563eb;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 16px;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        /* Header */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            margin-bottom: 16px;
+            border-bottom: 3px solid var(--accent);
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .app-header h1 { font-size: 1.4rem; color: var(--text); }
+        .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .header-actions button, .header-actions label {
+            font-size: 13px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text);
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .header-actions button:hover, .header-actions label:hover { background: var(--border-light); }
+        .btn-primary { background: var(--accent) !important; color: white !important; border-color: var(--accent) !important; }
+        .btn-primary:hover { background: var(--accent-hover) !important; }
+        .btn-danger { background: #dc2626 !important; color: white !important; border-color: #dc2626 !important; }
+        .btn-danger:hover { background: #b91c1c !important; }
+        .btn-cancel { background: var(--bg-card); color: #dc2626; border: 1px solid #dc2626; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; }
+        .btn-cancel:hover { background: #fee2e2; }
+        .btn-save { background: var(--accent); color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; }
+        .btn-save:hover { background: var(--accent-hover); }
+
+        /* Inline delete confirm */
+        .confirm-inline { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; }
+        .confirm-inline button {
+            padding: 3px 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 12px; font-weight: 500;
+        }
+        .confirm-yes { background: #dc2626; color: white; }
+        .confirm-yes:hover { background: #b91c1c; }
+        .confirm-no { background: var(--bg-card); border: 1px solid var(--border) !important; color: var(--text); }
+        .confirm-no:hover { background: var(--border-light); }
+
+        /* Size badge */
+        .size-badge { font-size: 11px; padding: 1px 6px; border-radius: 3px; background: #e0e7ff; color: #3730a3; }
+        [data-theme="dark"] .size-badge { background: #312e81; color: #a5b4fc; }
+
+        /* Progress */
+        .progress-section { margin-bottom: 16px; }
+        .progress-text { font-size: 13px; color: var(--text-muted); margin-bottom: 4px; }
+        .progress-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #06b6d4); border-radius: 4px; transition: width .3s; }
+
+        /* Tabs */
+        .tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+        .tab {
+            padding: 8px 16px; border-radius: 6px 6px 0 0;
+            border: 1px solid var(--border); border-bottom: none;
+            background: var(--bg-card); color: var(--text); cursor: pointer; font-size: 13px; font-weight: 500;
+        }
+        .tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+        .tab .badge { font-size: 11px; background: rgba(0,0,0,0.15); padding: 1px 6px; border-radius: 8px; margin-left: 4px; }
+        .tab.active .badge { background: rgba(255,255,255,0.3); }
+
+        /* Groups */
+        .group {
+            background: var(--bg-card); border-radius: 8px; padding: 16px;
+            margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .group-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px; flex-wrap: wrap; gap: 8px;
+        }
+        .group-header h2 { font-size: 1.1rem; color: var(--accent); }
+        .group-actions { display: flex; gap: 6px; }
+        .group-progress { font-size: 12px; color: var(--text-muted); background: var(--border-light); padding: 2px 10px; border-radius: 10px; }
+        .group-meta { font-size: 13px; color: var(--text-muted); margin-bottom: 10px; }
+
+        /* Tasks */
+        .task {
+            display: flex; align-items: flex-start; padding: 10px 12px;
+            border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px;
+            background: var(--bg-task); gap: 10px; transition: opacity .2s;
+        }
+        .task.completed { opacity: 0.55; }
+        .task.completed .task-title { text-decoration: line-through; color: var(--text-muted); }
+        .task.overdue { border-left: 3px solid #dc2626; }
+        .task.due-soon { border-left: 3px solid #f59e0b; }
+        .task input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin-top: 2px; accent-color: var(--accent); }
+        .task-body { flex: 1; min-width: 0; }
+        .task-title { font-weight: 500; word-break: break-word; }
+        .task-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; font-size: 12px; color: var(--text-muted); }
+        .task-meta span { display: inline-flex; align-items: center; gap: 3px; }
+        .task-actions { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
+        .task-actions button {
+            width: 28px; height: 28px; border-radius: 4px; border: none;
+            cursor: pointer; font-size: 14px; background: transparent; color: var(--text);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .task-actions button:hover { background: var(--border); }
+        .task-actions .btn-delete:hover { background: #fee2e2; color: #dc2626; }
+        .task-actions .btn-archive:hover { background: #dbeafe; color: var(--accent); }
+
+        /* Shared input row styling */
+        .input-row {
+            display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+        }
+        .input-row input[type="text"] {
+            flex: 1; min-width: 150px; padding: 8px 12px;
+            border: 1px solid var(--border); border-radius: 6px; font-size: 14px;
+            height: 38px; background: var(--bg-card); color: var(--text);
+        }
+        .input-row input[type="date"] {
+            padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+            font-size: 13px; height: 38px; background: var(--bg-card); color: var(--text);
+        }
+        .input-row select {
+            padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+            font-size: 13px; height: 38px; background: var(--bg-card); color: var(--text);
+        }
+        .input-row .btn-primary {
+            height: 38px; padding: 0 16px; font-size: 14px; font-weight: 500;
+            border-radius: 6px; border: none; cursor: pointer; white-space: nowrap;
+        }
+
+        /* Add task area */
+        .add-task-area { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-light); }
+
+        /* Add group */
+        .add-group-area { margin-bottom: 16px; }
+
+        /* Small icon buttons (group edit/delete) */
+        .icon-btn {
+            width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border);
+            background: var(--bg-card); cursor: pointer; font-size: 14px;
+            display: inline-flex; align-items: center; justify-content: center;
+            transition: background .15s;
+        }
+        .icon-btn:hover { background: var(--border-light); }
+        .icon-btn.icon-btn-danger:hover { background: #fee2e2; border-color: #fca5a5; }
+
+        /* Settings panel */
+        .settings-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100;
+        }
+        .settings-overlay.open { display: flex; align-items: center; justify-content: center; }
+        .settings-panel {
+            background: var(--bg-card); color: var(--text); border-radius: 12px; padding: 24px;
+            width: 90%; max-width: 520px; max-height: 85vh; overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            transition: max-width .2s;
+        }
+        .settings-panel h2 { margin-bottom: 16px; font-size: 1.1rem; }
+        .setting-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 0; border-bottom: 1px solid var(--border-light);
+        }
+        .setting-row:last-child { border-bottom: none; }
+        .setting-label { font-size: 14px; color: var(--text); }
+        .setting-desc { font-size: 12px; color: var(--text-muted); }
+        .toggle {
+            position: relative; width: 44px; height: 24px; flex-shrink: 0;
+        }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute; inset: 0; background: var(--border); border-radius: 12px;
+            cursor: pointer; transition: .2s;
+        }
+        .toggle-slider::before {
+            content: ''; position: absolute; width: 18px; height: 18px;
+            left: 3px; bottom: 3px; background: var(--bg-card); border-radius: 50%; transition: .2s;
+        }
+        .toggle input:checked + .toggle-slider { background: var(--accent); }
+        .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+        /* Edit modal */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100;
+        }
+        .modal-overlay.open { display: flex; align-items: center; justify-content: center; }
+        .modal {
+            background: var(--bg-card); color: var(--text); border-radius: 12px; padding: 24px;
+            width: 90%; max-width: 480px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .modal h2 { margin-bottom: 16px; font-size: 1.1rem; }
+        .modal label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; margin-top: 12px; }
+        .modal input, .modal select, .modal textarea {
+            width: 100%; padding: 8px 12px; border: 1px solid var(--border);
+            border-radius: 6px; font-size: 14px; background: var(--bg); color: var(--text);
+        }
+        .modal textarea { resize: vertical; min-height: 60px; }
+        .modal-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+
+        /* Empty state */
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+        .empty-state p { margin-top: 8px; font-size: 14px; }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: var(--bg-card); color: var(--text); padding: 10px 20px; border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            font-size: 14px; z-index: 200; opacity: 0; transition: opacity .3s;
+            pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+
+        /* Settings mode tabs */
+        .settings-mode-tabs { display: flex; gap: 2px; background: var(--border-light); border-radius: 6px; padding: 2px; }
+        .smode-tab {
+            padding: 5px 14px; border: none; border-radius: 5px; font-size: 13px;
+            font-weight: 500; cursor: pointer; background: transparent; color: var(--text-muted);
+        }
+        .smode-tab.active { background: var(--bg-card); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+
+        /* Visual preview */
+        .pv-zone {
+            position: relative; cursor: pointer; border-radius: 4px;
+            transition: outline .15s, background .15s;
+            outline: 2px solid transparent; outline-offset: 2px;
+            margin-bottom: 20px;
+        }
+        .pv-zone:hover { outline-color: var(--accent); background: rgba(37,99,235,0.04); }
+        .pv-zone.pv-off { opacity: 0.3; }
+        .pv-zone.pv-off:hover { opacity: 0.5; }
+        .pv-label {
+            display: none; position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
+            background: var(--accent); color: white; font-size: 10px; font-weight: 600;
+            padding: 1px 6px; border-radius: 3px; white-space: nowrap; z-index: 2;
+            line-height: 1.4; pointer-events: none;
+        }
+        .pv-zone:hover .pv-label { display: block; }
+        .pv-mock-group {
+            background: var(--bg-card); border-radius: 8px; padding: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 10px;
+        }
+        .pv-mock-task {
+            display: flex; align-items: flex-start; padding: 8px 10px;
+            border: 1px solid var(--border); border-radius: 6px; background: var(--bg-task);
+            gap: 8px; font-size: 13px;
+        }
+        .pv-mock-task input[type="checkbox"] { width: 16px; height: 16px; margin-top: 1px; pointer-events: none; }
+        .pv-mock-actions { display: flex; gap: 3px; flex-shrink: 0; }
+        .pv-mock-actions button {
+            width: 24px; height: 24px; border: none; border-radius: 4px;
+            background: transparent; font-size: 12px; pointer-events: none;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .pv-mock-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; font-size: 11px; color: var(--text-muted); }
+        .pv-mock-meta span { display: inline-flex; align-items: center; gap: 2px; }
+        .pv-mock-progress { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin: 6px 0; }
+        .pv-mock-progress-fill { height: 100%; width: 40%; background: linear-gradient(90deg, var(--accent), #06b6d4); border-radius: 3px; }
+        .pv-overall { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+        .pv-tabs { display: flex; gap: 3px; margin-bottom: 8px; }
+        .pv-tab-item { padding: 4px 10px; border-radius: 4px 4px 0 0; border: 1px solid var(--border); border-bottom: none; background: var(--bg-card); font-size: 11px; color: var(--text); }
+        .pv-tab-item:first-child { background: var(--accent); color: white; border-color: var(--accent); }
+        .pv-add-row { display: flex; gap: 4px; margin-top: 8px; }
+        .pv-add-row > * {
+            padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px;
+            font-size: 11px; background: var(--bg-card); color: var(--text-muted);
+        }
+        .pv-add-row .pv-add-btn { background: var(--accent); color: white; border-color: var(--accent); font-weight: 500; }
+
+        /* Full-page visual config mode */
+        .config-banner {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 16px; margin: -16px -16px 16px -16px;
+            background: var(--accent); color: white; border-radius: 0;
+            flex-wrap: wrap; gap: 8px;
+        }
+        .config-banner h2 { font-size: 1.1rem; margin: 0; font-weight: 600; }
+        .config-banner button {
+            padding: 6px 14px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.15); color: white; cursor: pointer; font-size: 13px;
+        }
+        .config-banner button:hover { background: rgba(255,255,255,0.25); }
+        .config-banner .cfg-done { background: var(--bg-card); color: var(--accent); border-color: var(--bg-card); font-weight: 600; }
+        .config-hint {
+            font-size: 12px; color: var(--text-muted); margin-bottom: 12px;
+            background: var(--border-light); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px;
+        }
+        /* Editable text in config mode */
+        .cfg-editable {
+            position: relative; display: inline-block; cursor: pointer;
+            border-bottom: 2px dashed #93c5fd; padding-bottom: 1px;
+        }
+        .cfg-editable:hover { border-bottom-color: #2563eb; }
+        .cfg-editable::after {
+            content: '\270E'; font-size: 11px; margin-left: 4px; color: var(--accent); opacity: 0.6;
+        }
+        .cfg-editable:hover::after { opacity: 1; }
+
+        /* YAML editor modal */
+        .yaml-editor { width: 100%; min-height: 300px; font-family: 'SF Mono', Menlo, monospace; font-size: 13px; line-height: 1.6; padding: 12px; border: 1px solid var(--border); border-radius: 6px; resize: vertical; background: var(--bg); color: var(--text); }
+
+        /* 2-option: standard toggle with labels */
+        .toggle-2opt {
+            display: inline-flex; align-items: center; gap: 8px;
+            user-select: none; font-size: 12px;
+        }
+        .toggle-2opt .opt-label {
+            cursor: pointer; color: var(--text-muted); font-weight: 500;
+            transition: color .2s; white-space: nowrap;
+        }
+        .toggle-2opt .opt-label.active { color: var(--text); font-weight: 600; }
+
+        /* 3-option: segmented buttons + mini toggle */
+        .ctrl-3opt {
+            display: inline-flex; align-items: center; gap: 8px;
+            user-select: none;
+        }
+        .seg-buttons {
+            display: inline-flex; background: var(--border-light);
+            border-radius: 6px; padding: 2px;
+        }
+        .seg-buttons button {
+            padding: 5px 8px; border: none; background: none;
+            color: var(--text-muted); font-size: 11px; font-weight: 500;
+            cursor: pointer; border-radius: 4px; transition: all .2s;
+            white-space: nowrap;
+        }
+        .seg-buttons button.active { background: var(--accent); color: white; }
+        .mini-toggle {
+            width: 36px; height: 18px; background: var(--border-light);
+            border-radius: 9px; position: relative; cursor: pointer; flex-shrink: 0;
+        }
+        .mini-toggle .mini-knob {
+            position: absolute; width: 12px; height: 12px; top: 3px;
+            background: var(--accent); border-radius: 50%;
+            transition: left .25s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        /* Resizable settings panel */
+        .settings-panel { resize: both; overflow: auto; }
+
+        /* Mobile */
+        @media (max-width: 640px) {
+            body { padding: 10px; }
+            .app-header h1 { font-size: 1.1rem; }
+            .header-actions button, .header-actions label { padding: 6px 8px; font-size: 12px; }
+            .group { padding: 12px; }
+            .task { padding: 8px 10px; }
+            .task-actions button { width: 32px; height: 32px; font-size: 16px; }
+            .input-row input[type="text"] { min-width: 100%; }
+            .settings-panel { padding: 16px; resize: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-header" id="mainHeader">
+    <div>
+        <h1 id="appTitle" style="margin:0;">Task Tracker</h1>
+        <div id="appSubtitle" style="font-size:11px;color:var(--text-muted);margin-top:2px;"></div>
+    </div>
+    <div class="header-actions">
+        <button id="settingsBtnMain" onclick="openSettings()" title="Settings">&#9881; Settings</button>
+    </div>
+</div>
+
+<div class="progress-section">
+    <div class="progress-text"><span id="overallLabel">Overall</span>: <strong><span id="overallProgress">0</span>%</strong> (<span id="overallCounts">0/0</span> <span id="tasksLabel">tasks</span>)</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+</div>
+
+<div class="tabs">
+    <div class="tab active" data-tab="active" onclick="switchTab('active')">Active <span class="badge" id="activeCount">0</span></div>
+    <div class="tab" data-tab="archived" onclick="switchTab('archived')">Archived <span class="badge" id="archivedCount">0</span></div>
+    <div class="tab" data-tab="trash" id="trashTab" onclick="switchTab('trash')">Trash <span class="badge" id="trashCount">0</span></div>
+</div>
+
+<div id="activeView">
+    <div class="add-group-area input-row">
+        <input type="text" id="newGroupName" placeholder="New group name..." onkeydown="if(event.key==='Enter')addGroup()">
+        <button id="addGroupBtn" class="btn-primary" onclick="addGroup()">+ Group</button>
+    </div>
+    <div id="groupsContainer"></div>
+</div>
+
+<div id="archivedView" style="display:none">
+    <div id="archivedContainer"></div>
+</div>
+
+<div id="trashView" style="display:none">
+    <div id="trashContainer"></div>
+</div>
+
+<!-- Full-page visual config mode -->
+<div id="configView" style="display:none;">
+    <div class="config-banner">
+        <h2>Settings Configuration</h2>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button onclick="openYamlEditor()">Change UI Text</button>
+            <button onclick="exportSettings()">Export Settings</button>
+            <label style="padding:6px 14px;border-radius:6px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.15);color:white;cursor:pointer;font-size:13px;">Import Settings<input type="file" accept=".json" onchange="importSettings(event)" style="display:none"></label>
+            <button class="cfg-done" onclick="exitConfigMode()">Done</button>
+        </div>
+    </div>
+    <div class="config-hint">Click any <span style="border-bottom:2px dashed #93c5fd;">underlined text</span> to edit it. Click <span class="pv-zone" style="display:inline;outline:2px solid #2563eb;outline-offset:1px;padding:0 4px;border-radius:3px;">highlighted areas</span> to toggle features on/off.</div>
+    <div id="configContent"></div>
+</div>
+
+<!-- YAML Text Editor Modal -->
+<div class="modal-overlay" id="yamlModal" style="z-index:150;" onclick="if(event.target===this)closeYamlEditor()">
+    <div class="modal" style="max-width:640px;max-height:90vh;overflow-y:auto;">
+        <h2>Edit UI Text &amp; Levels</h2>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">Edit labels, priority levels, and size levels. Sections are separated by <code>---</code>.</p>
+        <textarea class="yaml-editor" id="yamlEditor" style="min-height:350px;"></textarea>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="resetLabels()">Reset to Defaults</button>
+            <button class="btn-cancel" onclick="closeYamlEditor()">Cancel</button>
+            <button class="btn-save" onclick="saveYamlEditor()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Settings -->
+<div class="settings-overlay" id="settingsOverlay" onclick="if(event.target===this)closeSettings()">
+    <div class="settings-panel" id="settingsPanel">
+        <!-- Settings mode tabs -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h2 style="margin:0;">Settings</h2>
+            <div class="settings-mode-tabs">
+                <button class="smode-tab active" data-mode="menu" onclick="switchSettingsMode('menu')">Menu</button>
+                <button class="smode-tab" data-mode="preview" onclick="switchSettingsMode('preview')">Visual</button>
+            </div>
+        </div>
+
+        <!-- MENU MODE -->
+        <div id="settingsMenuMode">
+            <div id="mainSettingsContainer"></div>
+
+            <!-- Customization -->
+            <div id="customizationSection" style="border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px;">
+                <button onclick="openYamlEditor()" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text);cursor:pointer;font-size:13px;">Edit UI Text &amp; Levels</button>
+            </div>
+
+            <!-- Advanced Settings (collapsible) -->
+            <div id="advancedSection" style="border-top: 1px solid var(--border); margin-top: 12px; padding-top: 8px;">
+                <div style="display:flex;align-items:center;gap:6px;padding:4px 0;">
+                    <div onclick="toggleAdvanced()" style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;">
+                        <span id="advancedArrow" style="font-size:12px;transition:transform .2s;display:inline-block;">&#9654;</span>
+                        <span class="setting-label">Advanced</span>
+                    </div>
+                    <span onclick="toggleOrganizeMode()" style="cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px;color:var(--text-muted);" title="Organize which settings are in Advanced" id="organizeBtn">&#9998;</span>
+                </div>
+                <div id="advancedSettingsContainer" style="display:none;"></div>
+            </div>
+            <!-- Organize mode overlay -->
+            <div id="organizeContainer" style="display:none;border-top:1px solid var(--border);margin-top:8px;padding-top:8px;"></div>
+        </div>
+
+        <!-- VISUAL PREVIEW MODE (modal version) -->
+        <div id="settingsPreviewMode" style="display:none;">
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">Click any highlighted element to toggle that feature on or off. Click <span style="border-bottom:2px dashed #93c5fd;">underlined text</span> to edit it.</p>
+            <div style="margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap;">
+                <button onclick="openYamlEditor()" style="padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text);cursor:pointer;font-size:12px;">Edit UI Text &amp; Levels</button>
+            </div>
+            <div id="previewContainer"></div>
+        </div>
+
+        <!-- Data section (shared) -->
+        <div id="dataSection" style="border-top: 1px solid var(--border); margin-top: 16px; padding-top: 16px;">
+            <div class="setting-label" style="margin-bottom: 10px;">Data</div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button onclick="exportJSON()" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text);cursor:pointer;font-size:13px;">&#8595; Export JSON</button>
+                <label style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text);cursor:pointer;font-size:13px;text-align:center;">&#8593; Import JSON<input type="file" accept=".json" onchange="importJSON(event)" style="display:none"></label>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px;">
+                <button onclick="exportSettings()" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text);cursor:pointer;font-size:13px;">&#8595; Export Settings</button>
+                <label style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text);cursor:pointer;font-size:13px;text-align:center;">&#8593; Import Settings<input type="file" accept=".json" onchange="importSettings(event)" style="display:none"></label>
+            </div>
+            <button onclick="clearAll()" style="width:100%;margin-top:8px;padding:8px 12px;border:none;border-radius:6px;background:#fee2e2;color:#dc2626;cursor:pointer;font-size:13px;font-weight:500;">Clear All Data</button>
+            <button onclick="resetAllSettings()" style="width:100%;margin-top:6px;padding:8px 12px;border:none;border-radius:6px;background:#fef3c7;color:#92400e;cursor:pointer;font-size:13px;font-weight:500;">Reset Settings to Default</button>
+            <button id="loadSampleBtn" onclick="loadSampleData()" style="width:100%;margin-top:6px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text);cursor:pointer;font-size:13px;display:none;">Load Sample Data</button>
+        </div>
+        <div style="margin-top: 16px; display:flex; justify-content:flex-end; gap:8px;">
+            <button id="backToSettingsBtn" onclick="toggleOrganizeMode()" style="display:none;padding:8px 16px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text);cursor:pointer;font-size:13px;">Save &amp; Back to Settings</button>
+            <button class="btn-primary" onclick="if(organizeMode){toggleOrganizeMode();}closeSettings();" style="padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;">Done</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Task Modal -->
+<div class="modal-overlay" id="editModal" onclick="if(event.target===this)closeEditModal()">
+    <div class="modal">
+        <h2>Edit Task</h2>
+        <label>Title</label>
+        <input type="text" id="editTitle">
+        <div id="editNotesWrap"><label>Notes</label><textarea id="editNotes" placeholder="Optional notes..."></textarea></div>
+        <div id="editDueDateWrap"><label>Due Date</label><input type="date" id="editDueDate"></div>
+        <div id="editRepeatWrap">
+            <label>Repeat</label>
+            <select id="editRepeat">
+                <option value="">None</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="biweekly">Every 2 Weeks</option>
+                <option value="monthly">Monthly</option>
+            </select>
+            <div id="editRepeatExtras" style="margin-top:8px;">
+                <label>Repeat on days</label>
+                <div id="editRepeatDays" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;"></div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <div style="flex:1;"><label>Time</label><input type="time" id="editRepeatTime" style="width:100%;"></div>
+                    <div style="flex:1;"><label>Repeat count (0 = forever)</label><input type="number" id="editRepeatCount" min="0" value="0" style="width:100%;"></div>
+                </div>
+            </div>
+        </div>
+        <div id="editPriorityWrap">
+            <label>Priority</label>
+            <select id="editPriority"></select>
+        </div>
+        <div id="editSizingWrap">
+            <label>Size / Effort</label>
+            <select id="editSize"></select>
+        </div>
+        <input type="hidden" id="editTaskId">
+        <input type="hidden" id="editGroupId">
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+            <button class="btn-save" onclick="saveEdit()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Group Modal -->
+<div class="modal-overlay" id="editGroupModal" onclick="if(event.target===this)closeEditGroupModal()">
+    <div class="modal">
+        <h2>Edit Group</h2>
+        <label>Group Name</label>
+        <input type="text" id="editGroupName">
+        <label>Description (optional)</label>
+        <input type="text" id="editGroupDesc">
+        <input type="hidden" id="editGroupTargetId">
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeEditGroupModal()">Cancel</button>
+            <button class="btn-save" onclick="saveGroupEdit()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Clear All Confirmation Modal -->
+<div class="modal-overlay" id="clearModal" onclick="if(event.target===this)closeClearModal()">
+    <div class="modal">
+        <h2 style="color:#dc2626;">Delete All Data</h2>
+        <p style="margin:8px 0 16px;color:var(--text-muted);font-size:14px;">This will permanently delete all groups, tasks, and archived items. This cannot be undone.</p>
+        <label>Type <strong>I am really sure</strong> to confirm:</label>
+        <input type="text" id="clearConfirmInput" placeholder="Type confirmation here..." oninput="checkClearConfirm()">
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeClearModal()">Cancel</button>
+            <button class="btn-danger" id="clearConfirmBtn" onclick="doClearAll()" disabled style="opacity:0.5;padding:8px 20px;border-radius:6px;font-size:14px;font-weight:500;">Delete Everything</button>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Settings Confirmation Modal -->
+<div class="modal-overlay" id="resetSettingsModal" onclick="if(event.target===this)closeResetSettingsModal()">
+    <div class="modal">
+        <h2 style="color:#92400e;">Reset All Settings</h2>
+        <p style="margin:8px 0 16px;color:var(--text-muted);font-size:14px;">This will reset all settings, labels, icons, priority levels, size levels, and organization preferences back to defaults. Your task data will not be affected.</p>
+        <label>Type <strong>I am really sure</strong> to confirm:</label>
+        <input type="text" id="resetSettingsConfirmInput" placeholder="Type confirmation here..." oninput="checkResetSettingsConfirm()">
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeResetSettingsModal()">Cancel</button>
+            <button class="btn-danger" id="resetSettingsConfirmBtn" onclick="doResetSettings()" disabled style="opacity:0.5;padding:8px 20px;border-radius:6px;font-size:14px;font-weight:500;background:#92400e;">Reset Settings</button>
+        </div>
+    </div>
+</div>
+
+<!-- Passphrase Modal -->
+<div class="modal-overlay" id="passphraseModal">
+    <div class="modal">
+        <h2 id="passphraseTitle">Enter Passphrase</h2>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;" id="passphraseDesc">Enter your passphrase to decrypt your data.</p>
+        <label>Passphrase</label>
+        <input type="password" id="passphraseInput" placeholder="Enter passphrase..." onkeydown="if(event.key==='Enter')submitPassphrase()">
+        <div id="passphraseConfirmWrap" style="display:none;">
+            <label>Confirm Passphrase</label>
+            <input type="password" id="passphraseConfirm" placeholder="Confirm passphrase..." onkeydown="if(event.key==='Enter')submitPassphrase()">
+        </div>
+        <p id="passphraseError" style="color:#dc2626;font-size:13px;margin-top:8px;display:none;"></p>
+        <div class="modal-actions">
+            <button class="btn-cancel" id="passphraseCancelBtn" onclick="cancelPassphrase()">Cancel</button>
+            <button class="btn-save" onclick="submitPassphrase()">OK</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Use different localStorage keys for hosted vs local file access
+const isLocal = location.protocol === 'file:';
+const STORAGE_KEY = isLocal ? 'task-tracker-local-v1' : 'task-tracker-hosted-v1';
+const SETTINGS_KEY = 'task-tracker-settings-v1'; // shared between local and hosted
+
+// ---------- Default Data ----------
+const DEFAULT_DATA = {
+    groups: [
+        {
+            id: 'g1', name: 'Getting Started', description: 'Example tasks to explore features',
+            tasks: [
+                { id: 't1', title: 'Task 1 — Try checking this off', done: false, dueDate: '', repeat: '', repeatId: '', notes: 'Click the checkbox to complete!', priority: '', archived: false, createdAt: new Date().toISOString() },
+                { id: 't2', title: 'Task 2 — Edit me with the pencil icon', done: false, dueDate: '', repeat: '', repeatId: '', notes: '', priority: 'medium', archived: false, createdAt: new Date().toISOString() },
+                { id: 't3', title: 'Task 3 — Set a due date on this task', done: false, dueDate: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0], repeat: '', repeatId: '', notes: '', priority: '', archived: false, createdAt: new Date().toISOString() },
+                { id: 't4', title: 'Task 4 — A repeating weekly task', done: false, dueDate: new Date().toISOString().split('T')[0], repeat: 'weekly', repeatId: 'r-demo', notes: 'This resets when completed.', priority: 'high', archived: false, createdAt: new Date().toISOString() },
+            ]
+        },
+        {
+            id: 'g2', name: 'Project Alpha', description: 'Another example group',
+            tasks: [
+                { id: 't5', title: 'Task 5 — Research options', done: false, dueDate: '', repeat: '', repeatId: '', notes: '', priority: 'low', archived: false, createdAt: new Date().toISOString() },
+                { id: 't6', title: 'Task 6 — Write summary', done: false, dueDate: '', repeat: '', repeatId: '', notes: '', priority: '', archived: false, createdAt: new Date().toISOString() },
+            ]
+        }
+    ],
+    repeatHistory: { 'r-demo': [new Date().toISOString().split('T')[0]] },
+    trash: [],
+};
+
+const DEFAULT_LABELS = {
+    appTitle: 'Task Tracker',
+    appSubtitle: 'made by James Gan: @bellevue.tech',
+    activeTab: 'Active',
+    archivedTab: 'Archived',
+    trashTab: 'Trash',
+    addGroup: '+ Group',
+    addTask: '+ Add',
+    groupPlaceholder: 'New group name...',
+    taskPlaceholder: 'Add a task...',
+    settingsBtn: 'Settings',
+    noRepeat: 'No repeat',
+    priorityLabel: 'Priority',
+    overallLabel: 'Overall',
+    tasksLabel: 'tasks',
+    // Icons
+    settingsIcon: '\u2699',
+    editIcon: '\u270E',
+    archiveIcon: '\uD83D\uDDC4',
+    deleteIcon: '\uD83D\uDDD1',
+    calendarIcon: '\uD83D\uDCC5',
+    repeatIcon: '\uD83D\uDD04',
+    notesIcon: '\uD83D\uDCDD',
+    restoreIcon: '\u21A9',
+    overdueIcon: '\u26A0',
+    exportIcon: '\u2193',
+    importIcon: '\u2191',
+};
+
+const DEFAULT_PRIORITY_LEVELS = [
+    { value: 'high', label: 'High', icon: '\u{1F534}' },
+    { value: 'medium', label: 'Medium', icon: '\u{1F7E1}' },
+    { value: 'low', label: 'Low', icon: '\u{1F7E2}' },
+];
+const DEFAULT_SIZE_LEVELS = [
+    { value: 'S', label: 'Small' },
+    { value: 'M', label: 'Medium' },
+    { value: 'L', label: 'Large' },
+];
+const DEFAULT_SETTINGS = {
+    dueDates: true,
+    repeat: true,
+    archive: true,
+    progress: true,
+    notes: true,
+    priority: false,
+    sizing: false,
+    trash: true,
+    encryption: false,
+    darkMode: false,
+    dateFormat: 'dd/mm/yyyy', // 'yyyy-mm-dd', 'mm/dd/yyyy', 'dd/mm/yyyy'
+    dismissAction: 'archive',
+    visualMode: 'modal',
+    advancedSettings: ['encryption', 'visualMode', 'clearAllData'],
+    hiddenSettings: ['resetSettings'],
+    settingsOrder: [],
+    priorityLevels: JSON.parse(JSON.stringify(DEFAULT_PRIORITY_LEVELS)),
+    sizeLevels: JSON.parse(JSON.stringify(DEFAULT_SIZE_LEVELS)),
+    labels: { ...DEFAULT_LABELS },
+};
+const TRASH_RETENTION_DAYS = 30;
+
+// ---------- State ----------
+let data = null;
+let settings = null;
+let currentTab = 'active';
+
+function load() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    let parsed = saved ? JSON.parse(saved) : null;
+    // Skip encrypted data — init() handles that path
+    if (parsed && parsed.encrypted) parsed = null;
+    data = parsed && parsed.groups ? parsed : JSON.parse(JSON.stringify(DEFAULT_DATA));
+    // Ensure new fields exist on old data
+    if (!data.repeatHistory) data.repeatHistory = {};
+    if (!data.trash) data.trash = [];
+    const savedSettings = localStorage.getItem(SETTINGS_KEY);
+    const parsedSettings = savedSettings ? JSON.parse(savedSettings) : {};
+    settings = {
+        ...DEFAULT_SETTINGS, ...parsedSettings,
+        labels: { ...DEFAULT_LABELS, ...(parsedSettings.labels || {}) },
+        priorityLevels: parsedSettings.priorityLevels || JSON.parse(JSON.stringify(DEFAULT_PRIORITY_LEVELS)),
+        sizeLevels: parsedSettings.sizeLevels || JSON.parse(JSON.stringify(DEFAULT_SIZE_LEVELS)),
+    };
+    applyDarkMode();
+    applySettings();
+    purgeExpiredTrash();
+    backfillRepeatingTasks();
+    render();
+}
+
+function save() {
+    if (settings.encryption && cryptoKey) {
+        saveEncrypted().then(() => render());
+    } else {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        render();
+    }
+}
+
+function saveSetting() {
+    settings.dueDates = document.getElementById('settingDueDates').checked;
+    settings.repeat = document.getElementById('settingRepeat').checked;
+    settings.archive = document.getElementById('settingArchive').checked;
+    settings.progress = document.getElementById('settingProgress').checked;
+    settings.notes = document.getElementById('settingNotes').checked;
+    settings.priority = document.getElementById('settingPriority').checked;
+    settings.sizing = document.getElementById('settingSizing').checked;
+    settings.trash = document.getElementById('settingTrash').checked;
+    settings.darkMode = document.getElementById('settingDarkMode').checked;
+    // dateFormat, dismissAction, visualMode are now set via setToggle/cycleSetting
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    applyDarkMode();
+    render();
+}
+function setSlider(key, val) {
+    settings[key] = val;
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    applySliders();
+    render();
+}
+function cycleSlider(key) {
+    const el = document.querySelector(`.ctrl-3opt[data-key="${key}"]`);
+    if (!el) return;
+    const opts = el.dataset.options.split(',');
+    const idx = opts.indexOf(settings[key]);
+    // Bounce: left → middle → right → middle → left
+    let dir = el._dir || 1;
+    let next = idx + dir;
+    if (next >= opts.length) { dir = -1; next = idx + dir; }
+    if (next < 0) { dir = 1; next = idx + dir; }
+    el._dir = dir;
+    setSlider(key, opts[next]);
+}
+function applySliders() {
+    // 2-option toggles
+    document.querySelectorAll('.toggle-2opt').forEach(el => {
+        const key = el.dataset.key;
+        const opts = el.dataset.options.split(',');
+        const current = settings[key];
+        el.querySelectorAll('.opt-label').forEach(lbl => lbl.classList.toggle('active', lbl.dataset.val === current));
+        const cb = el.querySelector('input[type="checkbox"]');
+        if (cb) cb.checked = (current === opts[1]);
+    });
+    // 3-option controls
+    document.querySelectorAll('.ctrl-3opt').forEach(el => {
+        const key = el.dataset.key;
+        const opts = el.dataset.options.split(',');
+        const current = settings[key];
+        const idx = Math.max(0, opts.indexOf(current));
+        el.querySelectorAll('.seg-buttons button').forEach(btn => btn.classList.toggle('active', btn.dataset.val === current));
+        const knob = el.querySelector('.mini-knob');
+        if (knob) knob.style.left = (3 + idx * 9) + 'px';
+    });
+}
+
+const ALL_SETTINGS_ROWS = [
+    // Task features
+    { key: 'dueDates', label: 'Due Dates', desc: 'Show due date picker on tasks', type: 'toggle', id: 'settingDueDates' },
+    { key: 'priority', label: 'Priority', desc: 'Set priority levels on tasks', type: 'toggle', id: 'settingPriority' },
+    { key: 'sizing', label: 'Sizing', desc: 'Estimate effort size on tasks', type: 'toggle', id: 'settingSizing' },
+    { key: 'notes', label: 'Notes', desc: 'Allow adding notes/descriptions to tasks', type: 'toggle', id: 'settingNotes' },
+    { key: 'repeat', label: 'Repeating Tasks', desc: 'Allow tasks to repeat on a schedule', type: 'toggle', id: 'settingRepeat' },
+    { key: 'progress', label: 'Progress Tracking', desc: 'Show progress bars per group and overall', type: 'toggle', id: 'settingProgress' },
+    // Organization
+    { key: 'archive', label: 'Archive', desc: 'Archive tasks instead of only deleting', type: 'toggle', id: 'settingArchive' },
+    { key: 'trash', label: 'Trash', desc: 'Deleted items go to trash for 30 days', type: 'toggle', id: 'settingTrash' },
+    // Appearance
+    { key: 'darkMode', label: 'Dark Mode', desc: 'Switch to dark theme', type: 'toggle', id: 'settingDarkMode' },
+    { key: 'visualMode', label: 'Visual Settings', desc: 'Open visual settings as modal or full page', type: 'slider', options: 'modal,fullpage', optionLabels: ['Modal','Full Page'] },
+    { key: 'dismissAction', label: 'Task Actions', desc: 'Which dismiss buttons to show', type: 'slider', options: 'archive,both,delete', optionLabels: ['Archive','Both','Delete'], rowId: 'dismissActionRow', showIf: () => settings.archive },
+    { key: 'dateFormat', label: 'Date Format', desc: 'How dates are displayed', type: 'slider', options: 'yyyy-mm-dd,mm/dd/yyyy,dd/mm/yyyy', optionLabels: ['YYYY-MM-DD','MM/DD/YYYY','DD/MM/YYYY'] },
+    // Data & security
+    { key: 'encryption', label: 'Encryption', desc: 'Encrypt stored data with a passphrase (e.g. your email)', type: 'toggle', id: 'settingEncryption', handler: 'toggleEncryption()' },
+    { key: 'yamlEditor', label: 'Edit UI Text & Levels', desc: 'Edit labels, priority levels, and size levels', type: 'section' },
+    { key: 'dataSection', label: 'Data Section', desc: 'Export/import JSON and settings', type: 'section' },
+    { key: 'clearAllData', label: 'Clear All Data', desc: 'Button to erase all task data', type: 'section' },
+    { key: 'resetSettings', label: 'Reset Settings', desc: 'Button to reset all settings to defaults', type: 'section' },
+    { key: 'advancedMenu', label: 'Advanced Menu', desc: 'Collapsible advanced settings section', type: 'section' },
+];
+
+function renderSettingRow(row) {
+    const hidden = row.showIf && !row.showIf() ? ' style="display:none"' : '';
+    const rowId = row.rowId ? ` id="${row.rowId}"` : '';
+    if (row.type === 'toggle') {
+        const handler = row.handler || 'saveSetting()';
+        return `<div class="setting-row"${rowId}${hidden}>
+            <div><div class="setting-label">${esc(row.label)}</div><div class="setting-desc">${esc(row.desc)}</div></div>
+            <label class="toggle"><input type="checkbox" id="${row.id}" onchange="${handler}"><span class="toggle-slider"></span></label>
+        </div>`;
+    } else if (row.type === 'slider') {
+        const opts = row.options.split(',');
+        if (opts.length === 2) {
+            // 2-option: standard toggle with labels on each side
+            return `<div class="setting-row"${rowId}${hidden}>
+                <div><div class="setting-label">${esc(row.label)}</div><div class="setting-desc">${esc(row.desc)}</div></div>
+                <div class="toggle-2opt" data-key="${row.key}" data-options="${row.options}">
+                    <span class="opt-label" data-val="${opts[0]}" onclick="setSlider('${row.key}','${opts[0]}')">${esc(row.optionLabels[0])}</span>
+                    <label class="toggle"><input type="checkbox" onchange="setSlider('${row.key}', this.checked ? '${opts[1]}' : '${opts[0]}')"><span class="toggle-slider"></span></label>
+                    <span class="opt-label" data-val="${opts[1]}" onclick="setSlider('${row.key}','${opts[1]}')">${esc(row.optionLabels[1])}</span>
+                </div>
+            </div>`;
+        } else {
+            // 3-option: segmented buttons + mini 3-position toggle
+            const btns = opts.map((o, i) => `<button data-val="${o}" onclick="event.stopPropagation();setSlider('${row.key}','${o}')">${esc(row.optionLabels[i])}</button>`).join('');
+            return `<div class="setting-row"${rowId}${hidden}>
+                <div><div class="setting-label">${esc(row.label)}</div><div class="setting-desc">${esc(row.desc)}</div></div>
+                <div class="ctrl-3opt" data-key="${row.key}" data-options="${row.options}">
+                    <div class="seg-buttons">${btns}</div>
+                    <div class="mini-toggle" onclick="cycleSlider('${row.key}')"><div class="mini-knob"></div></div>
+                </div>
+            </div>`;
+        }
+    } else if (row.type === 'section') {
+        // Sections are only rendered when placed in advanced; otherwise handled by hardcoded DOM
+        return '';
+    }
+    return '';
+}
+
+function getOrderedRows() {
+    const order = settings.settingsOrder || [];
+    const sorted = [...ALL_SETTINGS_ROWS];
+    if (order.length > 0) {
+        sorted.sort((a, b) => {
+            const ai = order.indexOf(a.key), bi = order.indexOf(b.key);
+            if (ai === -1 && bi === -1) return 0;
+            if (ai === -1) return 1;
+            if (bi === -1) return 1;
+            return ai - bi;
+        });
+    }
+    return sorted;
+}
+function renderSettingsMenu() {
+    const adv = settings.advancedSettings || [];
+    const hidden = settings.hiddenSettings || [];
+    const ordered = getOrderedRows();
+    const mainRows = ordered.filter(r => r.type !== 'section' && !adv.includes(r.key) && !hidden.includes(r.key));
+    const advRows = ordered.filter(r => r.type !== 'section' && adv.includes(r.key) && !hidden.includes(r.key));
+    document.getElementById('mainSettingsContainer').innerHTML = mainRows.map(renderSettingRow).join('');
+    // Build advanced content: setting rows + any sections marked advanced
+    let advHtml = advRows.map(renderSettingRow).join('');
+    if (adv.includes('yamlEditor') && !hidden.includes('yamlEditor')) {
+        advHtml += `<div style="margin-top:8px;"><button onclick="openYamlEditor()" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text);cursor:pointer;font-size:13px;">Edit UI Text &amp; Levels</button></div>`;
+    }
+    if (adv.includes('dataSection') && !hidden.includes('dataSection')) {
+        advHtml += `<div style="margin-top:8px;">
+            <div class="setting-label" style="margin-bottom:6px;">Data</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button onclick="exportJSON()" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text);cursor:pointer;font-size:13px;">&#8595; Export JSON</button>
+                <label style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text);cursor:pointer;font-size:13px;text-align:center;">&#8593; Import JSON<input type="file" accept=".json" onchange="importJSON(event)" style="display:none"></label>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+                <button onclick="exportSettings()" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text);cursor:pointer;font-size:13px;">&#8595; Export Settings</button>
+                <label style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text);cursor:pointer;font-size:13px;text-align:center;">&#8593; Import Settings<input type="file" accept=".json" onchange="importSettings(event)" style="display:none"></label>
+            </div>
+            <button id="loadSampleBtnAdv" onclick="loadSampleData()" style="width:100%;margin-top:6px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text);cursor:pointer;font-size:13px;display:none;">Load Sample Data</button>
+        </div>`;
+    }
+    if (adv.includes('clearAllData') && !hidden.includes('clearAllData')) {
+        advHtml += `<div style="margin-top:8px;"><button onclick="clearAll()" style="width:100%;padding:8px 12px;border:none;border-radius:6px;background:#fee2e2;color:#dc2626;cursor:pointer;font-size:13px;font-weight:500;">Clear All Data</button></div>`;
+    }
+    if (adv.includes('resetSettings') && !hidden.includes('resetSettings')) {
+        advHtml += `<div style="margin-top:8px;"><button onclick="resetAllSettings()" style="width:100%;padding:8px 12px;border:none;border-radius:6px;background:#fef3c7;color:#92400e;cursor:pointer;font-size:13px;font-weight:500;">Reset Settings to Default</button></div>`;
+    }
+    document.getElementById('advancedSettingsContainer').innerHTML = advHtml;
+    // Show/hide hardcoded sections based on placement
+    const cs = document.getElementById('customizationSection');
+    if (cs) cs.style.display = (adv.includes('yamlEditor') || hidden.includes('yamlEditor')) ? 'none' : '';
+    const ds = document.getElementById('dataSection');
+    if (ds) ds.style.display = (adv.includes('dataSection') || hidden.includes('dataSection')) ? 'none' : '';
+    // Hide clear all / reset from main data section if advanced or hidden
+    const clearBtn = ds ? ds.querySelector('[onclick="clearAll()"]') : null;
+    if (clearBtn) clearBtn.style.display = (adv.includes('clearAllData') || hidden.includes('clearAllData')) ? 'none' : '';
+    const resetBtn = ds ? ds.querySelector('[onclick="resetAllSettings()"]') : null;
+    if (resetBtn) resetBtn.style.display = (adv.includes('resetSettings') || hidden.includes('resetSettings')) ? 'none' : '';
+    // Hide advanced menu if hidden (but not if just "advanced" — that's circular)
+    const as = document.getElementById('advancedSection');
+    if (as) as.style.display = hidden.includes('advancedMenu') ? 'none' : '';
+}
+
+function applySettings() {
+    renderSettingsMenu();
+    ALL_SETTINGS_ROWS.forEach(row => {
+        if (row.type === 'toggle' && row.id) {
+            const el = document.getElementById(row.id);
+            if (el) el.checked = settings[row.key];
+        }
+    });
+    const daRow = document.getElementById('dismissActionRow');
+    if (daRow) daRow.style.display = settings.archive ? '' : 'none';
+    applySliders();
+    applyDarkMode();
+}
+
+let advancedOpen = false;
+let organizeMode = false;
+function toggleAdvanced() {
+    if (organizeMode) return;
+    advancedOpen = !advancedOpen;
+    document.getElementById('advancedSettingsContainer').style.display = advancedOpen ? '' : 'none';
+    document.getElementById('advancedArrow').style.transform = advancedOpen ? 'rotate(90deg)' : '';
+}
+function toggleOrganizeMode() {
+    organizeMode = !organizeMode;
+    const container = document.getElementById('organizeContainer');
+    const btn = document.getElementById('organizeBtn');
+    if (organizeMode) {
+        btn.style.color = 'var(--accent)';
+        const adv = settings.advancedSettings || [];
+        const hid = settings.hiddenSettings || [];
+        const ordered = getOrderedRows();
+        const rows = ordered.map(r => {
+            const state = hid.includes(r.key) ? 'hidden' : adv.includes(r.key) ? 'advanced' : 'main';
+            const colors = { main: { bg: 'var(--bg-card)', border: 'var(--border)', text: 'var(--text-muted)' }, advanced: { bg: 'var(--accent)', border: 'var(--accent)', text: 'white' }, hidden: { bg: '#fee2e2', border: '#fca5a5', text: '#dc2626' } };
+            const c = colors[state];
+            const label = state.charAt(0).toUpperCase() + state.slice(1);
+            return `<div class="org-row" draggable="true" data-key="${r.key}" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-light);">
+                <span class="drag-handle" style="cursor:grab;color:var(--text-muted);font-size:16px;line-height:1;padding:0 2px;">&#9776;</span>
+                <span style="flex:1;font-size:13px;color:var(--text);">${esc(r.label)}</span>
+                <button onclick="cycleSettingPlacement('${r.key}')" style="padding:3px 10px;border:1px solid ${c.border};border-radius:4px;background:${c.bg};color:${c.text};cursor:pointer;font-size:11px;min-width:70px;text-align:center;">${label}</button>
+            </div>`;
+        }).join('');
+        container.innerHTML = `<div class="setting-label" style="margin-bottom:6px;">Drag ☰ to reorder. Click status to cycle: Main → Advanced → Hidden</div><div id="orgList">${rows}</div>`;
+        initOrgDragDrop();
+        container.style.display = '';
+        document.getElementById('mainSettingsContainer').style.display = 'none';
+        document.getElementById('advancedSection').style.display = 'none';
+        document.getElementById('customizationSection').style.display = 'none';
+        document.getElementById('dataSection').style.display = 'none';
+        document.getElementById('backToSettingsBtn').style.display = '';
+        document.querySelector('.settings-mode-tabs').style.display = 'none';
+    } else {
+        btn.style.color = 'var(--text-muted)';
+        container.style.display = 'none';
+        container.innerHTML = '';
+        document.getElementById('mainSettingsContainer').style.display = '';
+        document.getElementById('backToSettingsBtn').style.display = 'none';
+        document.querySelector('.settings-mode-tabs').style.display = '';
+        renderSettingsMenu();
+        applySettings();
+    }
+}
+function cycleSettingPlacement(key) {
+    const adv = settings.advancedSettings || [];
+    const hid = settings.hiddenSettings || [];
+    const inAdv = adv.indexOf(key);
+    const inHid = hid.indexOf(key);
+    // advancedMenu can only cycle Main ↔ Hidden (putting it in Advanced is circular)
+    if (key === 'advancedMenu') {
+        if (inHid >= 0) { hid.splice(inHid, 1); }
+        else { hid.push(key); }
+    } else if (inHid >= 0) {
+        // Hidden → Main
+        hid.splice(inHid, 1);
+    } else if (inAdv >= 0) {
+        // Advanced → Hidden
+        adv.splice(inAdv, 1);
+        hid.push(key);
+    } else {
+        // Main → Advanced
+        adv.push(key);
+    }
+    settings.advancedSettings = adv;
+    settings.hiddenSettings = hid;
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    // Re-render organize mode
+    organizeMode = false;
+    toggleOrganizeMode();
+}
+function initOrgDragDrop() {
+    const list = document.getElementById('orgList');
+    if (!list) return;
+    let dragEl = null;
+    list.addEventListener('dragstart', e => {
+        dragEl = e.target.closest('.org-row');
+        if (!dragEl) return;
+        dragEl.style.opacity = '0.4';
+        e.dataTransfer.effectAllowed = 'move';
+    });
+    list.addEventListener('dragend', e => {
+        if (dragEl) dragEl.style.opacity = '';
+        dragEl = null;
+        list.querySelectorAll('.org-row').forEach(r => r.style.borderTop = '');
+    });
+    list.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const target = e.target.closest('.org-row');
+        list.querySelectorAll('.org-row').forEach(r => r.style.borderTop = '');
+        if (target && target !== dragEl) {
+            target.style.borderTop = '2px solid var(--accent)';
+        }
+    });
+    list.addEventListener('drop', e => {
+        e.preventDefault();
+        const target = e.target.closest('.org-row');
+        if (!target || !dragEl || target === dragEl) return;
+        list.insertBefore(dragEl, target);
+        // Save new order
+        const newOrder = [...list.querySelectorAll('.org-row')].map(r => r.dataset.key);
+        settings.settingsOrder = newOrder;
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    });
+}
+
+function applyDarkMode() {
+    document.documentElement.setAttribute('data-theme', settings.darkMode ? 'dark' : 'light');
+}
+
+// ---------- Render ----------
+function render() {
+    if (configMode) return; // don't re-render main UI while in visual config
+    const L = settings.labels;
+    document.getElementById('appTitle').textContent = L.appTitle;
+    document.title = L.appTitle;
+    const subEl = document.getElementById('appSubtitle');
+    if (subEl) subEl.textContent = L.appSubtitle || '';
+    document.querySelector('[data-tab="active"]').firstChild.textContent = L.activeTab + ' ';
+    document.querySelector('[data-tab="archived"]').firstChild.textContent = L.archivedTab + ' ';
+    document.querySelector('[data-tab="trash"]').firstChild.textContent = L.trashTab + ' ';
+    document.getElementById('newGroupName').placeholder = L.groupPlaceholder;
+    document.getElementById('addGroupBtn').textContent = L.addGroup;
+    document.getElementById('settingsBtnMain').innerHTML = esc(L.settingsIcon) + ' ' + esc(L.settingsBtn);
+    renderGroups();
+    renderArchived();
+    renderTrash();
+    renderProgress();
+    renderCounts();
+}
+
+function renderGroups() {
+    const container = document.getElementById('groupsContainer');
+    container.innerHTML = '';
+    if (data.groups.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>No groups yet. Create one above to get started.</p></div>';
+        return;
+    }
+    data.groups.forEach(group => {
+        const activeTasks = group.tasks.filter(t => !t.archived);
+        const doneTasks = activeTasks.filter(t => t.done);
+        const el = document.createElement('div');
+        el.className = 'group';
+        el.innerHTML = `
+            <div class="group-header">
+                <div>
+                    <h2>${esc(group.name)}</h2>
+                    ${group.description ? `<div class="group-meta">${esc(group.description)}</div>` : ''}
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    ${settings.progress ? `<span class="group-progress">${doneTasks.length}/${activeTasks.length}</span>` : ''}
+                    <div class="group-actions">
+                        <button class="icon-btn" onclick="editGroup('${group.id}')" title="Edit group">${esc(settings.labels.editIcon)}</button>
+                        ${settings.archive ? `<button class="icon-btn" onclick="archiveGroup('${group.id}')" title="Archive all tasks in group">${esc(settings.labels.archiveIcon)}</button>` : ''}
+                        <button class="icon-btn icon-btn-danger" onclick="deleteGroup('${group.id}')" title="Delete group">${esc(settings.labels.deleteIcon)}</button>
+                    </div>
+                </div>
+            </div>
+            ${settings.progress ? renderGroupProgress(activeTasks) : ''}
+            <div id="tasks-${group.id}">${activeTasks.map(t => renderTask(t, group.id)).join('')}</div>
+            <div class="add-task-area">
+                <div class="input-row">
+                    <input type="text" id="newTask-${group.id}" placeholder="${esc(settings.labels.taskPlaceholder)}" onkeydown="if(event.key==='Enter')addTask('${group.id}')">
+                    ${settings.dueDates ? `<input type="date" id="newTaskDate-${group.id}">` : ''}
+                    ${settings.repeat ? `<select id="newTaskRepeat-${group.id}"><option value="">${esc(settings.labels.noRepeat)}</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly</option></select>` : ''}
+                    ${settings.priority ? `<select id="newTaskPriority-${group.id}"><option value="">${esc(settings.labels.priorityLabel)}</option>${settings.priorityLevels.map(p => `<option value="${esc(p.value)}">${p.icon} ${esc(p.label)}</option>`).join('')}</select>` : ''}
+                    ${settings.sizing ? `<select id="newTaskSize-${group.id}"><option value="">Size</option>${settings.sizeLevels.map(s => `<option value="${esc(s.value)}">${esc(s.value)}</option>`).join('')}</select>` : ''}
+                    <button class="btn-primary" onclick="addTask('${group.id}')">${esc(settings.labels.addTask)}</button>
+                </div>
+            </div>
+        `;
+        container.appendChild(el);
+    });
+}
+
+function renderGroupProgress(tasks) {
+    if (tasks.length === 0) return '';
+    const pct = Math.round((tasks.filter(t => t.done).length / tasks.length) * 100);
+    return `<div class="progress-bar" style="margin-bottom:10px;"><div class="progress-fill" style="width:${pct}%"></div></div>`;
+}
+
+function renderTask(task, groupId) {
+    const today = new Date().toISOString().split('T')[0];
+    const tomorrow = new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0];
+    let dueClass = '';
+    if (settings.dueDates && task.dueDate && !task.done) {
+        if (task.dueDate < today) dueClass = 'overdue';
+        else if (task.dueDate <= tomorrow) dueClass = 'due-soon';
+    }
+    const pLevel = settings.priorityLevels.find(p => p.value === task.priority);
+    const sLevel = settings.sizeLevels.find(s => s.value === task.size);
+    const repeatLabel = formatRepeat(task);
+    const da = settings.dismissAction || 'both';
+    const showArchive = settings.archive && (da === 'both' || da === 'archive');
+    const showDelete = da === 'both' || da === 'delete';
+    return `
+        <div class="task ${task.done ? 'completed' : ''} ${dueClass}">
+            <input type="checkbox" ${task.done ? 'checked' : ''} onchange="toggleTask('${groupId}','${task.id}')">
+            <div class="task-body">
+                <div class="task-title">${esc(task.title)}</div>
+                <div class="task-meta">
+                    ${settings.priority && pLevel ? `<span>${pLevel.icon} ${pLevel.label}</span>` : ''}
+                    ${settings.sizing && sLevel ? `<span class="size-badge">${esc(sLevel.value)}</span>` : ''}
+                    ${settings.dueDates && task.dueDate ? `<span>${dueClass === 'overdue' ? esc(settings.labels.overdueIcon) : esc(settings.labels.calendarIcon)} ${fmtDate(task.dueDate)}</span>` : ''}
+                    ${settings.repeat && repeatLabel ? `<span>${esc(settings.labels.repeatIcon)} ${esc(repeatLabel)}</span>` : ''}
+                    ${settings.notes && task.notes ? `<span>${esc(settings.labels.notesIcon)} ${esc(task.notes.substring(0, 40))}${task.notes.length > 40 ? '...' : ''}</span>` : ''}
+                </div>
+            </div>
+            <div class="task-actions" id="actions-${task.id}">
+                <button onclick="openEditModal('${groupId}','${task.id}')" title="Edit">${esc(settings.labels.editIcon)}</button>
+                ${showArchive ? `<button class="btn-archive" onclick="archiveTask('${groupId}','${task.id}')" title="Archive">${esc(settings.labels.archiveIcon)}</button>` : ''}
+                ${showDelete ? `<button class="btn-delete" onclick="confirmDeleteTask('${groupId}','${task.id}')" title="Delete">${esc(settings.labels.deleteIcon)}</button>` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function fmtDate(isoDate) {
+    if (!isoDate) return '';
+    const [y, m, d] = isoDate.split('-');
+    switch (settings.dateFormat) {
+        case 'mm/dd/yyyy': return `${m}/${d}/${y}`;
+        case 'dd/mm/yyyy': return `${d}/${m}/${y}`;
+        default: return isoDate;
+    }
+}
+
+function formatRepeat(task) {
+    if (!task.repeat) return '';
+    let label = task.repeat;
+    if (task.repeatDays && task.repeatDays.length > 0 && task.repeatDays.length < 7) {
+        const dayNames = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+        label += ' (' + task.repeatDays.map(d => dayNames[d]).join(',') + ')';
+    }
+    if (task.repeatTime) label += ' @ ' + task.repeatTime;
+    if (task.repeatCount > 0) label += ' x' + task.repeatCount;
+    return label;
+}
+
+function confirmDeleteTask(gid, tid) {
+    const el = document.getElementById('actions-' + tid);
+    if (!el) return;
+    el.innerHTML = `<span class="confirm-inline">Delete? <button class="confirm-yes" onclick="deleteTask('${gid}','${tid}')">Yes</button><button class="confirm-no" onclick="render()">No</button></span>`;
+}
+function confirmDeleteArchived(gid, tid) {
+    const el = document.getElementById('arc-actions-' + tid);
+    if (!el) return;
+    el.innerHTML = `<span class="confirm-inline">Delete? <button class="confirm-yes" onclick="deleteTask('${gid}','${tid}')">Yes</button><button class="confirm-no" onclick="render()">No</button></span>`;
+}
+function confirmDeleteTrash(index) {
+    const el = document.getElementById('trash-actions-' + index);
+    if (!el) return;
+    el.innerHTML = `<span class="confirm-inline">Delete? <button class="confirm-yes" onclick="permanentDeleteFromTrash(${index})">Yes</button><button class="confirm-no" onclick="render()">No</button></span>`;
+}
+
+function renderArchived() {
+    const container = document.getElementById('archivedContainer');
+    const allArchived = [];
+    data.groups.forEach(g => {
+        g.tasks.filter(t => t.archived).forEach(t => allArchived.push({ task: t, groupId: g.id, groupName: g.name }));
+    });
+    if (allArchived.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>No archived tasks.</p></div>';
+        return;
+    }
+    container.innerHTML = `
+        <div style="margin-bottom:12px;text-align:right;">
+            <button class="btn-danger" onclick="clearArchived()" style="font-size:12px;padding:6px 12px;border-radius:6px;border:none;cursor:pointer;">Delete All Archived</button>
+        </div>
+        ${allArchived.map(({ task, groupId, groupName }) => `
+            <div class="task" style="opacity:0.7;">
+                <div class="task-body">
+                    <div class="task-title" style="text-decoration:line-through;">${esc(task.title)}</div>
+                    <div class="task-meta"><span>From: ${esc(groupName)}</span></div>
+                </div>
+                <div class="task-actions" id="arc-actions-${task.id}">
+                    <button onclick="restoreTask('${groupId}','${task.id}')" title="Restore" style="font-size:13px;">${esc(settings.labels.restoreIcon)}</button>
+                    <button class="btn-delete" onclick="confirmDeleteArchived('${groupId}','${task.id}')" title="Delete permanently">${esc(settings.labels.deleteIcon)}</button>
+                </div>
+            </div>
+        `).join('')}
+    `;
+}
+
+function renderProgress() {
+    const section = document.querySelector('.progress-section');
+    section.style.display = settings.progress ? '' : 'none';
+    const allActive = data.groups.flatMap(g => g.tasks.filter(t => !t.archived));
+    const doneCount = allActive.filter(t => t.done).length;
+    const total = allActive.length;
+    const pct = total === 0 ? 0 : Math.round((doneCount / total) * 100);
+    document.getElementById('overallProgress').textContent = pct;
+    document.getElementById('overallCounts').textContent = `${doneCount}/${total}`;
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('overallLabel').textContent = settings.labels.overallLabel;
+    document.getElementById('tasksLabel').textContent = settings.labels.tasksLabel;
+}
+
+function renderTrash() {
+    const container = document.getElementById('trashContainer');
+    document.getElementById('trashTab').style.display = settings.trash ? '' : 'none';
+    if (!settings.trash) return;
+    if (data.trash.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>Trash is empty. Deleted items appear here for 30 days.</p></div>';
+        return;
+    }
+    container.innerHTML = `
+        <div style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;color:var(--text-muted);">Items are permanently deleted after 30 days.</span>
+            <button class="btn-danger" onclick="emptyTrash()" style="font-size:12px;padding:6px 12px;border-radius:6px;border:none;cursor:pointer;">Empty Trash</button>
+        </div>
+        ${data.trash.map((item, i) => {
+            const daysLeft = Math.max(0, TRASH_RETENTION_DAYS - Math.floor((Date.now() - new Date(item.deletedAt).getTime()) / 86400000));
+            return `
+            <div class="task" style="opacity:0.6;">
+                <div class="task-body">
+                    <div class="task-title" style="text-decoration:line-through;">${esc(item.title)}</div>
+                    <div class="task-meta">
+                        <span>From: ${esc(item.groupName || 'Unknown')}</span>
+                        <span>Expires in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}</span>
+                    </div>
+                </div>
+                <div class="task-actions" id="trash-actions-${i}">
+                    <button onclick="restoreFromTrash(${i})" title="Restore">${esc(settings.labels.restoreIcon)}</button>
+                    <button class="btn-delete" onclick="confirmDeleteTrash(${i})" title="Delete permanently">${esc(settings.labels.deleteIcon)}</button>
+                </div>
+            </div>`;
+        }).join('')}
+    `;
+}
+
+function renderCounts() {
+    const activeCount = data.groups.reduce((s, g) => s + g.tasks.filter(t => !t.archived).length, 0);
+    const archivedCount = data.groups.reduce((s, g) => s + g.tasks.filter(t => t.archived).length, 0);
+    document.getElementById('activeCount').textContent = activeCount;
+    document.getElementById('archivedCount').textContent = archivedCount;
+    document.getElementById('trashCount').textContent = data.trash.length;
+}
+
+// ---------- Actions ----------
+function addGroup() {
+    const input = document.getElementById('newGroupName');
+    const name = input.value.trim();
+    if (!name) return;
+    data.groups.push({ id: 'g' + Date.now(), name, description: '', tasks: [] });
+    input.value = '';
+    save();
+    toast('Group added');
+}
+
+function deleteGroup(gid) {
+    const group = data.groups.find(g => g.id === gid);
+    if (!group) return;
+    if (!confirm(`Delete group "${group.name}" and all its tasks?`)) return;
+    // Move tasks to trash if enabled
+    if (settings.trash) {
+        group.tasks.forEach(t => {
+            data.trash.push({ ...t, groupName: group.name, deletedAt: new Date().toISOString() });
+        });
+    }
+    data.groups = data.groups.filter(g => g.id !== gid);
+    save();
+    toast('Group deleted');
+}
+
+function archiveGroup(gid) {
+    const group = data.groups.find(g => g.id === gid);
+    if (!group) return;
+    group.tasks.forEach(t => { t.archived = true; });
+    save();
+    toast(`All tasks in "${group.name}" archived`);
+}
+
+function editGroup(gid) {
+    const group = data.groups.find(g => g.id === gid);
+    if (!group) return;
+    document.getElementById('editGroupName').value = group.name;
+    document.getElementById('editGroupDesc').value = group.description || '';
+    document.getElementById('editGroupTargetId').value = gid;
+    document.getElementById('editGroupModal').classList.add('open');
+}
+
+function saveGroupEdit() {
+    const gid = document.getElementById('editGroupTargetId').value;
+    const group = data.groups.find(g => g.id === gid);
+    if (!group) return;
+    group.name = document.getElementById('editGroupName').value.trim() || group.name;
+    group.description = document.getElementById('editGroupDesc').value.trim();
+    closeEditGroupModal();
+    save();
+    toast('Group updated');
+}
+
+function closeEditGroupModal() {
+    document.getElementById('editGroupModal').classList.remove('open');
+}
+
+function addTask(gid) {
+    const group = data.groups.find(g => g.id === gid);
+    if (!group) return;
+    const input = document.getElementById('newTask-' + gid);
+    const title = input.value.trim();
+    if (!title) return;
+    const dateEl = document.getElementById('newTaskDate-' + gid);
+    const repeatEl = document.getElementById('newTaskRepeat-' + gid);
+    const priorityEl = document.getElementById('newTaskPriority-' + gid);
+    const repeatVal = repeatEl ? repeatEl.value : '';
+    const rid = repeatVal ? uid('r') : '';
+    const dueDate = dateEl ? dateEl.value : '';
+    const sizeEl = document.getElementById('newTaskSize-' + gid);
+    group.tasks.push({
+        id: uid('t'), title, done: false, dueDate,
+        repeat: repeatVal, repeatId: rid,
+        repeatDays: [], repeatTime: '', repeatCount: 0,
+        notes: '', priority: priorityEl ? priorityEl.value : '',
+        size: sizeEl ? sizeEl.value : '',
+        archived: false, createdAt: new Date().toISOString(),
+    });
+    if (rid && dueDate) {
+        if (!data.repeatHistory[rid]) data.repeatHistory[rid] = [];
+        data.repeatHistory[rid].push(dueDate);
+    }
+    input.value = '';
+    if (dateEl) dateEl.value = '';
+    if (repeatEl) repeatEl.value = '';
+    if (priorityEl) priorityEl.value = '';
+    if (sizeEl) sizeEl.value = '';
+    save();
+}
+
+function toggleTask(gid, tid) {
+    const group = data.groups.find(g => g.id === gid);
+    const task = group?.tasks.find(t => t.id === tid);
+    if (!task) return;
+    task.done = !task.done;
+
+    // Handle repeating tasks
+    if (task.done && task.repeat && settings.repeat) {
+        const rid = task.repeatId || uid('r');
+        if (!task.repeatId) task.repeatId = rid;
+        if (!data.repeatHistory[rid]) data.repeatHistory[rid] = [];
+        const nextDate = getNextRepeatDate(task.dueDate || new Date().toISOString().split('T')[0], task.repeat);
+        // Only create if not already generated
+        if (!data.repeatHistory[rid].includes(nextDate)) {
+            group.tasks.push({
+                id: uid('t'), title: task.title, done: false, dueDate: nextDate,
+                repeat: (task.repeatCount === 1) ? '' : task.repeat, repeatId: rid,
+                repeatDays: task.repeatDays || [], repeatTime: task.repeatTime || '',
+                repeatCount: task.repeatCount > 0 ? task.repeatCount - 1 : 0,
+                notes: task.notes, priority: task.priority, size: task.size || '',
+                archived: false, createdAt: new Date().toISOString(),
+            });
+            data.repeatHistory[rid].push(nextDate);
+            toast('Repeating task created for ' + nextDate);
+        }
+        task.repeat = '';
+    }
+    save();
+}
+
+function getNextRepeatDate(fromDate, repeat) {
+    const d = new Date(fromDate + 'T00:00:00');
+    switch (repeat) {
+        case 'daily': d.setDate(d.getDate() + 1); break;
+        case 'weekly': d.setDate(d.getDate() + 7); break;
+        case 'biweekly': d.setDate(d.getDate() + 14); break;
+        case 'monthly': d.setMonth(d.getMonth() + 1); break;
+    }
+    return d.toISOString().split('T')[0];
+}
+
+function archiveTask(gid, tid) {
+    const group = data.groups.find(g => g.id === gid);
+    const task = group?.tasks.find(t => t.id === tid);
+    if (!task) return;
+    task.archived = true;
+    save();
+    toast('Task archived');
+}
+
+function restoreTask(gid, tid) {
+    const group = data.groups.find(g => g.id === gid);
+    const task = group?.tasks.find(t => t.id === tid);
+    if (!task) return;
+    task.archived = false;
+    task.done = false;
+    save();
+    toast('Task restored');
+}
+
+function deleteTask(gid, tid) {
+    const group = data.groups.find(g => g.id === gid);
+    if (!group) return;
+    const task = group.tasks.find(t => t.id === tid);
+    if (task && settings.trash) {
+        data.trash.push({ ...task, groupName: group.name, deletedAt: new Date().toISOString() });
+    }
+    group.tasks = group.tasks.filter(t => t.id !== tid);
+    save();
+    toast(settings.trash ? 'Moved to trash' : 'Task deleted');
+}
+
+function restoreFromTrash(index) {
+    const item = data.trash[index];
+    if (!item) return;
+    // Find original group or first group
+    let group = data.groups.find(g => g.name === item.groupName);
+    if (!group && data.groups.length > 0) group = data.groups[0];
+    if (!group) {
+        group = { id: uid('g'), name: item.groupName || 'Restored', description: '', tasks: [] };
+        data.groups.push(group);
+    }
+    const { groupName, deletedAt, ...taskData } = item;
+    taskData.archived = false;
+    group.tasks.push(taskData);
+    data.trash.splice(index, 1);
+    save();
+    toast('Restored to ' + group.name);
+}
+
+function permanentDeleteFromTrash(index) {
+    data.trash.splice(index, 1);
+    save();
+    toast('Permanently deleted');
+}
+
+function emptyTrash() {
+    if (!confirm('Permanently delete all items in trash?')) return;
+    data.trash = [];
+    save();
+    toast('Trash emptied');
+}
+
+function purgeExpiredTrash() {
+    const cutoff = Date.now() - (TRASH_RETENTION_DAYS * 86400000);
+    const before = data.trash.length;
+    data.trash = data.trash.filter(item => new Date(item.deletedAt).getTime() > cutoff);
+    if (data.trash.length < before) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+}
+
+function clearArchived() {
+    if (!confirm('Permanently delete all archived tasks?')) return;
+    data.groups.forEach(g => { g.tasks = g.tasks.filter(t => !t.archived); });
+    save();
+    toast('Archived tasks cleared');
+}
+
+// ---------- Edit Modal ----------
+function openEditModal(gid, tid) {
+    const group = data.groups.find(g => g.id === gid);
+    const task = group?.tasks.find(t => t.id === tid);
+    if (!task) return;
+    document.getElementById('editTitle').value = task.title;
+    document.getElementById('editNotes').value = task.notes || '';
+    document.getElementById('editDueDate').value = task.dueDate || '';
+    document.getElementById('editRepeat').value = task.repeat || '';
+    document.getElementById('editRepeatTime').value = task.repeatTime || '';
+    document.getElementById('editRepeatCount').value = task.repeatCount || 0;
+    document.getElementById('editTaskId').value = tid;
+    document.getElementById('editGroupId').value = gid;
+
+    // Populate priority select from settings
+    const pSel = document.getElementById('editPriority');
+    pSel.innerHTML = '<option value="">None</option>' + settings.priorityLevels.map(p => `<option value="${esc(p.value)}" ${task.priority === p.value ? 'selected' : ''}>${p.icon} ${esc(p.label)}</option>`).join('');
+    pSel.value = task.priority || '';
+
+    // Populate size select
+    const sSel = document.getElementById('editSize');
+    sSel.innerHTML = '<option value="">None</option>' + settings.sizeLevels.map(s => `<option value="${esc(s.value)}" ${task.size === s.value ? 'selected' : ''}>${esc(s.value)} - ${esc(s.label)}</option>`).join('');
+    sSel.value = task.size || '';
+
+    // Repeat days checkboxes
+    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const rd = task.repeatDays || [];
+    document.getElementById('editRepeatDays').innerHTML = dayNames.map((name, i) =>
+        `<label style="display:flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;"><input type="checkbox" class="repeatDayCb" value="${i}" ${rd.includes(i) ? 'checked' : ''}> ${name}</label>`
+    ).join('');
+
+    document.getElementById('editNotesWrap').style.display = settings.notes ? '' : 'none';
+    document.getElementById('editDueDateWrap').style.display = settings.dueDates ? '' : 'none';
+    document.getElementById('editRepeatWrap').style.display = settings.repeat ? '' : 'none';
+    document.getElementById('editRepeatExtras').style.display = settings.repeat ? '' : 'none';
+    document.getElementById('editPriorityWrap').style.display = settings.priority ? '' : 'none';
+    document.getElementById('editSizingWrap').style.display = settings.sizing ? '' : 'none';
+
+    document.getElementById('editModal').classList.add('open');
+    document.getElementById('editTitle').focus();
+}
+
+function saveEdit() {
+    const gid = document.getElementById('editGroupId').value;
+    const tid = document.getElementById('editTaskId').value;
+    const group = data.groups.find(g => g.id === gid);
+    const task = group?.tasks.find(t => t.id === tid);
+    if (!task) return;
+    task.title = document.getElementById('editTitle').value.trim() || task.title;
+    task.notes = document.getElementById('editNotes').value.trim();
+    task.dueDate = document.getElementById('editDueDate').value;
+    task.repeat = document.getElementById('editRepeat').value;
+    task.repeatTime = document.getElementById('editRepeatTime').value;
+    task.repeatCount = parseInt(document.getElementById('editRepeatCount').value) || 0;
+    task.repeatDays = [...document.querySelectorAll('.repeatDayCb:checked')].map(cb => parseInt(cb.value));
+    task.priority = document.getElementById('editPriority').value;
+    task.size = document.getElementById('editSize').value;
+    closeEditModal();
+    save();
+    toast('Task updated');
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').classList.remove('open');
+}
+
+// ---------- Tabs ----------
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.tab === tab);
+    });
+    document.getElementById('activeView').style.display = tab === 'active' ? '' : 'none';
+    document.getElementById('archivedView').style.display = tab === 'archived' ? '' : 'none';
+    document.getElementById('trashView').style.display = tab === 'trash' ? '' : 'none';
+}
+
+// ---------- Settings ----------
+let settingsMode = 'menu';
+let configMode = false;
+
+function openSettings() {
+    updateSampleBtn();
+    document.getElementById('settingsOverlay').classList.add('open');
+    if (settingsMode === 'preview') renderModalPreview();
+}
+function closeSettings() { document.getElementById('settingsOverlay').classList.remove('open'); }
+
+function switchSettingsMode(mode) {
+    settingsMode = mode;
+    document.querySelectorAll('.smode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+    if (mode === 'preview') {
+        const vm = settings.visualMode || 'fullpage';
+        if (vm === 'fullpage') {
+            closeSettings();
+            enterConfigMode();
+            return;
+        }
+        document.getElementById('settingsMenuMode').style.display = 'none';
+        document.getElementById('settingsPreviewMode').style.display = '';
+        renderModalPreview();
+    } else {
+        document.getElementById('settingsMenuMode').style.display = '';
+        document.getElementById('settingsPreviewMode').style.display = 'none';
+    }
+}
+
+function enterConfigMode() {
+    configMode = true;
+    document.getElementById('mainHeader').style.display = 'none';
+    document.querySelector('.progress-section').style.display = 'none';
+    document.querySelector('.tabs').style.display = 'none';
+    document.getElementById('activeView').style.display = 'none';
+    document.getElementById('archivedView').style.display = 'none';
+    document.getElementById('trashView').style.display = 'none';
+    document.getElementById('configView').style.display = '';
+    renderConfigView();
+}
+
+function exitConfigMode() {
+    configMode = false;
+    document.getElementById('configView').style.display = 'none';
+    document.getElementById('mainHeader').style.display = '';
+    settingsMode = 'menu';
+    applySettings();
+    render();
+    switchTab(currentTab);
+}
+
+function toggleCfgSetting(key) {
+    if (key === 'dismissAction') {
+        const cycle = { both: 'archive', archive: 'delete', delete: 'both' };
+        settings.dismissAction = cycle[settings.dismissAction] || 'both';
+    } else {
+        settings[key] = !settings[key];
+    }
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    applySettings();
+    if (configMode) renderConfigView();
+    else renderModalPreview();
+}
+
+function editLabel(key) {
+    const current = settings.labels[key] || '';
+    const val = prompt(`Edit "${key}":`, current);
+    if (val !== null && val.trim() !== '') {
+        settings.labels[key] = val.trim();
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+        if (configMode) renderConfigView();
+        else renderModalPreview();
+    }
+}
+
+function renderConfigView() {
+    const c = document.getElementById('configContent');
+    const s = settings;
+    const L = s.labels;
+    const da = s.dismissAction || 'both';
+    const showArchive = s.archive && (da === 'both' || da === 'archive');
+    const showDelete = da === 'both' || da === 'delete';
+
+    c.innerHTML = `
+        <!-- Header mock -->
+        <div class="app-header" style="pointer-events:auto;">
+            <div>
+                <h1 style="margin:0;"><span class="cfg-editable" onclick="editLabel('appTitle')">${esc(L.appTitle)}</span></h1>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px;"><span class="cfg-editable" onclick="editLabel('appSubtitle')">${esc(L.appSubtitle || '')}</span></div>
+            </div>
+            <div class="header-actions">
+                <button style="pointer-events:none;"><span class="cfg-editable" onclick="editLabel('settingsIcon');event.stopPropagation()" style="pointer-events:auto;">${esc(L.settingsIcon)}</span> <span class="cfg-editable" onclick="editLabel('settingsBtn');event.stopPropagation()" style="pointer-events:auto;">${esc(L.settingsBtn)}</span></button>
+            </div>
+        </div>
+
+        <!-- Progress -->
+        <div class="pv-zone ${s.progress ? '' : 'pv-off'}" onclick="toggleCfgSetting('progress')">
+            <span class="pv-label">Progress</span>
+            <div class="progress-section" style="display:block;">
+                <div class="progress-text"><span class="cfg-editable" onclick="editLabel('overallLabel');event.stopPropagation()">${esc(L.overallLabel)}</span>: <strong>40%</strong> (2/5 <span class="cfg-editable" onclick="editLabel('tasksLabel');event.stopPropagation()">${esc(L.tasksLabel)}</span>)</div>
+                <div class="progress-bar"><div class="progress-fill" style="width:40%"></div></div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs" style="pointer-events:auto;">
+            <div class="tab active"><span class="cfg-editable" onclick="editLabel('activeTab')">${esc(L.activeTab)}</span> <span class="badge">5</span></div>
+            <div class="tab pv-zone ${s.archive ? '' : 'pv-off'}" onclick="toggleCfgSetting('archive')">
+                <span class="pv-label">Archive</span>
+                <span class="cfg-editable" onclick="editLabel('archivedTab');event.stopPropagation()">${esc(L.archivedTab)}</span> <span class="badge">1</span>
+            </div>
+            <div class="tab pv-zone ${s.trash ? '' : 'pv-off'}" onclick="toggleCfgSetting('trash')">
+                <span class="pv-label">Trash</span>
+                <span class="cfg-editable" onclick="editLabel('trashTab');event.stopPropagation()">${esc(L.trashTab)}</span> <span class="badge">0</span>
+            </div>
+        </div>
+
+        <!-- Add group -->
+        <div class="add-group-area input-row" style="pointer-events:none;">
+            <input type="text" placeholder="${esc(L.groupPlaceholder)}" style="pointer-events:auto;" onclick="editLabel('groupPlaceholder')" readonly class="cfg-editable">
+            <button class="btn-primary" style="pointer-events:auto;" onclick="editLabel('addGroup')"><span class="cfg-editable">${esc(L.addGroup)}</span></button>
+        </div>
+
+        <!-- Mock group -->
+        <div class="group">
+            <div class="group-header">
+                <div><h2>Sample Project</h2><div class="group-meta">An example group description</div></div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="pv-zone group-progress ${s.progress ? '' : 'pv-off'}" onclick="toggleCfgSetting('progress')"><span class="pv-label">Progress</span>2/3</span>
+                    <div class="group-actions">
+                        <button class="icon-btn" style="pointer-events:none;"><span class="cfg-editable" onclick="editLabel('editIcon');event.stopPropagation()" style="pointer-events:auto;">${esc(L.editIcon)}</span></button>
+                        ${s.archive ? `<span class="pv-zone" onclick="toggleCfgSetting('archive')"><span class="pv-label">Archive</span><button class="icon-btn" style="pointer-events:none;"><span class="cfg-editable" onclick="editLabel('archiveIcon');event.stopPropagation()" style="pointer-events:auto;">${esc(L.archiveIcon)}</span></button></span>` : ''}
+                        <button class="icon-btn" style="pointer-events:none;"><span class="cfg-editable" onclick="editLabel('deleteIcon');event.stopPropagation()" style="pointer-events:auto;">${esc(L.deleteIcon)}</span></button>
+                    </div>
+                </div>
+            </div>
+            ${s.progress ? '<div class="progress-bar" style="margin-bottom:10px;"><div class="progress-fill" style="width:66%"></div></div>' : ''}
+
+            <!-- Task with all features -->
+            <div class="task due-soon" style="margin-bottom:6px;">
+                <input type="checkbox" style="pointer-events:none;">
+                <div class="task-body">
+                    <div class="task-title">Design the landing page</div>
+                    <div class="task-meta">
+                        <span class="pv-zone ${s.priority ? '' : 'pv-off'}" onclick="toggleCfgSetting('priority')"><span class="pv-label">Priority</span>${s.priorityLevels[0] ? esc(s.priorityLevels[0].icon) + ' ' + esc(s.priorityLevels[0].label) : 'high'}</span>
+                        <span class="pv-zone ${s.sizing ? '' : 'pv-off'}" onclick="toggleCfgSetting('sizing')"><span class="pv-label">Sizing</span><span class="size-badge">M</span></span>
+                        <span class="pv-zone ${s.dueDates ? '' : 'pv-off'}" onclick="toggleCfgSetting('dueDates')"><span class="pv-label">Due Dates</span><span class="cfg-editable" onclick="editLabel('calendarIcon');event.stopPropagation()" style="pointer-events:auto;">${esc(L.calendarIcon)}</span> 2026-03-12</span>
+                        <span class="pv-zone ${s.repeat ? '' : 'pv-off'}" onclick="toggleCfgSetting('repeat')"><span class="pv-label">Repeat</span><span class="cfg-editable" onclick="editLabel('repeatIcon');event.stopPropagation()" style="pointer-events:auto;">${esc(L.repeatIcon)}</span> weekly</span>
+                        <span class="pv-zone ${s.notes ? '' : 'pv-off'}" onclick="toggleCfgSetting('notes')"><span class="pv-label">Notes</span><span class="cfg-editable" onclick="editLabel('notesIcon');event.stopPropagation()" style="pointer-events:auto;">${esc(L.notesIcon)}</span> Check with team first...</span>
+                    </div>
+                </div>
+                <div class="task-actions">
+                    <button style="pointer-events:none;"><span class="cfg-editable" onclick="editLabel('editIcon');event.stopPropagation()" style="pointer-events:auto;">${esc(L.editIcon)}</span></button>
+                    <span class="pv-zone ${showArchive ? '' : 'pv-off'}" onclick="toggleCfgSetting(${s.archive ? "'dismissAction'" : "'archive'"})"><span class="pv-label">${s.archive ? 'Actions: ' + da : 'Archive'}</span><button style="pointer-events:none;"><span class="cfg-editable" onclick="editLabel('archiveIcon');event.stopPropagation()" style="pointer-events:auto;">${esc(L.archiveIcon)}</span></button></span>
+                    <span class="pv-zone ${showDelete ? '' : 'pv-off'}" onclick="toggleCfgSetting('dismissAction')"><span class="pv-label">Actions: ${da}</span><button style="pointer-events:none;"><span class="cfg-editable" onclick="editLabel('deleteIcon');event.stopPropagation()" style="pointer-events:auto;">${esc(L.deleteIcon)}</span></button></span>
+                </div>
+            </div>
+
+            <!-- Completed task -->
+            <div class="task completed" style="margin-bottom:6px;">
+                <input type="checkbox" checked style="pointer-events:none;">
+                <div class="task-body"><div class="task-title">Write intro copy</div></div>
+                <div class="task-actions"><button style="pointer-events:none;"><span class="cfg-editable" onclick="editLabel('editIcon');event.stopPropagation()" style="pointer-events:auto;">${esc(L.editIcon)}</span></button></div>
+            </div>
+
+            <!-- Add task row -->
+            <div class="add-task-area">
+                <div class="input-row" style="pointer-events:none;">
+                    <input type="text" placeholder="${esc(L.taskPlaceholder)}" style="pointer-events:auto;" onclick="editLabel('taskPlaceholder')" readonly class="cfg-editable">
+                    <span class="pv-zone ${s.dueDates ? '' : 'pv-off'}" onclick="toggleCfgSetting('dueDates')" style="pointer-events:auto;"><span class="pv-label">Due Dates</span><input type="date" style="pointer-events:none;height:38px;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;background:var(--bg-card);color:var(--text);"></span>
+                    <span class="pv-zone ${s.repeat ? '' : 'pv-off'}" onclick="toggleCfgSetting('repeat')" style="pointer-events:auto;"><span class="pv-label">Repeat</span><select style="pointer-events:none;height:38px;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;background:var(--bg-card);color:var(--text);"><option>${esc(L.noRepeat)}</option></select></span>
+                    <span class="pv-zone ${s.priority ? '' : 'pv-off'}" onclick="toggleCfgSetting('priority')" style="pointer-events:auto;"><span class="pv-label">Priority</span><select style="pointer-events:none;height:38px;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;background:var(--bg-card);color:var(--text);"><option>${esc(L.priorityLabel)}</option></select></span>
+                    <span class="pv-zone ${s.sizing ? '' : 'pv-off'}" onclick="toggleCfgSetting('sizing')" style="pointer-events:auto;"><span class="pv-label">Sizing</span><select style="pointer-events:none;height:38px;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;background:var(--bg-card);color:var(--text);"><option>Size</option></select></span>
+                    <button class="btn-primary" style="pointer-events:auto;" onclick="editLabel('addTask')"><span class="cfg-editable">${esc(L.addTask)}</span></button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Compact modal preview (fallback)
+function renderModalPreview() {
+    const c = document.getElementById('previewContainer');
+    const s = settings;
+    const L = s.labels;
+    const da = s.dismissAction || 'both';
+    const showArchive = s.archive && (da === 'both' || da === 'archive');
+    const showDelete = da === 'both' || da === 'delete';
+
+    c.innerHTML = `
+        <!-- Header -->
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;margin-bottom:8px;border-bottom:2px solid var(--accent);">
+            <div>
+                <div style="font-size:15px;font-weight:700;"><span class="cfg-editable" onclick="editLabel('appTitle')">${esc(L.appTitle)}</span></div>
+                <div style="font-size:10px;color:var(--text-muted);margin-top:1px;"><span class="cfg-editable" onclick="editLabel('appSubtitle')">${esc(L.appSubtitle || '')}</span></div>
+            </div>
+            <div style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-card);color:var(--text);"><span class="cfg-editable" onclick="editLabel('settingsIcon');event.stopPropagation()">${esc(L.settingsIcon)}</span> <span class="cfg-editable" onclick="editLabel('settingsBtn')">${esc(L.settingsBtn)}</span></div>
+        </div>
+        <!-- Progress -->
+        <div class="pv-zone ${s.progress ? '' : 'pv-off'}" onclick="toggleCfgSetting('progress')">
+            <span class="pv-label">Progress</span>
+            <div class="pv-overall"><span class="cfg-editable" onclick="editLabel('overallLabel');event.stopPropagation()">${esc(L.overallLabel)}</span>: <strong>40%</strong> (2/5 <span class="cfg-editable" onclick="editLabel('tasksLabel');event.stopPropagation()">${esc(L.tasksLabel)}</span>)</div>
+            <div class="pv-mock-progress"><div class="pv-mock-progress-fill"></div></div>
+        </div>
+        <div class="pv-tabs">
+            <div class="pv-tab-item"><span class="cfg-editable" onclick="editLabel('activeTab');event.stopPropagation()">${esc(L.activeTab)}</span> <span style="opacity:0.6;font-size:10px;">5</span></div>
+            <div class="pv-zone pv-tab-item ${s.archive ? '' : 'pv-off'}" onclick="toggleCfgSetting('archive')"><span class="pv-label">Archive</span><span class="cfg-editable" onclick="editLabel('archivedTab');event.stopPropagation()">${esc(L.archivedTab)}</span></div>
+            <div class="pv-zone pv-tab-item ${s.trash ? '' : 'pv-off'}" onclick="toggleCfgSetting('trash')"><span class="pv-label">Trash</span><span class="cfg-editable" onclick="editLabel('trashTab');event.stopPropagation()">${esc(L.trashTab)}</span></div>
+        </div>
+        <!-- Add group -->
+        <div class="pv-add-row" style="margin-bottom:8px;">
+            <div style="flex:1;" class="cfg-editable" onclick="editLabel('groupPlaceholder')">${esc(L.groupPlaceholder)}</div>
+            <div class="pv-add-btn cfg-editable" style="border:none;" onclick="editLabel('addGroup')">${esc(L.addGroup)}</div>
+        </div>
+        <div class="pv-mock-group">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div style="font-weight:600;font-size:14px;color:var(--accent);">Sample Project</div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <div class="pv-zone ${s.progress ? '' : 'pv-off'}" onclick="toggleCfgSetting('progress')" style="display:inline-block;"><span class="pv-label">Progress</span><span style="font-size:11px;color:var(--text-muted);background:var(--border-light);padding:1px 8px;border-radius:8px;">2/3</span></div>
+                    ${s.archive ? `<span class="pv-zone" onclick="toggleCfgSetting('archive')" style="display:inline-flex;"><span class="pv-label">Archive</span><span style="font-size:12px;" class="cfg-editable" onclick="editLabel('archiveIcon');event.stopPropagation()">${esc(L.archiveIcon)}</span></span>` : ''}
+                </div>
+            </div>
+            <div class="pv-zone ${s.progress ? '' : 'pv-off'}" onclick="toggleCfgSetting('progress')"><span class="pv-label">Progress</span><div class="pv-mock-progress"><div class="pv-mock-progress-fill" style="width:66%"></div></div></div>
+            <div class="pv-mock-task" style="margin-bottom:6px;border-left:3px solid #f59e0b;">
+                <input type="checkbox">
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:500;">Design landing page</div>
+                    <div class="pv-mock-meta">
+                        <span class="pv-zone ${s.priority ? '' : 'pv-off'}" onclick="toggleCfgSetting('priority')"><span class="pv-label">Priority</span>${s.priorityLevels[0] ? esc(s.priorityLevels[0].icon) + ' ' + esc(s.priorityLevels[0].label) : 'high'}</span>
+                        <span class="pv-zone ${s.sizing ? '' : 'pv-off'}" onclick="toggleCfgSetting('sizing')"><span class="pv-label">Sizing</span><span class="size-badge">M</span></span>
+                        <span class="pv-zone ${s.dueDates ? '' : 'pv-off'}" onclick="toggleCfgSetting('dueDates')"><span class="pv-label">Due Dates</span><span class="cfg-editable" onclick="editLabel('calendarIcon');event.stopPropagation()">${esc(L.calendarIcon)}</span> 2026-03-12</span>
+                        <span class="pv-zone ${s.repeat ? '' : 'pv-off'}" onclick="toggleCfgSetting('repeat')"><span class="pv-label">Repeat</span><span class="cfg-editable" onclick="editLabel('repeatIcon');event.stopPropagation()">${esc(L.repeatIcon)}</span> weekly</span>
+                        <span class="pv-zone ${s.notes ? '' : 'pv-off'}" onclick="toggleCfgSetting('notes')"><span class="pv-label">Notes</span><span class="cfg-editable" onclick="editLabel('notesIcon');event.stopPropagation()">${esc(L.notesIcon)}</span> Check with team...</span>
+                    </div>
+                </div>
+                <div class="pv-mock-actions">
+                    <button><span class="cfg-editable" onclick="editLabel('editIcon');event.stopPropagation()">${esc(L.editIcon)}</span></button>
+                    <span class="pv-zone ${showArchive ? '' : 'pv-off'}" onclick="toggleCfgSetting(${s.archive ? "'dismissAction'" : "'archive'"})"><span class="pv-label">${s.archive ? 'Actions: '+da : 'Archive'}</span><button><span class="cfg-editable" onclick="editLabel('archiveIcon');event.stopPropagation()">${esc(L.archiveIcon)}</span></button></span>
+                    <span class="pv-zone ${showDelete ? '' : 'pv-off'}" onclick="toggleCfgSetting('dismissAction')"><span class="pv-label">Actions: ${da}</span><button><span class="cfg-editable" onclick="editLabel('deleteIcon');event.stopPropagation()">${esc(L.deleteIcon)}</span></button></span>
+                </div>
+            </div>
+            <div class="pv-mock-task" style="margin-bottom:6px;opacity:0.55;"><input type="checkbox" checked><div style="flex:1;"><div style="font-weight:500;text-decoration:line-through;color:var(--text-muted);">Write intro copy</div></div></div>
+            <div class="pv-add-row">
+                <div style="flex:1;" class="cfg-editable" onclick="editLabel('taskPlaceholder')">${esc(L.taskPlaceholder)}</div>
+                <div class="pv-zone ${s.dueDates ? '' : 'pv-off'}" onclick="toggleCfgSetting('dueDates')" style="border:1px solid var(--border);border-radius:4px;padding:4px 8px;"><span class="pv-label">Due Dates</span><span style="font-size:11px;"><span class="cfg-editable" onclick="editLabel('calendarIcon');event.stopPropagation()">${esc(L.calendarIcon)}</span> date</span></div>
+                <div class="pv-zone ${s.repeat ? '' : 'pv-off'}" onclick="toggleCfgSetting('repeat')" style="border:1px solid var(--border);border-radius:4px;padding:4px 8px;"><span class="pv-label">Repeat</span><span style="font-size:11px;" class="cfg-editable" onclick="editLabel('noRepeat');event.stopPropagation()">${esc(L.noRepeat)}</span></div>
+                <div class="pv-zone ${s.priority ? '' : 'pv-off'}" onclick="toggleCfgSetting('priority')" style="border:1px solid var(--border);border-radius:4px;padding:4px 8px;"><span class="pv-label">Priority</span><span style="font-size:11px;" class="cfg-editable" onclick="editLabel('priorityLabel');event.stopPropagation()">${esc(L.priorityLabel)}</span></div>
+                <div class="pv-zone ${s.sizing ? '' : 'pv-off'}" onclick="toggleCfgSetting('sizing')" style="border:1px solid var(--border);border-radius:4px;padding:4px 8px;"><span class="pv-label">Sizing</span><span style="font-size:11px;">Size</span></div>
+                <div class="pv-add-btn cfg-editable" style="border:none;" onclick="editLabel('addTask')">${esc(L.addTask)}</div>
+            </div>
+        </div>
+    `;
+}
+
+// ---------- YAML Text Editor ----------
+function yamlContent(labels, pLevels, sLevels) {
+    const labelLines = Object.entries(labels).map(([k, v]) => `${k}: ${v}`).join('\n');
+    const priorityLines = pLevels.map(p => `${p.value}: ${p.label}: ${p.icon}`).join('\n');
+    const sizeLines = sLevels.map(s => `${s.value}: ${s.label}`).join('\n');
+    return `# Labels\n${labelLines}\n---\n# Priority Levels (value: label: icon)\n${priorityLines}\n---\n# Size Levels (value: label)\n${sizeLines}`;
+}
+function openYamlEditor() {
+    document.getElementById('yamlEditor').value = yamlContent(settings.labels, settings.priorityLevels, settings.sizeLevels);
+    document.getElementById('yamlModal').classList.add('open');
+}
+function closeYamlEditor() { document.getElementById('yamlModal').classList.remove('open'); }
+function saveYamlEditor() {
+    const text = document.getElementById('yamlEditor').value;
+    const sections = text.split(/^---$/m);
+    // Section 1: Labels
+    const newLabels = { ...DEFAULT_LABELS };
+    (sections[0] || '').split('\n').forEach(line => {
+        if (line.trim().startsWith('#') || !line.trim()) return;
+        const idx = line.indexOf(':');
+        if (idx > 0) {
+            const key = line.substring(0, idx).trim();
+            const val = line.substring(idx + 1).trim();
+            if (key in DEFAULT_LABELS && val) newLabels[key] = val;
+        }
+    });
+    settings.labels = newLabels;
+    // Section 2: Priority Levels
+    if (sections[1]) {
+        const pLevels = [];
+        sections[1].split('\n').forEach(line => {
+            if (line.trim().startsWith('#') || !line.trim()) return;
+            const parts = line.split(':').map(s => s.trim());
+            if (parts.length >= 2 && parts[0] && parts[1]) {
+                pLevels.push({ value: parts[0], label: parts[1], icon: parts[2] || '' });
+            }
+        });
+        if (pLevels.length > 0) settings.priorityLevels = pLevels;
+    }
+    // Section 3: Size Levels
+    if (sections[2]) {
+        const sLevels = [];
+        sections[2].split('\n').forEach(line => {
+            if (line.trim().startsWith('#') || !line.trim()) return;
+            const idx = line.indexOf(':');
+            if (idx > 0) {
+                const val = line.substring(0, idx).trim();
+                const label = line.substring(idx + 1).trim();
+                if (val && label) sLevels.push({ value: val, label });
+            }
+        });
+        if (sLevels.length > 0) settings.sizeLevels = sLevels;
+    }
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    closeYamlEditor();
+    applySettings();
+    if (configMode) renderConfigView();
+    else { renderModalPreview(); render(); }
+    toast('Settings updated');
+}
+function resetLabels() {
+    if (!confirm('Reset all text and levels to defaults?')) return;
+    document.getElementById('yamlEditor').value = yamlContent(DEFAULT_LABELS, DEFAULT_PRIORITY_LEVELS, DEFAULT_SIZE_LEVELS);
+}
+
+// ---------- Settings Export / Import ----------
+function exportSettings() {
+    const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `task-tracker-settings-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Settings exported');
+}
+function importSettings(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const imported = JSON.parse(e.target.result);
+            settings = { ...DEFAULT_SETTINGS, ...imported, labels: { ...DEFAULT_LABELS, ...(imported.labels || {}) } };
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+            applySettings();
+            if (configMode) renderConfigView();
+            else render();
+            toast('Settings imported');
+        } catch (err) { toast('Import failed: ' + err.message); }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+// ---------- Export / Import ----------
+function exportJSON() {
+    const exportData = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        settings,
+        data,
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `task-tracker-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Exported');
+}
+
+function importJSON(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const imported = JSON.parse(e.target.result);
+            if (imported.data && imported.data.groups) {
+                data = imported.data;
+                if (imported.settings) {
+                    settings = { ...DEFAULT_SETTINGS, ...imported.settings, labels: { ...DEFAULT_LABELS, ...(imported.settings.labels || {}) } };
+                    applySettings();
+                    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+                }
+                save();
+                toast('Imported successfully');
+            } else {
+                toast('Invalid file format');
+            }
+        } catch (err) {
+            toast('Failed to import: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+// ---------- Clear ----------
+function clearAll() {
+    document.getElementById('clearConfirmInput').value = '';
+    document.getElementById('clearConfirmBtn').disabled = true;
+    document.getElementById('clearConfirmBtn').style.opacity = '0.5';
+    document.getElementById('clearModal').classList.add('open');
+}
+function closeClearModal() {
+    document.getElementById('clearModal').classList.remove('open');
+}
+function checkClearConfirm() {
+    const ok = document.getElementById('clearConfirmInput').value.trim().toLowerCase() === 'i am really sure';
+    document.getElementById('clearConfirmBtn').disabled = !ok;
+    document.getElementById('clearConfirmBtn').style.opacity = ok ? '1' : '0.5';
+}
+function doClearAll() {
+    data = { groups: [], repeatHistory: {}, trash: [] };
+    save();
+    closeClearModal();
+    updateSampleBtn();
+    toast('All data cleared');
+}
+
+function resetAllSettings() {
+    document.getElementById('resetSettingsConfirmInput').value = '';
+    document.getElementById('resetSettingsConfirmBtn').disabled = true;
+    document.getElementById('resetSettingsConfirmBtn').style.opacity = '0.5';
+    document.getElementById('resetSettingsModal').classList.add('open');
+}
+function closeResetSettingsModal() {
+    document.getElementById('resetSettingsModal').classList.remove('open');
+}
+function checkResetSettingsConfirm() {
+    const ok = document.getElementById('resetSettingsConfirmInput').value.trim().toLowerCase() === 'i am really sure';
+    document.getElementById('resetSettingsConfirmBtn').disabled = !ok;
+    document.getElementById('resetSettingsConfirmBtn').style.opacity = ok ? '1' : '0.5';
+}
+function doResetSettings() {
+    settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+    localStorage.setItem('task-tracker-settings-v1', JSON.stringify(settings));
+    applySettings();
+    closeResetSettingsModal();
+    renderSettingsMenu();
+    render();
+    toast('Settings reset to defaults');
+}
+
+function loadSampleData() {
+    data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    save();
+    updateSampleBtn();
+    toast('Sample data loaded');
+}
+
+function updateSampleBtn() {
+    const btn = document.getElementById('loadSampleBtn');
+    if (btn) {
+        const isEmpty = data.groups.length === 0 && data.trash.length === 0;
+        btn.style.display = isEmpty ? '' : 'none';
+    }
+}
+
+// ---------- Backfill Repeating Tasks ----------
+function backfillRepeatingTasks() {
+    if (!settings.repeat) return;
+    const today = new Date().toISOString().split('T')[0];
+    let created = 0;
+
+    data.groups.forEach(group => {
+        const repeaters = group.tasks.filter(t => t.repeat && !t.archived);
+        repeaters.forEach(task => {
+            if (!task.repeatId) task.repeatId = uid('r');
+            if (!data.repeatHistory[task.repeatId]) data.repeatHistory[task.repeatId] = [];
+            const history = data.repeatHistory[task.repeatId];
+
+            // Record current task's date if not tracked
+            if (task.dueDate && !history.includes(task.dueDate)) {
+                history.push(task.dueDate);
+            }
+            // Skip if task has no due date or is in the future
+            if (!task.dueDate || task.dueDate >= today) return;
+
+            // Generate past missed occurrences
+            let remainCount = task.repeatCount || 0;
+            let date = getNextRepeatDate(task.dueDate, task.repeat);
+            while (date < today) {
+                // Respect repeatCount limit
+                if (remainCount > 0) { remainCount--; if (remainCount === 0) break; }
+                // Respect repeatDays filter
+                if (task.repeatDays && task.repeatDays.length > 0 && task.repeatDays.length < 7) {
+                    const dow = new Date(date + 'T00:00:00').getDay();
+                    if (!task.repeatDays.includes(dow)) { date = getNextRepeatDate(date, task.repeat); continue; }
+                }
+                if (!history.includes(date)) {
+                    group.tasks.push({
+                        id: uid('t'), title: task.title, done: false, dueDate: date,
+                        repeat: '', repeatId: task.repeatId,
+                        repeatDays: task.repeatDays || [], repeatTime: task.repeatTime || '',
+                        repeatCount: 0,
+                        notes: task.notes, priority: task.priority, size: task.size || '',
+                        archived: false, createdAt: new Date().toISOString(),
+                    });
+                    history.push(date);
+                    created++;
+                }
+                date = getNextRepeatDate(date, task.repeat);
+            }
+
+            // Move the active repeating task to next upcoming date
+            if (!history.includes(date)) {
+                task.dueDate = date;
+                history.push(date);
+            } else {
+                // Find next ungenerated date
+                while (history.includes(date)) {
+                    date = getNextRepeatDate(date, task.repeat);
+                }
+                task.dueDate = date;
+                history.push(date);
+            }
+        });
+    });
+
+    if (created > 0) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        toast(`Created ${created} missed repeating task${created !== 1 ? 's' : ''}`);
+    }
+}
+
+// ---------- Helpers ----------
+function uid(prefix) {
+    return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+function esc(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+}
+
+function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(el._timeout);
+    el._timeout = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ---------- Encryption ----------
+let cryptoKey = null; // derived key, kept in memory only
+
+async function deriveKey(passphrase, salt) {
+    const enc = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt, iterations: 600000, hash: 'SHA-256' },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+    );
+}
+
+async function encryptData(plaintext, key) {
+    const enc = new TextEncoder();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plaintext));
+    return { iv: btoa(String.fromCharCode(...iv)), ct: btoa(String.fromCharCode(...new Uint8Array(ct))) };
+}
+
+async function decryptData(encrypted, key) {
+    const iv = Uint8Array.from(atob(encrypted.iv), c => c.charCodeAt(0));
+    const ct = Uint8Array.from(atob(encrypted.ct), c => c.charCodeAt(0));
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+    return new TextDecoder().decode(plain);
+}
+
+async function saveEncrypted() {
+    if (!cryptoKey) return;
+    const plaintext = JSON.stringify(data);
+    const encrypted = await encryptData(plaintext, cryptoKey);
+    const salt = localStorage.getItem(STORAGE_KEY + '-salt');
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ encrypted: true, salt, ...encrypted }));
+}
+
+async function loadEncrypted(passphrase) {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed.encrypted) return null;
+    const salt = Uint8Array.from(atob(parsed.salt), c => c.charCodeAt(0));
+    const key = await deriveKey(passphrase, salt);
+    const plaintext = await decryptData(parsed, key);
+    cryptoKey = key;
+    return JSON.parse(plaintext);
+}
+
+let passphraseResolve = null;
+let passphraseMode = 'decrypt'; // 'decrypt', 'setup', 'change'
+
+function showPassphraseModal(mode) {
+    passphraseMode = mode;
+    const title = document.getElementById('passphraseTitle');
+    const desc = document.getElementById('passphraseDesc');
+    const confirmWrap = document.getElementById('passphraseConfirmWrap');
+    const cancelBtn = document.getElementById('passphraseCancelBtn');
+    document.getElementById('passphraseInput').value = '';
+    document.getElementById('passphraseConfirm').value = '';
+    document.getElementById('passphraseError').style.display = 'none';
+    if (mode === 'setup') {
+        title.textContent = 'Set Encryption Passphrase';
+        desc.textContent = 'Choose a passphrase to encrypt your data. Use something easy to remember like your email address. You will need this every time you open the app.';
+        confirmWrap.style.display = '';
+        cancelBtn.style.display = '';
+    } else if (mode === 'decrypt') {
+        title.textContent = 'Enter Passphrase';
+        desc.textContent = 'Your data is encrypted. Enter your passphrase to unlock.';
+        confirmWrap.style.display = 'none';
+        cancelBtn.style.display = 'none'; // must enter passphrase to proceed
+    }
+    document.getElementById('passphraseModal').classList.add('open');
+    document.getElementById('passphraseInput').focus();
+    return new Promise(resolve => { passphraseResolve = resolve; });
+}
+
+async function submitPassphrase() {
+    const pass = document.getElementById('passphraseInput').value;
+    const errEl = document.getElementById('passphraseError');
+    if (!pass) { errEl.textContent = 'Passphrase cannot be empty.'; errEl.style.display = ''; return; }
+    if (passphraseMode === 'setup') {
+        const confirm = document.getElementById('passphraseConfirm').value;
+        if (pass !== confirm) { errEl.textContent = 'Passphrases do not match.'; errEl.style.display = ''; return; }
+        // Generate salt and derive key
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        localStorage.setItem(STORAGE_KEY + '-salt', btoa(String.fromCharCode(...salt)));
+        cryptoKey = await deriveKey(pass, salt);
+        await saveEncrypted();
+        document.getElementById('passphraseModal').classList.remove('open');
+        if (passphraseResolve) passphraseResolve(true);
+        toast('Encryption enabled');
+    } else if (passphraseMode === 'decrypt') {
+        try {
+            const decrypted = await loadEncrypted(pass);
+            if (decrypted) {
+                data = decrypted;
+                if (!data.repeatHistory) data.repeatHistory = {};
+                if (!data.trash) data.trash = [];
+                document.getElementById('passphraseModal').classList.remove('open');
+                if (passphraseResolve) passphraseResolve(true);
+                purgeExpiredTrash();
+                backfillRepeatingTasks();
+                render();
+            } else {
+                errEl.textContent = 'Invalid data.'; errEl.style.display = '';
+            }
+        } catch (e) {
+            errEl.textContent = 'Wrong passphrase. Please try again.'; errEl.style.display = '';
+        }
+    }
+}
+
+function cancelPassphrase() {
+    document.getElementById('passphraseModal').classList.remove('open');
+    if (passphraseResolve) passphraseResolve(false);
+}
+
+async function toggleEncryption() {
+    const enabled = document.getElementById('settingEncryption').checked;
+    if (enabled) {
+        const ok = await showPassphraseModal('setup');
+        if (!ok) {
+            document.getElementById('settingEncryption').checked = false;
+            return;
+        }
+        settings.encryption = true;
+    } else {
+        // Disable: save data unencrypted
+        settings.encryption = false;
+        cryptoKey = null;
+        localStorage.removeItem(STORAGE_KEY + '-salt');
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        toast('Encryption disabled');
+    }
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+// ---------- Init ----------
+async function init() {
+    const savedSettings = localStorage.getItem(SETTINGS_KEY);
+    const parsed = savedSettings ? JSON.parse(savedSettings) : {};
+    settings = {
+        ...DEFAULT_SETTINGS, ...parsed,
+        labels: { ...DEFAULT_LABELS, ...(parsed.labels || {}) },
+        priorityLevels: parsed.priorityLevels || JSON.parse(JSON.stringify(DEFAULT_PRIORITY_LEVELS)),
+        sizeLevels: parsed.sizeLevels || JSON.parse(JSON.stringify(DEFAULT_SIZE_LEVELS)),
+    };
+    applyDarkMode();
+
+    // Check if data is encrypted
+    const raw = localStorage.getItem(STORAGE_KEY);
+    let isEncrypted = false;
+    if (raw) {
+        try { isEncrypted = JSON.parse(raw).encrypted === true; } catch(e) {}
+    }
+
+    if (isEncrypted && settings.encryption) {
+        // Need passphrase to load — show empty state while waiting
+        data = { groups: [], repeatHistory: {}, trash: [] };
+        applySettings();
+        render();
+        await showPassphraseModal('decrypt');
+    } else {
+        load();
+    }
+}
+init();
+</script>
+</body>
+</html>
