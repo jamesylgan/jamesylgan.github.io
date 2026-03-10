@@ -85,6 +85,8 @@ A phased checklist tracks your planning progress:
 4. **Book Activities** — are reservable activities booked? Skipped for Home and Chill legs.
 5. **Prepare** — packing list progress (if enabled).
 
+**Clicking an action item** auto-populates the modal with the relevant leg and dates — e.g., "Add lodging for Madrid" opens the lodging modal with Madrid's leg and start date pre-filled.
+
 After reordering legs, you'll see **"Review transport"** action items for each transport entry that may need updating.
 
 ### Booking progress
@@ -149,7 +151,7 @@ Day plans are reusable "packages" of activities for a city — like having 3 dif
 **Expandable day plan cards:**
 - In the Day Plans view, each plan card can be **expanded by clicking** its name/body area.
 - **Collapsed** (default): shows activity names joined with arrows, notes, and Use/Edit buttons.
-- **Expanded**: shows each activity as its own row with category icon, name, time, and duration. If **Show Photos** is enabled, photo strips appear below activities that have photos.
+- **Expanded**: shows each activity as its own row with category icon, name, time, and duration. **Click any activity row** to open its editor. If **Show Photos** is enabled, photo strips appear below activities that have photos.
 
 **Day Plans view:**
 - The **Day Plans** view shows all your plans organized by city, with archived plans in a collapsible section at the bottom.
@@ -229,7 +231,7 @@ Switch to the **Map** tab to see all your places on an OpenStreetMap map.
 - **Green home markers** = start/end location markers (shown when trip route is on and coordinates are set).
 
 ### Map label overlap
-Markers have layered z-index values (activities > lodging > cities) so smaller markers render above larger city labels. Hover over any marker to bring it to the front.
+When markers are close together, an automatic **collision detection** pass nudges overlapping labels apart so they remain readable. This runs after markers are placed and again on zoom/pan. Markers also have layered z-index values (activities > lodging > cities) so smaller markers render above larger city labels.
 
 ### Filter the map
 - **By leg** — show only places in one city.
