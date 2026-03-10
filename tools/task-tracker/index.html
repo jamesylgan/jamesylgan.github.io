@@ -98,6 +98,7 @@
         .group {
             background: var(--bg-card); border-radius: 8px; padding: 16px;
             margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            overflow: hidden;
         }
         .group-header {
             display: flex; justify-content: space-between; align-items: center;
@@ -157,6 +158,7 @@
 
         /* Add task area */
         .add-task-area { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-light); }
+        .input-row .pv-zone { margin-bottom: 0; }
 
         /* Add group */
         .add-group-area { margin-bottom: 16px; }
@@ -182,12 +184,26 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             transition: max-width .2s;
         }
+        .settings-panel { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.2) transparent; }
+        .settings-panel::-webkit-scrollbar { width: 8px; }
+        .settings-panel::-webkit-scrollbar-track { background: transparent; }
+        .settings-panel::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        .settings-panel::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.3); }
+        [data-theme="dark"] .settings-panel { scrollbar-color: rgba(255,255,255,0.2) transparent; }
+        [data-theme="dark"] .settings-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
+        [data-theme="dark"] .settings-panel::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
         .settings-panel h2 { margin-bottom: 16px; font-size: 1.1rem; }
         .setting-row {
             display: flex; justify-content: space-between; align-items: center;
             padding: 10px 0; border-bottom: 1px solid var(--border-light);
+            max-height: 80px; overflow: hidden;
+            transition: max-height 0.25s ease, opacity 0.2s ease, padding 0.25s ease, border-color 0.2s ease;
         }
         .setting-row:last-child { border-bottom: none; }
+        .setting-row.setting-hidden {
+            max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0;
+            border-bottom-color: transparent; pointer-events: none;
+        }
         .setting-label { font-size: 14px; color: var(--text); }
         .setting-desc { font-size: 12px; color: var(--text-muted); }
         .toggle {
@@ -212,7 +228,8 @@
         .modal-overlay.open { display: flex; align-items: center; justify-content: center; }
         .modal {
             background: var(--bg-card); color: var(--text); border-radius: 12px; padding: 24px;
-            width: 90%; max-width: 480px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 90%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
         .modal h2 { margin-bottom: 16px; font-size: 1.1rem; }
         .modal label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; margin-top: 12px; }
@@ -365,6 +382,72 @@
         /* Resizable settings panel */
         .settings-panel { resize: both; overflow: auto; }
 
+        /* Status badges */
+        .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+        .status-unstarted { background: #dbeafe; color: #1e40af; }
+        .status-in-progress { background: #fef3c7; color: #92400e; }
+        .status-completed { background: #d1fae5; color: #065f46; }
+        [data-theme="dark"] .status-unstarted { background: #1e3a5f; color: #93c5fd; }
+        [data-theme="dark"] .status-in-progress { background: #78350f; color: #fcd34d; }
+        [data-theme="dark"] .status-completed { background: #064e3b; color: #6ee7b7; }
+
+        /* Category headers */
+        .category-header { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 10px; margin: 10px 0 6px 0; border-left: 3px solid var(--border); color: var(--text-muted); }
+        .category-header:first-child { margin-top: 0; }
+
+        /* Category tracker badge */
+        .ac-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+
+        /* Next TODOs section */
+        .next-tasks-section { background: var(--bg-card); border-radius: 8px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid var(--accent); }
+        .next-tasks-section h3 { font-size: 1rem; color: var(--accent); margin-bottom: 10px; }
+        .next-task-item { display: flex; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 4px; background: var(--bg-task); gap: 8px; cursor: grab; }
+        .next-task-item.dragging { opacity: 0.4; }
+        .next-task-item .next-task-from { font-size: 11px; color: var(--text-muted); }
+        .next-task-item .next-task-actions { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
+        .next-task-item .next-task-actions button { width: 24px; height: 24px; border-radius: 4px; border: none; cursor: pointer; font-size: 12px; background: transparent; color: var(--text); display: flex; align-items: center; justify-content: center; }
+        .next-task-item .next-task-actions button:hover { background: var(--border); }
+
+        /* Task link */
+        .task-link { font-size: 12px; color: var(--accent); text-decoration: none; }
+        .task-link:hover { text-decoration: underline; }
+
+        /* Custom field badge */
+        .custom-field-badge { font-size: 11px; padding: 1px 6px; border-radius: 3px; background: var(--border-light); color: var(--text-muted); }
+
+        /* Custom columns editor */
+        .col-editor-row { display: flex; gap: 6px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border-light); }
+        .col-editor-row:last-child { border-bottom: none; }
+
+        /* Pin button */
+        .btn-pin { color: var(--text-muted) !important; }
+        .btn-pin:hover { color: var(--accent) !important; background: #dbeafe !important; }
+
+        /* Radio inline */
+        .radio-inline { display: inline-flex; gap: 4px; align-items: center; }
+        .radio-inline label { font-size: 11px; cursor: pointer; padding: 1px 6px; border-radius: 3px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-muted); }
+        .radio-inline label.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+        /* Column layout for custom fields */
+        .task-col-header { display: flex; align-items: center; padding: 4px 12px; gap: 10px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 1px solid var(--border-light); margin-bottom: 4px; overflow: hidden; }
+        .task-col-header .col-h-title { min-width: 0; position: relative; padding-right: 8px; }
+        .task-col-header .col-h-cell { text-align: left; position: relative; padding-right: 8px; min-width: 40px; }
+        .task-col-header .col-h-actions { width: 100px; flex-shrink: 0; }
+        .col-resize-handle { position: absolute; right: -1px; top: 20%; bottom: 20%; width: 3px; cursor: col-resize; background: rgba(147,171,198,0.3); border-radius: 2px; z-index: 1; }
+        .col-resize-handle:hover, .col-resize-handle.resizing { background: var(--accent); opacity: 0.6; }
+        .task.task-columned { align-items: center; overflow: hidden; }
+        .task-columned .task-body { flex: 1; min-width: 0; }
+        .task-col-cell { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; min-width: 40px; }
+        .task-col-cell a { font-size: 12px; }
+
+        /* Priority background colors */
+        .task.priority-high { background: rgba(220,53,69,0.06); }
+        .task.priority-medium { background: rgba(255,193,7,0.08); }
+        .task.priority-low { background: rgba(40,167,69,0.06); }
+        [data-theme="dark"] .task.priority-high { background: rgba(220,53,69,0.12); }
+        [data-theme="dark"] .task.priority-medium { background: rgba(255,193,7,0.12); }
+        [data-theme="dark"] .task.priority-low { background: rgba(40,167,69,0.10); }
+
         /* Mobile */
         @media (max-width: 640px) {
             body { padding: 10px; }
@@ -406,6 +489,7 @@
         <input type="text" id="newGroupName" placeholder="New group name..." onkeydown="if(event.key==='Enter')addGroup()">
         <button id="addGroupBtn" class="btn-primary" onclick="addGroup()">+ Group</button>
     </div>
+    <div id="nextTasksSection" style="display:none;"></div>
     <div id="groupsContainer"></div>
 </div>
 
@@ -520,6 +604,14 @@
         <label>Title</label>
         <input type="text" id="editTitle">
         <div id="editNotesWrap"><label>Notes</label><textarea id="editNotes" placeholder="Optional notes..."></textarea></div>
+        <div id="editLinkWrap" style="display:none;">
+            <label>Link URL</label><input type="url" id="editLink" placeholder="https://...">
+            <label>Link Text (optional)</label><input type="text" id="editLinkText" placeholder="Display text for link">
+        </div>
+        <div id="editCategoryWrap" style="display:none;">
+            <label>Category</label>
+            <select id="editCategory"><option value="">None</option></select>
+        </div>
         <div id="editDueDateWrap"><label>Due Date</label><input type="date" id="editDueDate"></div>
         <div id="editRepeatWrap">
             <label>Repeat</label>
@@ -547,6 +639,7 @@
             <label>Size / Effort</label>
             <select id="editSize"></select>
         </div>
+        <div id="editCustomFieldsWrap"></div>
         <input type="hidden" id="editTaskId">
         <input type="hidden" id="editGroupId">
         <div class="modal-actions">
@@ -564,6 +657,58 @@
         <input type="text" id="editGroupName">
         <label>Description (optional)</label>
         <input type="text" id="editGroupDesc">
+        <div id="editGroupLinkWrap" style="display:none;">
+            <label>Link URL</label><input type="url" id="editGroupLink" placeholder="https://...">
+            <label>Link Text (optional)</label><input type="text" id="editGroupLinkText" placeholder="Display text for link">
+        </div>
+        <div id="editGroupStatusWrap" style="display:none;">
+            <label>Status</label>
+            <select id="editGroupStatus">
+                <option value="">None</option>
+                <option value="unstarted">Unstarted</option>
+                <option value="in-progress">In Progress</option>
+                <option value="completed">Completed</option>
+            </select>
+        </div>
+        <div id="editGroupCategoriesWrap" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
+                <label style="margin:0;">Categories</label>
+            </div>
+            <div id="editGroupCategoriesList"></div>
+            <div style="margin-top:8px;padding:8px;border:1px solid var(--border);border-radius:6px;">
+                <div style="font-size:12px;font-weight:500;margin-bottom:4px;">Add Category</div>
+                <input type="text" id="newCatName" placeholder="Category name" style="margin-bottom:4px;">
+                <div id="catColorPalette" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;"></div>
+                <button onclick="addCategoryToEditor()" style="padding:4px 12px;border:1px solid var(--accent);border-radius:4px;background:var(--accent);color:white;cursor:pointer;font-size:12px;">Add</button>
+            </div>
+        </div>
+        <div id="editGroupColumnsWrap" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
+                <label style="margin:0;">Custom Columns</label>
+                <label style="font-size:12px;display:flex;align-items:center;gap:6px;margin:0;cursor:pointer;color:var(--text-muted);">
+                    Show as columns <input type="checkbox" id="editGroupColumnLayout" style="width:auto;" onchange="document.getElementById('editGroupShowNotesWrap').style.display=this.checked?'':'none'">
+                </label>
+            </div>
+            <div id="editGroupShowNotesWrap" style="display:none;margin-top:6px;">
+                <label style="font-size:12px;display:flex;align-items:center;gap:6px;margin:0;cursor:pointer;color:var(--text-muted);">
+                    Show notes in column view <input type="checkbox" id="editGroupShowNotes" style="width:auto;">
+                </label>
+            </div>
+            <div id="editGroupColumnsList"></div>
+            <div style="margin-top:8px;padding:8px;border:1px solid var(--border);border-radius:6px;">
+                <div style="font-size:12px;font-weight:500;margin-bottom:4px;">Add Column</div>
+                <input type="text" id="newColName" placeholder="Column name" style="margin-bottom:4px;">
+                <select id="newColType" style="margin-bottom:4px;" onchange="toggleColOptions()">
+                    <option value="text">Text</option>
+                    <option value="link">Link</option>
+                    <option value="date">Date</option>
+                    <option value="enum">Dropdown</option>
+                    <option value="radio">Radio</option>
+                </select>
+                <textarea id="newColOptions" placeholder="Options (one per line)" style="display:none;min-height:40px;margin-bottom:4px;"></textarea>
+                <button onclick="addColumnToEditor()" style="padding:4px 12px;border:1px solid var(--accent);border-radius:4px;background:var(--accent);color:white;cursor:pointer;font-size:12px;">Add</button>
+            </div>
+        </div>
         <input type="hidden" id="editGroupTargetId">
         <div class="modal-actions">
             <button class="btn-cancel" onclick="closeEditGroupModal()">Cancel</button>
@@ -649,6 +794,7 @@ const DEFAULT_DATA = {
     ],
     repeatHistory: { 'r-demo': [new Date().toISOString().split('T')[0]] },
     trash: [],
+    nextTasks: [],
 };
 
 const DEFAULT_LABELS = {
@@ -699,6 +845,23 @@ const DEFAULT_SETTINGS = {
     priority: false,
     sizing: false,
     trash: true,
+    links: false,
+    groupStatus: false,
+    categories: false,
+    categoryTracker: false,
+    customColumns: false,
+    nextTasks: false,
+    inlineDate: true,
+    inlinePriority: true,
+    inlineSize: true,
+    inlineRepeat: true,
+    inlineNotes: true,
+    resetInlinePriority: true,
+    resetInlineDate: true,
+    resetInlineRepeat: true,
+    resetInlineSize: true,
+    priorityColors: false,
+    skipTrash: false,
     encryption: false,
     darkMode: false,
     dateFormat: 'dd/mm/yyyy', // 'yyyy-mm-dd', 'mm/dd/yyyy', 'dd/mm/yyyy'
@@ -712,11 +875,17 @@ const DEFAULT_SETTINGS = {
     labels: { ...DEFAULT_LABELS },
 };
 const TRASH_RETENTION_DAYS = 30;
+const CATEGORY_COLORS = ['#16a34a','#6b7280','#2563eb','#dc2626','#d97706','#7c3aed','#0891b2','#db2777'];
+
+function groupHasCategories(group) {
+    return settings.categories && (group.categories || []).length > 0;
+}
 
 // ---------- State ----------
 let data = null;
 let settings = null;
 let currentTab = 'active';
+let _inlineState = {}; // capture inline field values across re-render
 
 function load() {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -727,6 +896,13 @@ function load() {
     // Ensure new fields exist on old data
     if (!data.repeatHistory) data.repeatHistory = {};
     if (!data.trash) data.trash = [];
+    if (!data.nextTasks) data.nextTasks = [];
+    // Migrate description → notes
+    data.groups.forEach(g => g.tasks.forEach(t => {
+        if (t.description && !t.notes) { t.notes = t.description; delete t.description; }
+        else if (t.description && t.notes) { t.notes += '\n' + t.description; delete t.description; }
+        else if (t.description) { delete t.description; }
+    }));
     const savedSettings = localStorage.getItem(SETTINGS_KEY);
     const parsedSettings = savedSettings ? JSON.parse(savedSettings) : {};
     settings = {
@@ -735,6 +911,32 @@ function load() {
         priorityLevels: parsedSettings.priorityLevels || JSON.parse(JSON.stringify(DEFAULT_PRIORITY_LEVELS)),
         sizeLevels: parsedSettings.sizeLevels || JSON.parse(JSON.stringify(DEFAULT_SIZE_LEVELS)),
     };
+    // Migrate acceptanceCriteria/scopeTasks → categories
+    if (settings.acceptanceCriteria || settings.scopeTasks) {
+        settings.categories = true;
+        delete settings.acceptanceCriteria;
+        delete settings.scopeTasks;
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    }
+    // Migrate acTracker → categoryTracker
+    if (settings.acTracker !== undefined) {
+        settings.categoryTracker = settings.acTracker;
+        delete settings.acTracker;
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    }
+    // Migrate enableCategories → categories array
+    data.groups.forEach(g => {
+        if (g.categories === undefined) {
+            const hasAc = g.tasks.some(t => t.category === 'ac');
+            const hasScope = g.tasks.some(t => t.category === 'scope');
+            g.categories = [];
+            if (g.enableCategories || hasAc || hasScope) {
+                if (hasAc) g.categories.push({id:'ac', name:'Acceptance Criteria', color:'#16a34a'});
+                if (hasScope) g.categories.push({id:'scope', name:'Scope', color:'#6b7280'});
+            }
+            delete g.enableCategories;
+        }
+    });
     applyDarkMode();
     applySettings();
     purgeExpiredTrash();
@@ -760,11 +962,37 @@ function saveSetting() {
     settings.priority = document.getElementById('settingPriority').checked;
     settings.sizing = document.getElementById('settingSizing').checked;
     settings.trash = document.getElementById('settingTrash').checked;
+    settings.links = document.getElementById('settingLinks').checked;
+    settings.groupStatus = document.getElementById('settingGroupStatus').checked;
+    settings.categories = document.getElementById('settingCategories').checked;
+    settings.categoryTracker = document.getElementById('settingCategoryTracker').checked;
+    settings.customColumns = document.getElementById('settingCustomColumns').checked;
+    settings.nextTasks = document.getElementById('settingNextTasks').checked;
+    settings.inlineDate = document.getElementById('settingInlineDate').checked;
+    settings.inlinePriority = document.getElementById('settingInlinePriority').checked;
+    settings.inlineSize = document.getElementById('settingInlineSize').checked;
+    settings.inlineRepeat = document.getElementById('settingInlineRepeat').checked;
+    settings.inlineNotes = document.getElementById('settingInlineNotes').checked;
+    settings.resetInlinePriority = document.getElementById('settingResetInlinePriority').checked;
+    settings.resetInlineDate = document.getElementById('settingResetInlineDate').checked;
+    settings.resetInlineRepeat = document.getElementById('settingResetInlineRepeat').checked;
+    settings.resetInlineSize = document.getElementById('settingResetInlineSize').checked;
+    settings.priorityColors = document.getElementById('settingPriorityColors').checked;
+    settings.skipTrash = document.getElementById('settingSkipTrash').checked;
     settings.darkMode = document.getElementById('settingDarkMode').checked;
     // dateFormat, dismissAction, visualMode are now set via setToggle/cycleSetting
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     applyDarkMode();
     render();
+    // Animate sub-toggle visibility instead of full rebuild
+    ALL_SETTINGS_ROWS.forEach(row => {
+        if (!row.showIf) return;
+        const el = document.querySelector(`.setting-row[data-skey="${row.key}"]`);
+        if (!el) return;
+        if (row.showIf()) el.classList.remove('setting-hidden');
+        else el.classList.add('setting-hidden');
+    });
+    applySliders();
 }
 function setSlider(key, val) {
     settings[key] = val;
@@ -810,14 +1038,31 @@ function applySliders() {
 const ALL_SETTINGS_ROWS = [
     // Task features
     { key: 'dueDates', label: 'Due Dates', desc: 'Show due date picker on tasks', type: 'toggle', id: 'settingDueDates' },
+    { key: 'inlineDate', label: 'Inline date picker', desc: 'Show date picker in the add-task row', type: 'toggle', id: 'settingInlineDate', parent: 'dueDates', showIf: () => settings.dueDates },
+    { key: 'resetInlineDate', label: 'Reset date after adding', desc: 'Clear date picker after adding a task', type: 'toggle', id: 'settingResetInlineDate', parent: 'inlineDate', showIf: () => settings.dueDates && settings.inlineDate },
     { key: 'priority', label: 'Priority', desc: 'Set priority levels on tasks', type: 'toggle', id: 'settingPriority' },
+    { key: 'inlinePriority', label: 'Inline priority selector', desc: 'Show priority selector in the add-task row', type: 'toggle', id: 'settingInlinePriority', parent: 'priority', showIf: () => settings.priority },
+    { key: 'resetInlinePriority', label: 'Reset priority after adding', desc: 'Clear priority selector after adding a task', type: 'toggle', id: 'settingResetInlinePriority', parent: 'inlinePriority', showIf: () => settings.priority && settings.inlinePriority },
+    { key: 'priorityColors', label: 'Priority background colors', desc: 'Tint task background by priority level', type: 'toggle', id: 'settingPriorityColors', parent: 'priority', showIf: () => settings.priority },
     { key: 'sizing', label: 'Sizing', desc: 'Estimate effort size on tasks', type: 'toggle', id: 'settingSizing' },
+    { key: 'inlineSize', label: 'Inline size selector', desc: 'Show size selector in the add-task row', type: 'toggle', id: 'settingInlineSize', parent: 'sizing', showIf: () => settings.sizing },
+    { key: 'resetInlineSize', label: 'Reset size after adding', desc: 'Clear size selector after adding a task', type: 'toggle', id: 'settingResetInlineSize', parent: 'inlineSize', showIf: () => settings.sizing && settings.inlineSize },
     { key: 'notes', label: 'Notes', desc: 'Allow adding notes/descriptions to tasks', type: 'toggle', id: 'settingNotes' },
+    { key: 'inlineNotes', label: 'Inline notes field', desc: 'Show notes field in the add-task row', type: 'toggle', id: 'settingInlineNotes', parent: 'notes', showIf: () => settings.notes },
+    { key: 'links', label: 'Links', desc: 'Add URL links to groups and tasks', type: 'toggle', id: 'settingLinks' },
+    { key: 'categories', label: 'Categories', desc: 'Tag tasks with custom categories per group', type: 'toggle', id: 'settingCategories' },
+    { key: 'categoryTracker', label: 'Category Tracker', desc: 'Show category progress per group and overall', type: 'toggle', id: 'settingCategoryTracker', parent: 'categories', showIf: () => settings.categories },
     { key: 'repeat', label: 'Repeating Tasks', desc: 'Allow tasks to repeat on a schedule', type: 'toggle', id: 'settingRepeat' },
+    { key: 'inlineRepeat', label: 'Inline repeat selector', desc: 'Show repeat selector in the add-task row', type: 'toggle', id: 'settingInlineRepeat', parent: 'repeat', showIf: () => settings.repeat },
+    { key: 'resetInlineRepeat', label: 'Reset repeat after adding', desc: 'Clear repeat selector after adding a task', type: 'toggle', id: 'settingResetInlineRepeat', parent: 'inlineRepeat', showIf: () => settings.repeat && settings.inlineRepeat },
     { key: 'progress', label: 'Progress Tracking', desc: 'Show progress bars per group and overall', type: 'toggle', id: 'settingProgress' },
     // Organization
     { key: 'archive', label: 'Archive', desc: 'Archive tasks instead of only deleting', type: 'toggle', id: 'settingArchive' },
-    { key: 'trash', label: 'Trash', desc: 'Deleted items go to trash for 30 days', type: 'toggle', id: 'settingTrash' },
+    { key: 'trash', label: 'Display Trash', desc: 'Show the trash tab', type: 'toggle', id: 'settingTrash' },
+    { key: 'skipTrash', label: 'Skip trash, permanently delete', desc: 'Bypass 30-day trash — items are gone immediately', type: 'toggle', id: 'settingSkipTrash', parent: 'trash', showIf: () => !settings.trash },
+    { key: 'groupStatus', label: 'Group Status', desc: 'Status badges on groups (Unstarted/In Progress/Completed)', type: 'toggle', id: 'settingGroupStatus' },
+    { key: 'nextTasks', label: 'Next TODOs', desc: 'Pin tasks into a Next TODOs section', type: 'toggle', id: 'settingNextTasks' },
+    { key: 'customColumns', label: 'Custom Columns', desc: 'Define custom data columns per group', type: 'toggle', id: 'settingCustomColumns' },
     // Appearance
     { key: 'darkMode', label: 'Dark Mode', desc: 'Switch to dark theme', type: 'toggle', id: 'settingDarkMode' },
     { key: 'visualMode', label: 'Visual Settings', desc: 'Open visual settings as modal or full page', type: 'slider', options: 'modal,fullpage', optionLabels: ['Modal','Full Page'] },
@@ -833,11 +1078,17 @@ const ALL_SETTINGS_ROWS = [
 ];
 
 function renderSettingRow(row) {
-    const hidden = row.showIf && !row.showIf() ? ' style="display:none"' : '';
+    const isHidden = row.showIf && !row.showIf();
+    const hiddenClass = isHidden ? ' setting-hidden' : '';
+    let depth = 0, cur = row;
+    while (cur.parent) { depth++; cur = ALL_SETTINGS_ROWS.find(r => r.key === cur.parent) || {}; }
+    const indentStyle = depth > 0 ? `padding-left:${8 + depth * 24}px;border-left:2px solid var(--accent);margin-left:8px;` : '';
+    const styleAttr = indentStyle ? ` style="${indentStyle}"` : '';
     const rowId = row.rowId ? ` id="${row.rowId}"` : '';
+    const skey = ` data-skey="${row.key}"`;
     if (row.type === 'toggle') {
         const handler = row.handler || 'saveSetting()';
-        return `<div class="setting-row"${rowId}${hidden}>
+        return `<div class="setting-row${hiddenClass}"${rowId}${skey}${styleAttr}>
             <div><div class="setting-label">${esc(row.label)}</div><div class="setting-desc">${esc(row.desc)}</div></div>
             <label class="toggle"><input type="checkbox" id="${row.id}" onchange="${handler}"><span class="toggle-slider"></span></label>
         </div>`;
@@ -845,7 +1096,7 @@ function renderSettingRow(row) {
         const opts = row.options.split(',');
         if (opts.length === 2) {
             // 2-option: standard toggle with labels on each side
-            return `<div class="setting-row"${rowId}${hidden}>
+            return `<div class="setting-row${hiddenClass}"${rowId}${skey}${styleAttr}>
                 <div><div class="setting-label">${esc(row.label)}</div><div class="setting-desc">${esc(row.desc)}</div></div>
                 <div class="toggle-2opt" data-key="${row.key}" data-options="${row.options}">
                     <span class="opt-label" data-val="${opts[0]}" onclick="setSlider('${row.key}','${opts[0]}')">${esc(row.optionLabels[0])}</span>
@@ -856,7 +1107,7 @@ function renderSettingRow(row) {
         } else {
             // 3-option: segmented buttons + mini 3-position toggle
             const btns = opts.map((o, i) => `<button data-val="${o}" onclick="event.stopPropagation();setSlider('${row.key}','${o}')">${esc(row.optionLabels[i])}</button>`).join('');
-            return `<div class="setting-row"${rowId}${hidden}>
+            return `<div class="setting-row${hiddenClass}"${rowId}${skey}${styleAttr}>
                 <div><div class="setting-label">${esc(row.label)}</div><div class="setting-desc">${esc(row.desc)}</div></div>
                 <div class="ctrl-3opt" data-key="${row.key}" data-options="${row.options}">
                     <div class="seg-buttons">${btns}</div>
@@ -1095,13 +1346,78 @@ function renderGroups() {
         const doneTasks = activeTasks.filter(t => t.done);
         const el = document.createElement('div');
         el.className = 'group';
+
+        // Group name with optional link
+        let groupNameHtml = esc(group.name);
+        let groupLinkLine = '';
+        if (settings.links && (group.link || '')) {
+            const href = sanitizeHref(group.link);
+            if (href) {
+                if (group.linkText) {
+                    // Linked text before description, unlinked " - " separator
+                    groupLinkLine = `<a href="${esc(href)}" target="_blank" class="task-link">${esc(group.linkText)}</a>`;
+                } else {
+                    // Link the group name itself
+                    groupNameHtml = `<a href="${esc(href)}" target="_blank" style="color:inherit;text-decoration:none;">${esc(group.name)}</a>`;
+                }
+            }
+        }
+
+        // Status badge
+        const statusBadge = settings.groupStatus && (group.status || '') ? `<span class="status-badge status-${esc(group.status)}">${esc(group.status.replace('-', ' '))}</span>` : '';
+
+        // Category tracker badges
+        let catBadges = '';
+        if (settings.categoryTracker && groupHasCategories(group)) {
+            (group.categories || []).forEach(cat => {
+                const tasks = activeTasks.filter(t => t.category === cat.id);
+                const done = tasks.filter(t => t.done).length;
+                if (tasks.length > 0) catBadges += `<span class="ac-badge" style="background:${cat.color}20;color:${cat.color};">${done}/${tasks.length} ${esc(cat.name)}</span>`;
+            });
+        }
+
+        // Category selector for add-task
+        const catEnabled = groupHasCategories(group);
+        let catSelect = '';
+        if (catEnabled) {
+            const catOpts = (group.categories || []).map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+            catSelect = `<select id="newTaskCategory-${group.id}"><option value="">Category</option>${catOpts}</select>`;
+        }
+
+        // Determine if using column layout
+        const useColumns = settings.customColumns && (group.columnLayout === 'columns') && (group.customColumns || []).length > 0;
+        const taskRenderer = useColumns ? (t, gid) => renderTaskColumned(t, gid, group) : renderTask;
+
+        // Column header with resize handles
+        let colHeaderHtml = '';
+        if (useColumns) {
+            const totalCols = group.customColumns.length;
+            const defaultPct = Math.floor(30 / totalCols); // ~30% total for columns
+            const colWidthSum = group.customColumns.reduce((s, c) => s + (c.width || defaultPct), 0);
+            const titlePct = group.titleColumnWidth || Math.max(20, 100 - colWidthSum - 10);
+            const showNotes = settings.notes && group.showNotesInColumns;
+            colHeaderHtml = `<div class="task-col-header" data-gid="${group.id}">`
+                + `<div style="width:18px;flex-shrink:0;"></div>`
+                + `<div class="col-h-title" style="width:${titlePct}%;position:relative;">Task<div class="col-resize-handle" data-col-id="__title__" data-gid="${group.id}"></div></div>`
+                + (showNotes ? `<div class="col-h-cell" style="width:${group.notesColumnWidth || 15}%;">Notes<div class="col-resize-handle" data-col-id="__notes__" data-gid="${group.id}"></div></div>` : '')
+                + group.customColumns.map(c => {
+                    const w = c.width || defaultPct;
+                    return `<div class="col-h-cell" data-col-id="${c.id}" style="width:${w}%;">${esc(c.name)}<div class="col-resize-handle" data-col-id="${c.id}" data-gid="${group.id}"></div></div>`;
+                }).join('')
+                + `<div class="col-h-actions"></div></div>`;
+        }
+
+        // Render tasks (with or without category grouping)
+        const tasksHtml = colHeaderHtml + (catEnabled ? renderTasksByCategory(activeTasks, group.id, taskRenderer) : activeTasks.map(t => taskRenderer(t, group.id)).join(''));
+
         el.innerHTML = `
             <div class="group-header">
                 <div>
-                    <h2>${esc(group.name)}</h2>
-                    ${group.description ? `<div class="group-meta">${esc(group.description)}</div>` : ''}
+                    <h2>${groupNameHtml} ${statusBadge}</h2>
+                    ${(groupLinkLine || group.description) ? `<div class="group-meta">${groupLinkLine}${groupLinkLine && group.description ? ' - ' : ''}${group.description ? esc(group.description) : ''}</div>` : ''}
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;">
+                    ${catBadges}
                     ${settings.progress ? `<span class="group-progress">${doneTasks.length}/${activeTasks.length}</span>` : ''}
                     <div class="group-actions">
                         <button class="icon-btn" onclick="editGroup('${group.id}')" title="Edit group">${esc(settings.labels.editIcon)}</button>
@@ -1111,20 +1427,33 @@ function renderGroups() {
                 </div>
             </div>
             ${settings.progress ? renderGroupProgress(activeTasks) : ''}
-            <div id="tasks-${group.id}">${activeTasks.map(t => renderTask(t, group.id)).join('')}</div>
+            <div id="tasks-${group.id}">${tasksHtml}</div>
             <div class="add-task-area">
                 <div class="input-row">
                     <input type="text" id="newTask-${group.id}" placeholder="${esc(settings.labels.taskPlaceholder)}" onkeydown="if(event.key==='Enter')addTask('${group.id}')">
-                    ${settings.dueDates ? `<input type="date" id="newTaskDate-${group.id}">` : ''}
-                    ${settings.repeat ? `<select id="newTaskRepeat-${group.id}"><option value="">${esc(settings.labels.noRepeat)}</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly</option></select>` : ''}
-                    ${settings.priority ? `<select id="newTaskPriority-${group.id}"><option value="">${esc(settings.labels.priorityLabel)}</option>${settings.priorityLevels.map(p => `<option value="${esc(p.value)}">${p.icon} ${esc(p.label)}</option>`).join('')}</select>` : ''}
-                    ${settings.sizing ? `<select id="newTaskSize-${group.id}"><option value="">Size</option>${settings.sizeLevels.map(s => `<option value="${esc(s.value)}">${esc(s.value)}</option>`).join('')}</select>` : ''}
+                    ${settings.dueDates && settings.inlineDate ? `<input type="date" id="newTaskDate-${group.id}">` : ''}
+                    ${settings.repeat && settings.inlineRepeat ? `<select id="newTaskRepeat-${group.id}"><option value="">${esc(settings.labels.noRepeat)}</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly</option></select>` : ''}
+                    ${settings.priority && settings.inlinePriority ? `<select id="newTaskPriority-${group.id}"><option value="">${esc(settings.labels.priorityLabel)}</option>${settings.priorityLevels.map(p => `<option value="${esc(p.value)}">${p.icon} ${esc(p.label)}</option>`).join('')}</select>` : ''}
+                    ${settings.sizing && settings.inlineSize ? `<select id="newTaskSize-${group.id}"><option value="">Size</option>${settings.sizeLevels.map(s => `<option value="${esc(s.value)}">${esc(s.value)}</option>`).join('')}</select>` : ''}
+                    ${catSelect}
+                    ${settings.notes && settings.inlineNotes ? `<input type="text" id="newTaskNotes-${group.id}" placeholder="Notes..." style="flex:1;min-width:80px;">` : ''}
                     <button class="btn-primary" onclick="addTask('${group.id}')">${esc(settings.labels.addTask)}</button>
                 </div>
             </div>
         `;
         container.appendChild(el);
     });
+    // Restore inline field values after DOM rebuild
+    Object.keys(_inlineState).forEach(gid => {
+        const st = _inlineState[gid];
+        if (settings.inlineDate && !settings.resetInlineDate) { const el = document.getElementById('newTaskDate-'+gid); if (el && st.date) el.value = st.date; }
+        if (settings.inlineRepeat && !settings.resetInlineRepeat) { const el = document.getElementById('newTaskRepeat-'+gid); if (el && st.repeat) el.value = st.repeat; }
+        if (settings.inlinePriority && !settings.resetInlinePriority) { const el = document.getElementById('newTaskPriority-'+gid); if (el && st.priority) el.value = st.priority; }
+        if (settings.inlineSize && !settings.resetInlineSize) { const el = document.getElementById('newTaskSize-'+gid); if (el && st.size) el.value = st.size; }
+    });
+    _inlineState = {};
+    // Render next tasks section
+    renderNextTasks();
 }
 
 function renderGroupProgress(tasks) {
@@ -1147,20 +1476,138 @@ function renderTask(task, groupId) {
     const da = settings.dismissAction || 'both';
     const showArchive = settings.archive && (da === 'both' || da === 'archive');
     const showDelete = da === 'both' || da === 'delete';
+
+    // Task title with optional link
+    let titleHtml = esc(task.title);
+    if (settings.links && (task.link || '')) {
+        const href = sanitizeHref(task.link);
+        if (href) {
+            if (task.linkText) {
+                titleHtml = `<a href="${esc(href)}" target="_blank" class="task-link">${esc(task.linkText)}</a> ${esc(task.title)}`;
+            } else {
+                titleHtml = `<a href="${esc(href)}" target="_blank" style="color:inherit;">${esc(task.title)}</a>`;
+            }
+        }
+    }
+
+    // Description
+
+    // Custom fields display
+    let customHtml = '';
+    if (settings.customColumns) {
+        const group = data.groups.find(g => g.id === groupId);
+        const cols = group && group.customColumns ? group.customColumns : [];
+        const cf = task.customFields || {};
+        cols.forEach(col => {
+            const val = cf[col.id] || '';
+            if (!val) return;
+            if (col.type === 'link') {
+                const lp = parseLinkValue(val);
+                const h = sanitizeHref(lp.url);
+                if (h) customHtml += `<span><a href="${esc(h)}" target="_blank" class="task-link">${esc(lp.text || col.name)}</a></span>`;
+            } else if (col.type === 'date') {
+                customHtml += `<span class="custom-field-badge">${esc(col.name)}: ${fmtDate(val)}</span>`;
+            } else if (col.type === 'radio') {
+                customHtml += `<span class="custom-field-badge">${esc(col.name)}: ${esc(val)}</span>`;
+            } else {
+                customHtml += `<span class="custom-field-badge">${esc(col.name)}: ${esc(val)}</span>`;
+            }
+        });
+    }
+
+    const priClass = settings.priorityColors && task.priority ? `priority-${task.priority}` : '';
+
     return `
-        <div class="task ${task.done ? 'completed' : ''} ${dueClass}">
+        <div class="task ${task.done ? 'completed' : ''} ${dueClass} ${priClass}">
             <input type="checkbox" ${task.done ? 'checked' : ''} onchange="toggleTask('${groupId}','${task.id}')">
             <div class="task-body">
-                <div class="task-title">${esc(task.title)}</div>
+                <div class="task-title">${titleHtml}</div>
                 <div class="task-meta">
                     ${settings.priority && pLevel ? `<span>${pLevel.icon} ${pLevel.label}</span>` : ''}
                     ${settings.sizing && sLevel ? `<span class="size-badge">${esc(sLevel.value)}</span>` : ''}
                     ${settings.dueDates && task.dueDate ? `<span>${dueClass === 'overdue' ? esc(settings.labels.overdueIcon) : esc(settings.labels.calendarIcon)} ${fmtDate(task.dueDate)}</span>` : ''}
                     ${settings.repeat && repeatLabel ? `<span>${esc(settings.labels.repeatIcon)} ${esc(repeatLabel)}</span>` : ''}
                     ${settings.notes && task.notes ? `<span>${esc(settings.labels.notesIcon)} ${esc(task.notes.substring(0, 40))}${task.notes.length > 40 ? '...' : ''}</span>` : ''}
+                    ${customHtml}
                 </div>
             </div>
             <div class="task-actions" id="actions-${task.id}">
+                ${settings.nextTasks ? `<button class="btn-pin" onclick="addToNextTasks('${groupId}','${task.id}')" title="Pin to Next TODOs">\uD83D\uDCCC</button>` : ''}
+                <button onclick="openEditModal('${groupId}','${task.id}')" title="Edit">${esc(settings.labels.editIcon)}</button>
+                ${showArchive ? `<button class="btn-archive" onclick="archiveTask('${groupId}','${task.id}')" title="Archive">${esc(settings.labels.archiveIcon)}</button>` : ''}
+                ${showDelete ? `<button class="btn-delete" onclick="confirmDeleteTask('${groupId}','${task.id}')" title="Delete">${esc(settings.labels.deleteIcon)}</button>` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function renderTaskColumned(task, groupId, group) {
+    const columns = group.customColumns || [];
+    const today = new Date().toISOString().split('T')[0];
+    const tomorrow = new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0];
+    let dueClass = '';
+    if (settings.dueDates && task.dueDate && !task.done) {
+        if (task.dueDate < today) dueClass = 'overdue';
+        else if (task.dueDate <= tomorrow) dueClass = 'due-soon';
+    }
+    const pLevel = settings.priorityLevels.find(p => p.value === task.priority);
+    const da = settings.dismissAction || 'both';
+    const showArchive = settings.archive && (da === 'both' || da === 'archive');
+    const showDelete = da === 'both' || da === 'delete';
+
+    let titleHtml = esc(task.title);
+    if (settings.links && (task.link || '')) {
+        const href = sanitizeHref(task.link);
+        if (href) {
+            if (task.linkText) titleHtml = `<a href="${esc(href)}" target="_blank" class="task-link">${esc(task.linkText)}</a> ${esc(task.title)}`;
+            else titleHtml = `<a href="${esc(href)}" target="_blank" style="color:inherit;">${esc(task.title)}</a>`;
+        }
+    }
+
+    // Build column cells
+    const cf = task.customFields || {};
+    const totalCols = (columns || []).length;
+    const defaultPct = Math.floor(30 / Math.max(1, totalCols));
+    const colCells = (columns || []).map(col => {
+        const val = cf[col.id] || '';
+        const w = col.width || defaultPct;
+        let cellHtml = '';
+        if (!val) {
+            cellHtml = '<span style="color:var(--border);">—</span>';
+        } else if (col.type === 'link') {
+            const lp = parseLinkValue(val);
+            const h = sanitizeHref(lp.url);
+            cellHtml = h ? `<a href="${esc(h)}" target="_blank" class="task-link">${esc(lp.text || col.name)}</a>` : esc(val);
+        } else if (col.type === 'date') {
+            cellHtml = fmtDate(val);
+        } else if (col.type === 'radio') {
+            cellHtml = esc(val);
+        } else {
+            cellHtml = esc(val);
+        }
+        return `<div class="task-col-cell" data-col-id="${col.id}" style="width:${w}%;">${cellHtml}</div>`;
+    }).join('');
+
+    // Compact meta (priority + due date only, no custom fields)
+    const metaParts = [];
+    if (settings.priority && pLevel) metaParts.push(`<span>${pLevel.icon}</span>`);
+    if (settings.dueDates && task.dueDate) metaParts.push(`<span>${dueClass === 'overdue' ? esc(settings.labels.overdueIcon) : esc(settings.labels.calendarIcon)} ${fmtDate(task.dueDate)}</span>`);
+    const metaHtml = metaParts.length > 0 ? `<div class="task-meta" style="margin-top:2px;">${metaParts.join('')}</div>` : '';
+    const priClass = settings.priorityColors && task.priority ? `priority-${task.priority}` : '';
+    const colWidthSum = columns.reduce((s, c) => s + (c.width || defaultPct), 0);
+    const titlePct = group.titleColumnWidth || Math.max(20, 100 - colWidthSum - 10);
+
+    return `
+        <div class="task task-columned ${task.done ? 'completed' : ''} ${dueClass} ${priClass}">
+            <input type="checkbox" ${task.done ? 'checked' : ''} onchange="toggleTask('${groupId}','${task.id}')">
+            <div class="task-body" style="width:${titlePct}%;flex:0 1 auto;min-width:50px;">
+                <div class="task-title">${titleHtml}</div>
+                ${metaHtml}
+            </div>
+            ${settings.notes && group.showNotesInColumns ? `<div class="task-col-cell" data-col-id="__notes__" style="width:${group.notesColumnWidth || 15}%;" title="${esc(task.notes || '')}">${esc((task.notes || '').substring(0, 30))}${(task.notes || '').length > 30 ? '...' : ''}</div>` : ''}
+            ${colCells}
+            <div class="task-actions" id="actions-${task.id}">
+                ${settings.nextTasks ? `<button class="btn-pin" onclick="addToNextTasks('${groupId}','${task.id}')" title="Pin to Next TODOs">\uD83D\uDCCC</button>` : ''}
                 <button onclick="openEditModal('${groupId}','${task.id}')" title="Edit">${esc(settings.labels.editIcon)}</button>
                 ${showArchive ? `<button class="btn-archive" onclick="archiveTask('${groupId}','${task.id}')" title="Archive">${esc(settings.labels.archiveIcon)}</button>` : ''}
                 ${showDelete ? `<button class="btn-delete" onclick="confirmDeleteTask('${groupId}','${task.id}')" title="Delete">${esc(settings.labels.deleteIcon)}</button>` : ''}
@@ -1244,7 +1691,25 @@ function renderProgress() {
     const total = allActive.length;
     const pct = total === 0 ? 0 : Math.round((doneCount / total) * 100);
     document.getElementById('overallProgress').textContent = pct;
-    document.getElementById('overallCounts').textContent = `${doneCount}/${total}`;
+    let countsText = `${doneCount}/${total}`;
+    // Per-category overall progress
+    if (settings.categoryTracker && settings.categories) {
+        const catGroups = data.groups.filter(g => (g.categories || []).length > 0);
+        const seenCats = {};
+        catGroups.forEach(g => {
+            (g.categories || []).forEach(cat => {
+                if (!seenCats[cat.id]) seenCats[cat.id] = { name: cat.name, total: 0, done: 0 };
+                g.tasks.filter(t => !t.archived && t.category === cat.id).forEach(t => {
+                    seenCats[cat.id].total++;
+                    if (t.done) seenCats[cat.id].done++;
+                });
+            });
+        });
+        Object.values(seenCats).forEach(c => {
+            if (c.total > 0) countsText += ` | ${c.done}/${c.total} ${c.name}`;
+        });
+    }
+    document.getElementById('overallCounts').textContent = countsText;
     document.getElementById('progressFill').style.width = pct + '%';
     document.getElementById('overallLabel').textContent = settings.labels.overallLabel;
     document.getElementById('tasksLabel').textContent = settings.labels.tasksLabel;
@@ -1296,7 +1761,7 @@ function addGroup() {
     const input = document.getElementById('newGroupName');
     const name = input.value.trim();
     if (!name) return;
-    data.groups.push({ id: 'g' + Date.now(), name, description: '', tasks: [] });
+    data.groups.push({ id: 'g' + Date.now(), name, description: '', tasks: [], link: '', linkText: '', status: '', customColumns: [], columnLayout: 'fields', showNotesInColumns: false, categories: [] });
     input.value = '';
     save();
     toast('Group added');
@@ -1306,8 +1771,8 @@ function deleteGroup(gid) {
     const group = data.groups.find(g => g.id === gid);
     if (!group) return;
     if (!confirm(`Delete group "${group.name}" and all its tasks?`)) return;
-    // Move tasks to trash if enabled
-    if (settings.trash) {
+    // Move tasks to trash unless skipTrash is enabled
+    if (!settings.skipTrash) {
         group.tasks.forEach(t => {
             data.trash.push({ ...t, groupName: group.name, deletedAt: new Date().toISOString() });
         });
@@ -1330,6 +1795,22 @@ function editGroup(gid) {
     if (!group) return;
     document.getElementById('editGroupName').value = group.name;
     document.getElementById('editGroupDesc').value = group.description || '';
+    document.getElementById('editGroupLink').value = group.link || '';
+    document.getElementById('editGroupLinkText').value = group.linkText || '';
+    document.getElementById('editGroupStatus').value = group.status || '';
+    document.getElementById('editGroupLinkWrap').style.display = settings.links ? '' : 'none';
+    document.getElementById('editGroupStatusWrap').style.display = settings.groupStatus ? '' : 'none';
+    document.getElementById('editGroupCategoriesWrap').style.display = settings.categories ? '' : 'none';
+    editingGroupCategories = JSON.parse(JSON.stringify(group.categories || []));
+    _selectedCatColor = CATEGORY_COLORS[0];
+    renderCategoryEditor();
+    document.getElementById('editGroupColumnsWrap').style.display = settings.customColumns ? '' : 'none';
+    editingGroupColumns = JSON.parse(JSON.stringify(group.customColumns || []));
+    const isColumns = (group.columnLayout || 'fields') === 'columns';
+    document.getElementById('editGroupColumnLayout').checked = isColumns;
+    document.getElementById('editGroupShowNotesWrap').style.display = isColumns ? '' : 'none';
+    document.getElementById('editGroupShowNotes').checked = !!group.showNotesInColumns;
+    renderColumnEditor();
     document.getElementById('editGroupTargetId').value = gid;
     document.getElementById('editGroupModal').classList.add('open');
 }
@@ -1340,6 +1821,21 @@ function saveGroupEdit() {
     if (!group) return;
     group.name = document.getElementById('editGroupName').value.trim() || group.name;
     group.description = document.getElementById('editGroupDesc').value.trim();
+    if (settings.links) {
+        group.link = document.getElementById('editGroupLink').value.trim();
+        group.linkText = document.getElementById('editGroupLinkText').value.trim();
+    }
+    if (settings.groupStatus) {
+        group.status = document.getElementById('editGroupStatus').value;
+    }
+    if (settings.categories) {
+        group.categories = editingGroupCategories;
+    }
+    if (settings.customColumns) {
+        group.customColumns = editingGroupColumns;
+        group.columnLayout = document.getElementById('editGroupColumnLayout').checked ? 'columns' : 'fields';
+        group.showNotesInColumns = document.getElementById('editGroupShowNotes').checked;
+    }
     closeEditGroupModal();
     save();
     toast('Group updated');
@@ -1362,24 +1858,32 @@ function addTask(gid) {
     const rid = repeatVal ? uid('r') : '';
     const dueDate = dateEl ? dateEl.value : '';
     const sizeEl = document.getElementById('newTaskSize-' + gid);
+    const categoryEl = document.getElementById('newTaskCategory-' + gid);
+    const notesEl = document.getElementById('newTaskNotes-' + gid);
     group.tasks.push({
         id: uid('t'), title, done: false, dueDate,
         repeat: repeatVal, repeatId: rid,
         repeatDays: [], repeatTime: '', repeatCount: 0,
-        notes: '', priority: priorityEl ? priorityEl.value : '',
+        notes: notesEl ? notesEl.value.trim() : '', priority: priorityEl ? priorityEl.value : '',
         size: sizeEl ? sizeEl.value : '',
+        link: '', linkText: '',
+        category: categoryEl ? categoryEl.value : '',
+        customFields: {},
         archived: false, createdAt: new Date().toISOString(),
     });
     if (rid && dueDate) {
         if (!data.repeatHistory[rid]) data.repeatHistory[rid] = [];
         data.repeatHistory[rid].push(dueDate);
     }
+    // Capture inline state for restore after DOM rebuild
+    _inlineState[gid] = {
+        date: dateEl ? dateEl.value : '',
+        repeat: repeatEl ? repeatEl.value : '',
+        priority: priorityEl ? priorityEl.value : '',
+        size: sizeEl ? sizeEl.value : '',
+    };
     input.value = '';
-    if (dateEl) dateEl.value = '';
-    if (repeatEl) repeatEl.value = '';
-    if (priorityEl) priorityEl.value = '';
-    if (sizeEl) sizeEl.value = '';
-    save();
+    save(); // triggers render → renderGroups → restore from _inlineState
 }
 
 function toggleTask(gid, tid) {
@@ -1402,6 +1906,9 @@ function toggleTask(gid, tid) {
                 repeatDays: task.repeatDays || [], repeatTime: task.repeatTime || '',
                 repeatCount: task.repeatCount > 0 ? task.repeatCount - 1 : 0,
                 notes: task.notes, priority: task.priority, size: task.size || '',
+                link: task.link || '', linkText: task.linkText || '',
+                category: task.category || '',
+                customFields: JSON.parse(JSON.stringify(task.customFields || {})),
                 archived: false, createdAt: new Date().toISOString(),
             });
             data.repeatHistory[rid].push(nextDate);
@@ -1428,6 +1935,7 @@ function archiveTask(gid, tid) {
     const task = group?.tasks.find(t => t.id === tid);
     if (!task) return;
     task.archived = true;
+    if (data.nextTasks) data.nextTasks = data.nextTasks.filter(nt => nt.taskId !== tid);
     save();
     toast('Task archived');
 }
@@ -1446,12 +1954,13 @@ function deleteTask(gid, tid) {
     const group = data.groups.find(g => g.id === gid);
     if (!group) return;
     const task = group.tasks.find(t => t.id === tid);
-    if (task && settings.trash) {
+    if (task && !settings.skipTrash) {
         data.trash.push({ ...task, groupName: group.name, deletedAt: new Date().toISOString() });
     }
     group.tasks = group.tasks.filter(t => t.id !== tid);
+    if (data.nextTasks) data.nextTasks = data.nextTasks.filter(nt => nt.taskId !== tid);
     save();
-    toast(settings.trash ? 'Moved to trash' : 'Task deleted');
+    toast(settings.skipTrash ? 'Task permanently deleted' : 'Moved to trash');
 }
 
 function restoreFromTrash(index) {
@@ -1539,6 +2048,45 @@ function openEditModal(gid, tid) {
     document.getElementById('editPriorityWrap').style.display = settings.priority ? '' : 'none';
     document.getElementById('editSizingWrap').style.display = settings.sizing ? '' : 'none';
 
+    // Description
+
+    // Links
+    document.getElementById('editLinkWrap').style.display = settings.links ? '' : 'none';
+    document.getElementById('editLink').value = task.link || '';
+    document.getElementById('editLinkText').value = task.linkText || '';
+
+    // Category
+    const catEnabled = group && groupHasCategories(group);
+    document.getElementById('editCategoryWrap').style.display = catEnabled ? '' : 'none';
+    const catSel = document.getElementById('editCategory');
+    const catOpts = (group.categories || []).map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+    catSel.innerHTML = '<option value="">None</option>' + catOpts;
+    catSel.value = task.category || '';
+
+    // Custom fields
+    const cfWrap = document.getElementById('editCustomFieldsWrap');
+    if (settings.customColumns && group.customColumns && group.customColumns.length > 0) {
+        const cf = task.customFields || {};
+        cfWrap.innerHTML = group.customColumns.map(col => {
+            const val = cf[col.id] || '';
+            let input = '';
+            if (col.type === 'text') input = `<input type="text" id="cf-${col.id}" value="${esc(val)}">`;
+            else if (col.type === 'link') {
+                const linkParts = parseLinkValue(val);
+                input = `<input type="url" id="cf-${col.id}" value="${esc(linkParts.url)}" placeholder="https://..." style="margin-bottom:4px;">
+                    <input type="text" id="cf-${col.id}-text" value="${esc(linkParts.text)}" placeholder="Display text (optional)">`;
+            }
+            else if (col.type === 'date') input = `<input type="date" id="cf-${col.id}" value="${esc(val)}">`;
+            else if (col.type === 'enum') input = `<select id="cf-${col.id}"><option value="">—</option>${(col.options||[]).map(o => `<option value="${esc(o)}" ${val===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+            else if (col.type === 'radio') input = `<div class="radio-inline">${(col.options||[]).map(o => `<label class="${val===o?'active':''}" onclick="this.parentNode.querySelectorAll('label').forEach(l=>l.classList.remove('active'));this.classList.add('active');"><input type="radio" name="cf-${col.id}" value="${esc(o)}" ${val===o?'checked':''} style="display:none;">${esc(o)}</label>`).join('')}</div>`;
+            return `<div><label>${esc(col.name)}</label>${input}</div>`;
+        }).join('');
+        cfWrap.style.display = '';
+    } else {
+        cfWrap.innerHTML = '';
+        cfWrap.style.display = 'none';
+    }
+
     document.getElementById('editModal').classList.add('open');
     document.getElementById('editTitle').focus();
 }
@@ -1558,6 +2106,32 @@ function saveEdit() {
     task.repeatDays = [...document.querySelectorAll('.repeatDayCb:checked')].map(cb => parseInt(cb.value));
     task.priority = document.getElementById('editPriority').value;
     task.size = document.getElementById('editSize').value;
+    if (settings.links) {
+        task.link = document.getElementById('editLink').value.trim();
+        task.linkText = document.getElementById('editLinkText').value.trim();
+    }
+    if (settings.categories) {
+        task.category = document.getElementById('editCategory').value;
+    }
+    // Custom fields
+    if (settings.customColumns && group && group.customColumns) {
+        if (!task.customFields) task.customFields = {};
+        group.customColumns.forEach(col => {
+            if (col.type === 'radio') {
+                const checked = document.querySelector(`input[name="cf-${col.id}"]:checked`);
+                task.customFields[col.id] = checked ? checked.value : '';
+            } else if (col.type === 'link') {
+                const urlEl = document.getElementById('cf-' + col.id);
+                const textEl = document.getElementById('cf-' + col.id + '-text');
+                const url = urlEl ? urlEl.value.trim() : '';
+                const text = textEl ? textEl.value.trim() : '';
+                task.customFields[col.id] = buildLinkValue(url, text);
+            } else {
+                const el = document.getElementById('cf-' + col.id);
+                task.customFields[col.id] = el ? el.value : '';
+            }
+        });
+    }
     closeEditModal();
     save();
     toast('Task updated');
@@ -1625,6 +2199,7 @@ function exitConfigMode() {
     document.getElementById('configView').style.display = 'none';
     document.getElementById('mainHeader').style.display = '';
     settingsMode = 'menu';
+    document.querySelectorAll('.smode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === 'menu'));
     applySettings();
     render();
     switchTab(currentTab);
@@ -1696,6 +2271,15 @@ function renderConfigView() {
             </div>
         </div>
 
+        <!-- Next TODOs mock -->
+        <div class="pv-zone ${s.nextTasks ? '' : 'pv-off'}" onclick="toggleCfgSetting('nextTasks')" style="margin-bottom:12px;">
+            <span class="pv-label">Next TODOs</span>
+            <div class="next-tasks-section" style="margin-bottom:0;">
+                <h3>Next TODOs</h3>
+                <div class="next-task-item" style="cursor:default;"><input type="checkbox" style="width:16px;height:16px;pointer-events:none;"><div style="flex:1;font-size:13px;">Pinned task example<div style="font-size:11px;color:var(--text-muted);">from: Sample Project</div></div></div>
+            </div>
+        </div>
+
         <!-- Add group -->
         <div class="add-group-area input-row" style="pointer-events:none;">
             <input type="text" placeholder="${esc(L.groupPlaceholder)}" style="pointer-events:auto;" onclick="editLabel('groupPlaceholder')" readonly class="cfg-editable">
@@ -1705,9 +2289,16 @@ function renderConfigView() {
         <!-- Mock group -->
         <div class="group">
             <div class="group-header">
-                <div><h2>Sample Project</h2><div class="group-meta">An example group description</div></div>
+                <div>
+                    <h2>Sample Project</h2>
+                    <span class="pv-zone ${s.groupStatus ? '' : 'pv-off'}" onclick="toggleCfgSetting('groupStatus');event.stopPropagation()" style="display:inline-block;margin-left:8px;"><span class="pv-label">Group Status</span><span class="status-badge status-in-progress">In Progress</span></span>
+                    <div class="group-meta">
+                        <span class="pv-zone ${s.links ? '' : 'pv-off'}" onclick="toggleCfgSetting('links');event.stopPropagation()" style="display:inline;"><span class="pv-label">Links</span><a class="task-link" style="pointer-events:none;">JIRA-123</a> - </span>An example group description
+                    </div>
+                </div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <span class="pv-zone group-progress ${s.progress ? '' : 'pv-off'}" onclick="toggleCfgSetting('progress')"><span class="pv-label">Progress</span>2/3</span>
+                    ${s.categories ? `<span class="pv-zone ${s.categoryTracker ? '' : 'pv-off'}" onclick="toggleCfgSetting('categoryTracker');event.stopPropagation()" style="display:inline-block;"><span class="pv-label">Category Tracker</span><span class="ac-badge" style="background:#16a34a20;color:#16a34a;">2/4 Category 1</span></span>` : ''}
                     <div class="group-actions">
                         <button class="icon-btn" style="pointer-events:none;"><span class="cfg-editable" onclick="editLabel('editIcon');event.stopPropagation()" style="pointer-events:auto;">${esc(L.editIcon)}</span></button>
                         ${s.archive ? `<span class="pv-zone" onclick="toggleCfgSetting('archive')"><span class="pv-label">Archive</span><button class="icon-btn" style="pointer-events:none;"><span class="cfg-editable" onclick="editLabel('archiveIcon');event.stopPropagation()" style="pointer-events:auto;">${esc(L.archiveIcon)}</span></button></span>` : ''}
@@ -1717,17 +2308,26 @@ function renderConfigView() {
             </div>
             ${s.progress ? '<div class="progress-bar" style="margin-bottom:10px;"><div class="progress-fill" style="width:66%"></div></div>' : ''}
 
+            <!-- Category headers -->
+            <div class="pv-zone ${s.categories ? '' : 'pv-off'}" onclick="toggleCfgSetting('categories')" style="margin-bottom:4px;">
+                <span class="pv-label">Categories</span>
+                <div class="category-header" style="border-left-color:#16a34a;color:#16a34a;">Category 1</div>
+            </div>
+
             <!-- Task with all features -->
-            <div class="task due-soon" style="margin-bottom:6px;">
+            <div class="task due-soon ${s.priorityColors ? 'priority-high' : ''}" style="margin-bottom:6px;">
                 <input type="checkbox" style="pointer-events:none;">
                 <div class="task-body">
                     <div class="task-title">Design the landing page</div>
                     <div class="task-meta">
                         <span class="pv-zone ${s.priority ? '' : 'pv-off'}" onclick="toggleCfgSetting('priority')"><span class="pv-label">Priority</span>${s.priorityLevels[0] ? esc(s.priorityLevels[0].icon) + ' ' + esc(s.priorityLevels[0].label) : 'high'}</span>
+                        ${s.priority ? `<span class="pv-zone ${s.priorityColors ? '' : 'pv-off'}" onclick="toggleCfgSetting('priorityColors');event.stopPropagation()"><span class="pv-label">Priority Colors</span><span style="font-size:11px;">bg tint</span></span>` : ''}
                         <span class="pv-zone ${s.sizing ? '' : 'pv-off'}" onclick="toggleCfgSetting('sizing')"><span class="pv-label">Sizing</span><span class="size-badge">M</span></span>
                         <span class="pv-zone ${s.dueDates ? '' : 'pv-off'}" onclick="toggleCfgSetting('dueDates')"><span class="pv-label">Due Dates</span><span class="cfg-editable" onclick="editLabel('calendarIcon');event.stopPropagation()" style="pointer-events:auto;">${esc(L.calendarIcon)}</span> 2026-03-12</span>
                         <span class="pv-zone ${s.repeat ? '' : 'pv-off'}" onclick="toggleCfgSetting('repeat')"><span class="pv-label">Repeat</span><span class="cfg-editable" onclick="editLabel('repeatIcon');event.stopPropagation()" style="pointer-events:auto;">${esc(L.repeatIcon)}</span> weekly</span>
                         <span class="pv-zone ${s.notes ? '' : 'pv-off'}" onclick="toggleCfgSetting('notes')"><span class="pv-label">Notes</span><span class="cfg-editable" onclick="editLabel('notesIcon');event.stopPropagation()" style="pointer-events:auto;">${esc(L.notesIcon)}</span> Check with team first...</span>
+                        <span class="pv-zone ${s.links ? '' : 'pv-off'}" onclick="toggleCfgSetting('links')"><span class="pv-label">Links</span><a class="task-link" style="pointer-events:none;">JIRA-456</a></span>
+                        <span class="pv-zone ${s.customColumns ? '' : 'pv-off'}" onclick="toggleCfgSetting('customColumns')"><span class="pv-label">Custom Columns</span><span class="custom-field-badge">Status: In Review</span></span>
                     </div>
                 </div>
                 <div class="task-actions">
@@ -1744,6 +2344,34 @@ function renderConfigView() {
                 <div class="task-actions"><button style="pointer-events:none;"><span class="cfg-editable" onclick="editLabel('editIcon');event.stopPropagation()" style="pointer-events:auto;">${esc(L.editIcon)}</span></button></div>
             </div>
 
+            <!-- Column view mock -->
+            ${s.customColumns ? `
+            <div class="pv-zone" onclick="toggleCfgSetting('customColumns')" style="margin-top:10px;">
+                <span class="pv-label">Column View</span>
+                <div class="task-col-header" style="pointer-events:none;">
+                    <div style="width:18px;flex-shrink:0;"></div>
+                    <div class="col-h-title" style="width:40%;position:relative;">Task</div>
+                    <div class="col-h-cell" style="width:20%;">Status</div>
+                    <div class="col-h-cell" style="width:20%;">Due</div>
+                    <div class="col-h-actions"></div>
+                </div>
+                <div class="task task-columned" style="margin-bottom:0;">
+                    <input type="checkbox" style="pointer-events:none;">
+                    <div class="task-body" style="width:40%;flex:0 1 auto;min-width:50px;">
+                        <div class="task-title">Review pull request</div>
+                    </div>
+                    <div class="task-col-cell" style="width:20%;">In Review</div>
+                    <div class="task-col-cell" style="width:20%;">2026-03-15</div>
+                    <div class="task-actions"><button style="pointer-events:none;">${esc(L.editIcon)}</button></div>
+                </div>
+            </div>` : ''}
+
+            <!-- Category 2 section -->
+            <div class="pv-zone ${s.categories ? '' : 'pv-off'}" onclick="toggleCfgSetting('categories')" style="margin-bottom:4px;">
+                <span class="pv-label">Categories</span>
+                <div class="category-header" style="border-left-color:#6b7280;color:#6b7280;">Category 2</div>
+            </div>
+
             <!-- Add task row -->
             <div class="add-task-area">
                 <div class="input-row" style="pointer-events:none;">
@@ -1752,6 +2380,7 @@ function renderConfigView() {
                     <span class="pv-zone ${s.repeat ? '' : 'pv-off'}" onclick="toggleCfgSetting('repeat')" style="pointer-events:auto;"><span class="pv-label">Repeat</span><select style="pointer-events:none;height:38px;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;background:var(--bg-card);color:var(--text);"><option>${esc(L.noRepeat)}</option></select></span>
                     <span class="pv-zone ${s.priority ? '' : 'pv-off'}" onclick="toggleCfgSetting('priority')" style="pointer-events:auto;"><span class="pv-label">Priority</span><select style="pointer-events:none;height:38px;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;background:var(--bg-card);color:var(--text);"><option>${esc(L.priorityLabel)}</option></select></span>
                     <span class="pv-zone ${s.sizing ? '' : 'pv-off'}" onclick="toggleCfgSetting('sizing')" style="pointer-events:auto;"><span class="pv-label">Sizing</span><select style="pointer-events:none;height:38px;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;background:var(--bg-card);color:var(--text);"><option>Size</option></select></span>
+                    <span class="pv-zone ${s.notes ? '' : 'pv-off'}" onclick="toggleCfgSetting('notes')" style="pointer-events:auto;"><span class="pv-label">Notes</span><input type="text" placeholder="Notes..." style="pointer-events:none;height:38px;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;background:var(--bg-card);color:var(--text);width:80px;"></span>
                     <button class="btn-primary" style="pointer-events:auto;" onclick="editLabel('addTask')"><span class="cfg-editable">${esc(L.addTask)}</span></button>
                 </div>
             </div>
@@ -1788,6 +2417,11 @@ function renderModalPreview() {
             <div class="pv-zone pv-tab-item ${s.archive ? '' : 'pv-off'}" onclick="toggleCfgSetting('archive')"><span class="pv-label">Archive</span><span class="cfg-editable" onclick="editLabel('archivedTab');event.stopPropagation()">${esc(L.archivedTab)}</span></div>
             <div class="pv-zone pv-tab-item ${s.trash ? '' : 'pv-off'}" onclick="toggleCfgSetting('trash')"><span class="pv-label">Trash</span><span class="cfg-editable" onclick="editLabel('trashTab');event.stopPropagation()">${esc(L.trashTab)}</span></div>
         </div>
+        <!-- Next TODOs -->
+        <div class="pv-zone ${s.nextTasks ? '' : 'pv-off'}" onclick="toggleCfgSetting('nextTasks')" style="margin-bottom:8px;">
+            <span class="pv-label">Next TODOs</span>
+            <div style="border-left:3px solid var(--accent);padding:6px 10px;border-radius:4px;background:var(--bg-card);font-size:12px;font-weight:600;color:var(--accent);">Next TODOs<div style="font-weight:400;color:var(--text);margin-top:4px;font-size:11px;">Pinned task example</div></div>
+        </div>
         <!-- Add group -->
         <div class="pv-add-row" style="margin-bottom:8px;">
             <div style="flex:1;" class="cfg-editable" onclick="editLabel('groupPlaceholder')">${esc(L.groupPlaceholder)}</div>
@@ -1795,23 +2429,31 @@ function renderModalPreview() {
         </div>
         <div class="pv-mock-group">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                <div style="font-weight:600;font-size:14px;color:var(--accent);">Sample Project</div>
+                <div>
+                    <span style="font-weight:600;font-size:14px;color:var(--accent);">Sample Project</span>
+                    <span class="pv-zone ${s.groupStatus ? '' : 'pv-off'}" onclick="toggleCfgSetting('groupStatus');event.stopPropagation()" style="display:inline;margin-left:6px;"><span class="pv-label">Status</span><span class="status-badge status-in-progress" style="font-size:10px;">In Progress</span></span>
+                </div>
                 <div style="display:flex;align-items:center;gap:6px;">
                     <div class="pv-zone ${s.progress ? '' : 'pv-off'}" onclick="toggleCfgSetting('progress')" style="display:inline-block;"><span class="pv-label">Progress</span><span style="font-size:11px;color:var(--text-muted);background:var(--border-light);padding:1px 8px;border-radius:8px;">2/3</span></div>
+                    ${s.categories ? `<span class="pv-zone ${s.categoryTracker ? '' : 'pv-off'}" onclick="toggleCfgSetting('categoryTracker');event.stopPropagation()" style="display:inline-block;"><span class="pv-label">Category Tracker</span><span class="ac-badge" style="background:#16a34a20;color:#16a34a;font-size:10px;">2/4 Cat 1</span></span>` : ''}
                     ${s.archive ? `<span class="pv-zone" onclick="toggleCfgSetting('archive')" style="display:inline-flex;"><span class="pv-label">Archive</span><span style="font-size:12px;" class="cfg-editable" onclick="editLabel('archiveIcon');event.stopPropagation()">${esc(L.archiveIcon)}</span></span>` : ''}
                 </div>
             </div>
             <div class="pv-zone ${s.progress ? '' : 'pv-off'}" onclick="toggleCfgSetting('progress')"><span class="pv-label">Progress</span><div class="pv-mock-progress"><div class="pv-mock-progress-fill" style="width:66%"></div></div></div>
-            <div class="pv-mock-task" style="margin-bottom:6px;border-left:3px solid #f59e0b;">
+            <div class="pv-zone ${s.categories ? '' : 'pv-off'}" onclick="toggleCfgSetting('categories')" style="margin-bottom:2px;"><span class="pv-label">Categories</span><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;padding:3px 8px;border-left:3px solid #16a34a;color:#16a34a;">Category 1</div></div>
+            <div class="pv-mock-task ${s.priorityColors ? 'priority-high' : ''}" style="margin-bottom:6px;border-left:3px solid #f59e0b;">
                 <input type="checkbox">
                 <div style="flex:1;min-width:0;">
                     <div style="font-weight:500;">Design landing page</div>
                     <div class="pv-mock-meta">
                         <span class="pv-zone ${s.priority ? '' : 'pv-off'}" onclick="toggleCfgSetting('priority')"><span class="pv-label">Priority</span>${s.priorityLevels[0] ? esc(s.priorityLevels[0].icon) + ' ' + esc(s.priorityLevels[0].label) : 'high'}</span>
+                        ${s.priority ? `<span class="pv-zone ${s.priorityColors ? '' : 'pv-off'}" onclick="toggleCfgSetting('priorityColors');event.stopPropagation()"><span class="pv-label">Priority Colors</span><span style="font-size:11px;">bg tint</span></span>` : ''}
                         <span class="pv-zone ${s.sizing ? '' : 'pv-off'}" onclick="toggleCfgSetting('sizing')"><span class="pv-label">Sizing</span><span class="size-badge">M</span></span>
                         <span class="pv-zone ${s.dueDates ? '' : 'pv-off'}" onclick="toggleCfgSetting('dueDates')"><span class="pv-label">Due Dates</span><span class="cfg-editable" onclick="editLabel('calendarIcon');event.stopPropagation()">${esc(L.calendarIcon)}</span> 2026-03-12</span>
                         <span class="pv-zone ${s.repeat ? '' : 'pv-off'}" onclick="toggleCfgSetting('repeat')"><span class="pv-label">Repeat</span><span class="cfg-editable" onclick="editLabel('repeatIcon');event.stopPropagation()">${esc(L.repeatIcon)}</span> weekly</span>
                         <span class="pv-zone ${s.notes ? '' : 'pv-off'}" onclick="toggleCfgSetting('notes')"><span class="pv-label">Notes</span><span class="cfg-editable" onclick="editLabel('notesIcon');event.stopPropagation()">${esc(L.notesIcon)}</span> Check with team...</span>
+                        <span class="pv-zone ${s.links ? '' : 'pv-off'}" onclick="toggleCfgSetting('links')"><span class="pv-label">Links</span><span class="task-link" style="font-size:11px;">JIRA-456</span></span>
+                        <span class="pv-zone ${s.customColumns ? '' : 'pv-off'}" onclick="toggleCfgSetting('customColumns')"><span class="pv-label">Custom Columns</span><span class="custom-field-badge">Status: Review</span></span>
                     </div>
                 </div>
                 <div class="pv-mock-actions">
@@ -1821,12 +2463,15 @@ function renderModalPreview() {
                 </div>
             </div>
             <div class="pv-mock-task" style="margin-bottom:6px;opacity:0.55;"><input type="checkbox" checked><div style="flex:1;"><div style="font-weight:500;text-decoration:line-through;color:var(--text-muted);">Write intro copy</div></div></div>
+            ${s.customColumns ? `<div class="pv-zone" onclick="toggleCfgSetting('customColumns')" style="margin-top:6px;"><span class="pv-label">Column View</span><div class="task-col-header" style="pointer-events:none;font-size:9px;"><div style="width:14px;flex-shrink:0;"></div><div class="col-h-title" style="width:40%;position:relative;">Task</div><div class="col-h-cell" style="width:20%;">Status</div><div class="col-h-cell" style="width:20%;">Due</div></div><div style="display:flex;align-items:center;padding:4px 8px;gap:6px;font-size:11px;border:1px solid var(--border-light);border-radius:4px;"><input type="checkbox" style="pointer-events:none;"><div style="width:40%;font-weight:500;">Review PR</div><div style="width:20%;color:var(--text-muted);">In Review</div><div style="width:20%;color:var(--text-muted);">2026-03-15</div></div></div>` : ''}
+            <div class="pv-zone ${s.categories ? '' : 'pv-off'}" onclick="toggleCfgSetting('categories')" style="margin-bottom:2px;"><span class="pv-label">Categories</span><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;padding:3px 8px;border-left:3px solid #6b7280;color:#6b7280;">Category 2</div></div>
             <div class="pv-add-row">
                 <div style="flex:1;" class="cfg-editable" onclick="editLabel('taskPlaceholder')">${esc(L.taskPlaceholder)}</div>
                 <div class="pv-zone ${s.dueDates ? '' : 'pv-off'}" onclick="toggleCfgSetting('dueDates')" style="border:1px solid var(--border);border-radius:4px;padding:4px 8px;"><span class="pv-label">Due Dates</span><span style="font-size:11px;"><span class="cfg-editable" onclick="editLabel('calendarIcon');event.stopPropagation()">${esc(L.calendarIcon)}</span> date</span></div>
                 <div class="pv-zone ${s.repeat ? '' : 'pv-off'}" onclick="toggleCfgSetting('repeat')" style="border:1px solid var(--border);border-radius:4px;padding:4px 8px;"><span class="pv-label">Repeat</span><span style="font-size:11px;" class="cfg-editable" onclick="editLabel('noRepeat');event.stopPropagation()">${esc(L.noRepeat)}</span></div>
                 <div class="pv-zone ${s.priority ? '' : 'pv-off'}" onclick="toggleCfgSetting('priority')" style="border:1px solid var(--border);border-radius:4px;padding:4px 8px;"><span class="pv-label">Priority</span><span style="font-size:11px;" class="cfg-editable" onclick="editLabel('priorityLabel');event.stopPropagation()">${esc(L.priorityLabel)}</span></div>
                 <div class="pv-zone ${s.sizing ? '' : 'pv-off'}" onclick="toggleCfgSetting('sizing')" style="border:1px solid var(--border);border-radius:4px;padding:4px 8px;"><span class="pv-label">Sizing</span><span style="font-size:11px;">Size</span></div>
+                <div class="pv-zone ${s.notes ? '' : 'pv-off'}" onclick="toggleCfgSetting('notes')" style="border:1px solid var(--border);border-radius:4px;padding:4px 8px;"><span class="pv-label">Notes</span><span style="font-size:11px;">Notes...</span></div>
                 <div class="pv-add-btn cfg-editable" style="border:none;" onclick="editLabel('addTask')">${esc(L.addTask)}</div>
             </div>
         </div>
@@ -1957,9 +2602,27 @@ function importJSON(event) {
                 data = imported.data;
                 if (imported.settings) {
                     settings = { ...DEFAULT_SETTINGS, ...imported.settings, labels: { ...DEFAULT_LABELS, ...(imported.settings.labels || {}) } };
+                    // Migrate acTracker → categoryTracker on import
+                    if (settings.acTracker !== undefined) {
+                        settings.categoryTracker = settings.acTracker;
+                        delete settings.acTracker;
+                    }
                     applySettings();
                     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
                 }
+                // Migrate enableCategories → categories array on import
+                data.groups.forEach(g => {
+                    if (g.categories === undefined) {
+                        const hasAc = g.tasks.some(t => t.category === 'ac');
+                        const hasScope = g.tasks.some(t => t.category === 'scope');
+                        g.categories = [];
+                        if (g.enableCategories || hasAc || hasScope) {
+                            if (hasAc) g.categories.push({id:'ac', name:'Acceptance Criteria', color:'#16a34a'});
+                            if (hasScope) g.categories.push({id:'scope', name:'Scope', color:'#6b7280'});
+                        }
+                        delete g.enableCategories;
+                    }
+                });
                 save();
                 toast('Imported successfully');
             } else {
@@ -1989,7 +2652,7 @@ function checkClearConfirm() {
     document.getElementById('clearConfirmBtn').style.opacity = ok ? '1' : '0.5';
 }
 function doClearAll() {
-    data = { groups: [], repeatHistory: {}, trash: [] };
+    data = { groups: [], repeatHistory: {}, trash: [], nextTasks: [] };
     save();
     closeClearModal();
     updateSampleBtn();
@@ -2073,6 +2736,9 @@ function backfillRepeatingTasks() {
                         repeatDays: task.repeatDays || [], repeatTime: task.repeatTime || '',
                         repeatCount: 0,
                         notes: task.notes, priority: task.priority, size: task.size || '',
+                        link: task.link || '', linkText: task.linkText || '',
+                        category: task.category || '',
+                        customFields: JSON.parse(JSON.stringify(task.customFields || {})),
                         archived: false, createdAt: new Date().toISOString(),
                     });
                     history.push(date);
@@ -2100,6 +2766,307 @@ function backfillRepeatingTasks() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         toast(`Created ${created} missed repeating task${created !== 1 ? 's' : ''}`);
     }
+}
+
+// ---------- Category Rendering ----------
+function renderTasksByCategory(activeTasks, groupId, renderer) {
+    const render = renderer || renderTask;
+    const group = data.groups.find(g => g.id === groupId);
+    const cats = group ? (group.categories || []) : [];
+    const catIds = cats.map(c => c.id);
+    let html = '';
+    cats.forEach(cat => {
+        const tasks = activeTasks.filter(t => t.category === cat.id);
+        if (tasks.length > 0) {
+            html += `<div class="category-header" style="border-left-color:${cat.color};color:${cat.color};">${esc(cat.name)}</div>`;
+            html += tasks.map(t => render(t, groupId)).join('');
+        }
+    });
+    const uncategorized = activeTasks.filter(t => !t.category || !catIds.includes(t.category));
+    if (uncategorized.length > 0) {
+        if (html) html += '<div style="margin-top:6px;"></div>';
+        html += uncategorized.map(t => render(t, groupId)).join('');
+    }
+    return html;
+}
+
+// ---------- Link Value Helpers (url|text format) ----------
+function parseLinkValue(val) {
+    if (!val) return { url: '', text: '' };
+    const idx = val.indexOf('|');
+    if (idx === -1) return { url: val, text: '' };
+    return { url: val.substring(0, idx), text: val.substring(idx + 1) };
+}
+function buildLinkValue(url, text) {
+    if (!url) return '';
+    if (!text) return url;
+    return url + '|' + text;
+}
+
+// ---------- Sanitize Href ----------
+function sanitizeHref(url) {
+    if (!url) return '';
+    try {
+        const u = new URL(url, location.href);
+        if (u.protocol === 'javascript:') return '';
+        return url;
+    } catch(e) {
+        // Relative or invalid URL - allow if no javascript:
+        if (url.trim().toLowerCase().startsWith('javascript:')) return '';
+        return url;
+    }
+}
+
+// ---------- Next TODOs ----------
+function renderNextTasks() {
+    const section = document.getElementById('nextTasksSection');
+    if (!settings.nextTasks || !data.nextTasks || data.nextTasks.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+    // Resolve and clean stale
+    const resolved = [];
+    const stale = [];
+    data.nextTasks.forEach((nt, i) => {
+        const group = data.groups.find(g => g.id === nt.groupId);
+        const task = group ? group.tasks.find(t => t.id === nt.taskId && !t.archived) : null;
+        if (task && group) {
+            resolved.push({ ...nt, task, group });
+        } else {
+            stale.push(i);
+        }
+    });
+    if (stale.length > 0) {
+        for (let i = stale.length - 1; i >= 0; i--) data.nextTasks.splice(stale[i], 1);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+    if (resolved.length === 0) { section.style.display = 'none'; return; }
+    resolved.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
+    section.style.display = '';
+    section.innerHTML = `<div class="next-tasks-section">
+        <h3>\uD83D\uDCCC Next TODOs</h3>
+        <div id="nextTasksContainer">${resolved.map(r => {
+            const t = r.task;
+            const pLevel = settings.priority ? settings.priorityLevels.find(p => p.value === t.priority) : null;
+            const priorityHtml = pLevel ? `<span style="font-size:11px;">${pLevel.icon} ${esc(pLevel.label)}</span>` : '';
+            return `<div class="next-task-item" draggable="true" data-tid="${t.id}" data-gid="${r.groupId}">
+                <input type="checkbox" ${t.done?'checked':''} onchange="toggleNextTask('${r.groupId}','${t.id}')" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;margin-top:2px;accent-color:var(--accent);">
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:500;${t.done?'text-decoration:line-through;color:var(--text-muted);':''}">${esc(t.title)}</div>
+                    <div class="next-task-from">${priorityHtml}${priorityHtml ? ' · ' : ''}from: ${esc(r.group.name)}</div>
+                </div>
+                <div class="next-task-actions">
+                    <button onclick="openEditModal('${r.groupId}','${t.id}')" title="Edit">${esc(settings.labels.editIcon)}</button>
+                    <button onclick="removeFromNextTasks('${t.id}')" title="Unpin">\uD83D\uDCCC</button>
+                </div>
+            </div>`;
+        }).join('')}</div>
+    </div>`;
+    initNextTasksDragDrop();
+}
+
+function addToNextTasks(gid, tid) {
+    if (!data.nextTasks) data.nextTasks = [];
+    if (data.nextTasks.some(nt => nt.taskId === tid)) { toast('Already in Next TODOs'); return; }
+    const group = data.groups.find(g => g.id === gid);
+    const task = group ? group.tasks.find(t => t.id === tid) : null;
+    const isHigh = task && task.priority === 'high';
+    if (isHigh) {
+        // Insert at top: shift everything down by 1, assign sortOrder 0
+        data.nextTasks.forEach(nt => { nt.sortOrder = (nt.sortOrder || 0) + 1; });
+        data.nextTasks.unshift({ groupId: gid, taskId: tid, sortOrder: 0 });
+    } else {
+        const maxSort = data.nextTasks.reduce((m, nt) => Math.max(m, nt.sortOrder || 0), 0);
+        data.nextTasks.push({ groupId: gid, taskId: tid, sortOrder: maxSort + 1 });
+    }
+    save();
+    toast('Pinned to Next TODOs');
+}
+
+function removeFromNextTasks(tid) {
+    if (!data.nextTasks) return;
+    data.nextTasks = data.nextTasks.filter(nt => nt.taskId !== tid);
+    save();
+}
+
+function toggleNextTask(gid, tid) {
+    const group = data.groups.find(g => g.id === gid);
+    const task = group ? group.tasks.find(t => t.id === tid) : null;
+    if (!task) return;
+    task.done = !task.done;
+    save();
+}
+
+function initNextTasksDragDrop() {
+    const container = document.getElementById('nextTasksContainer');
+    if (!container) return;
+    let dragEl = null;
+    container.addEventListener('dragstart', e => {
+        dragEl = e.target.closest('.next-task-item');
+        if (!dragEl) return;
+        dragEl.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    });
+    container.addEventListener('dragend', e => {
+        if (dragEl) dragEl.classList.remove('dragging');
+        dragEl = null;
+        container.querySelectorAll('.next-task-item').forEach(r => r.style.borderTop = '');
+    });
+    container.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const target = e.target.closest('.next-task-item');
+        container.querySelectorAll('.next-task-item').forEach(r => r.style.borderTop = '');
+        if (target && target !== dragEl) target.style.borderTop = '2px solid var(--accent)';
+    });
+    container.addEventListener('drop', e => {
+        e.preventDefault();
+        const target = e.target.closest('.next-task-item');
+        if (!target || !dragEl || target === dragEl) return;
+        container.insertBefore(dragEl, target);
+        const newOrder = [...container.querySelectorAll('.next-task-item')].map((el, i) => ({
+            tid: el.dataset.tid, order: i
+        }));
+        newOrder.forEach(no => {
+            const nt = data.nextTasks.find(n => n.taskId === no.tid);
+            if (nt) nt.sortOrder = no.order;
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    });
+}
+
+// ---------- Column Resize ----------
+function initColumnResize() {
+    document.addEventListener('mousedown', e => {
+        const handle = e.target.closest('.col-resize-handle');
+        if (!handle) return;
+        e.preventDefault();
+        const gid = handle.dataset.gid;
+        const colId = handle.dataset.colId;
+        const header = handle.closest('.task-col-header');
+        const isTitle = colId === '__title__';
+        const isNotes = colId === '__notes__';
+        const headerCell = isTitle ? handle.closest('.col-h-title') : handle.closest('.col-h-cell');
+        if (!header || !headerCell) return;
+        const containerWidth = header.clientWidth;
+        const startX = e.clientX;
+        const startWidth = headerCell.offsetWidth;
+        handle.classList.add('resizing');
+
+        function onMove(ev) {
+            const delta = ev.clientX - startX;
+            const newPx = Math.max(50, startWidth + delta);
+            const newPct = Math.min(80, Math.round((newPx / containerWidth) * 100));
+            headerCell.style.width = newPct + '%';
+            const groupEl = header.closest('.group');
+            if (groupEl) {
+                if (isTitle) {
+                    groupEl.querySelectorAll('.task-body').forEach(cell => { cell.style.width = newPct + '%'; });
+                } else if (isNotes) {
+                    groupEl.querySelectorAll('.task-col-cell[data-col-id="__notes__"]').forEach(cell => { cell.style.width = newPct + '%'; });
+                } else {
+                    groupEl.querySelectorAll(`.task-col-cell[data-col-id="${colId}"]`).forEach(cell => { cell.style.width = newPct + '%'; });
+                }
+            }
+        }
+        function onUp() {
+            handle.classList.remove('resizing');
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            const finalPct = Math.round((headerCell.offsetWidth / containerWidth) * 100);
+            const group = data.groups.find(g => g.id === gid);
+            if (group) {
+                if (isTitle) {
+                    group.titleColumnWidth = finalPct;
+                } else if (isNotes) {
+                    group.notesColumnWidth = finalPct;
+                } else if (group.customColumns) {
+                    const col = group.customColumns.find(c => c.id === colId);
+                    if (col) col.width = finalPct;
+                }
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            }
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+}
+initColumnResize();
+
+// ---------- Custom Columns Editor ----------
+let editingGroupColumns = [];
+
+function renderColumnEditor() {
+    const list = document.getElementById('editGroupColumnsList');
+    if (!list) return;
+    list.innerHTML = editingGroupColumns.map((col, i) => `
+        <div class="col-editor-row">
+            <span style="flex:1;font-size:13px;">${esc(col.name)} <span style="color:var(--text-muted);font-size:11px;">(${esc(col.type)})</span></span>
+            <button onclick="editingGroupColumns.splice(${i},1);renderColumnEditor();" style="padding:2px 8px;border:1px solid #fca5a5;border-radius:4px;background:#fee2e2;color:#dc2626;cursor:pointer;font-size:11px;">Remove</button>
+        </div>
+    `).join('') || '<div style="font-size:12px;color:var(--text-muted);padding:4px 0;">No columns defined.</div>';
+}
+
+function toggleColOptions() {
+    const type = document.getElementById('newColType').value;
+    document.getElementById('newColOptions').style.display = (type === 'enum' || type === 'radio') ? '' : 'none';
+}
+
+function addColumnToEditor() {
+    const name = document.getElementById('newColName').value.trim();
+    const type = document.getElementById('newColType').value;
+    if (!name) return;
+    const options = (type === 'enum' || type === 'radio') ? document.getElementById('newColOptions').value.split('\n').map(s => s.trim()).filter(Boolean) : [];
+    editingGroupColumns.push({ id: 'col-' + Date.now().toString(36), name, type, options });
+    document.getElementById('newColName').value = '';
+    document.getElementById('newColOptions').value = '';
+    renderColumnEditor();
+}
+
+// ---------- Category Editor ----------
+let editingGroupCategories = [];
+let _selectedCatColor = '#16a34a';
+
+function renderCategoryEditor() {
+    const list = document.getElementById('editGroupCategoriesList');
+    if (!list) return;
+    list.innerHTML = editingGroupCategories.map((cat, i) => `
+        <div class="col-editor-row">
+            <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${cat.color};flex-shrink:0;"></span>
+            <span style="flex:1;font-size:13px;">${esc(cat.name)}</span>
+            <button onclick="editingGroupCategories.splice(${i},1);renderCategoryEditor();" style="padding:2px 8px;border:1px solid #fca5a5;border-radius:4px;background:#fee2e2;color:#dc2626;cursor:pointer;font-size:11px;">Remove</button>
+        </div>
+    `).join('') || '<div style="font-size:12px;color:var(--text-muted);padding:4px 0;">No categories defined.</div>';
+    // Render color palette
+    const palette = document.getElementById('catColorPalette');
+    if (palette) {
+        palette.innerHTML = CATEGORY_COLORS.map(c =>
+            `<span onclick="selectCatColor('${c}')" style="width:24px;height:24px;border-radius:50%;background:${c};cursor:pointer;display:inline-block;border:2px solid ${c === _selectedCatColor ? 'var(--text)' : 'transparent'};"></span>`
+        ).join('');
+    }
+}
+
+function selectCatColor(c) {
+    _selectedCatColor = c;
+    renderCategoryEditor();
+}
+
+function addCategoryToEditor() {
+    const name = document.getElementById('newCatName').value.trim();
+    if (!name) return;
+    editingGroupCategories.push({ id: 'cat-' + Date.now().toString(36), name, color: _selectedCatColor });
+    document.getElementById('newCatName').value = '';
+    renderCategoryEditor();
+}
+
+function updateCustomRadio(gid, tid, colId, value) {
+    const group = data.groups.find(g => g.id === gid);
+    const task = group ? group.tasks.find(t => t.id === tid) : null;
+    if (!task) return;
+    if (!task.customFields) task.customFields = {};
+    task.customFields[colId] = value;
+    save();
 }
 
 // ---------- Helpers ----------
@@ -2279,7 +3246,7 @@ async function init() {
 
     if (isEncrypted && settings.encryption) {
         // Need passphrase to load — show empty state while waiting
-        data = { groups: [], repeatHistory: {}, trash: [] };
+        data = { groups: [], repeatHistory: {}, trash: [], nextTasks: [] };
         applySettings();
         render();
         await showPassphraseModal('decrypt');
