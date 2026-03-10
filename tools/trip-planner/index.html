@@ -312,6 +312,7 @@
         showBudget: true,
         showTravelTimes: true,
         showPhotos: false,
+        photoSize: 'medium',
     };
 
     let data = { trips: [] };
@@ -391,6 +392,8 @@
         if (m < 60) return `${m}m`;
         return `${Math.floor(m / 60)}h ${m % 60 ? (m % 60) + 'm' : ''}`.trim();
     }
+
+    function photoHeight() { return { small: 48, medium: 80, large: 120 }[settings.photoSize] || 80; }
 
     function formatDateRange(start, end) {
         if (!start) return '';
@@ -1302,7 +1305,17 @@
                 </div>
                 <div class="toggle-wrap">
                     <label>Show Photos</label>
-                    <button class="toggle ${settings.showPhotos ? 'on' : ''}" onclick="settings.showPhotos=!settings.showPhotos;saveSetting();this.classList.toggle('on')"></button>
+                    <button class="toggle ${settings.showPhotos ? 'on' : ''}" onclick="settings.showPhotos=!settings.showPhotos;saveSetting();this.classList.toggle('on');const ps=document.getElementById('photoSizeWrap');if(ps){ps.style.maxHeight=settings.showPhotos?'60px':'0';ps.style.opacity=settings.showPhotos?'1':'0'}"></button>
+                </div>
+                <div id="photoSizeWrap" style="overflow:hidden;transition:max-height 0.3s ease,opacity 0.3s ease;max-height:${settings.showPhotos ? '60px' : '0'};opacity:${settings.showPhotos ? '1' : '0'}">
+                    <div style="display:flex;align-items:center;gap:8px;padding:4px 0 8px">
+                        <label style="font-size:13px;color:var(--text-muted);white-space:nowrap">Photo Size</label>
+                        <div class="segmented" style="flex-shrink:0">
+                            <button class="segmented-btn${settings.photoSize === 'small' ? ' active' : ''}" onclick="settings.photoSize='small';saveSetting();render()">Small</button>
+                            <button class="segmented-btn${settings.photoSize === 'medium' ? ' active' : ''}" onclick="settings.photoSize='medium';saveSetting();render()">Medium</button>
+                            <button class="segmented-btn${settings.photoSize === 'large' ? ' active' : ''}" onclick="settings.photoSize='large';saveSetting();render()">Large</button>
+                        </div>
+                    </div>
                 </div>
 
                 <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
@@ -2757,7 +2770,7 @@
                 const catIcon = CATEGORIES[a.category] || '\u{1F4CC}';
                 let photoStrip = '';
                 if (settings.showPhotos && a.photos?.length > 0) {
-                    photoStrip = `<div style="display:flex;gap:4px;margin:4px 0 8px 28px;overflow-x:auto">${a.photos.map(p => `<img src="${esc(p.url)}" style="height:50px;border-radius:4px;object-fit:cover;flex-shrink:0">`).join('')}</div>`;
+                    photoStrip = `<div style="display:flex;gap:4px;margin:4px 0 8px 28px;overflow-x:auto">${a.photos.map(p => `<img src="${esc(p.url)}" style="height:${photoHeight()}px;border-radius:4px;object-fit:cover;flex-shrink:0">`).join('')}</div>`;
                 }
                 return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border-light);cursor:pointer" onclick="openActivityModal('${a.id}')"><span class="category-icon">${catIcon}</span><div style="flex:1"><div style="font-size:13px;font-weight:500">${esc(a.name)}</div><div style="font-size:12px;color:var(--text-muted)">${a.time ? formatTime(a.time) : ''}${a.time && a.duration ? ' \u00B7 ' : ''}${a.duration ? formatDuration(a.duration) : ''}</div></div></div>${photoStrip}`;
             }).join('');
@@ -3079,7 +3092,7 @@
         if (dateStr===today2 && !isVisited) { dismissHTML = isDismissed ? `<button class="btn-icon btn-sm" title="Restore" onclick="event.stopPropagation();undismissActivity('${act.id}')" style="font-size:12px">\u21A9</button>` : `<button class="btn-icon btn-sm" title="Skip" onclick="event.stopPropagation();dismissActivity('${act.id}')" style="font-size:12px">\u2715</button>`; }
         let photoStripHTML = '';
         if (settings.showPhotos && act.photos?.length > 0) {
-            photoStripHTML = `<div style="display:flex;gap:4px;margin-top:4px;overflow-x:auto">${act.photos.map(p => `<img src="${esc(p.url)}" style="height:60px;border-radius:4px;object-fit:cover;flex-shrink:0">`).join('')}</div>`;
+            photoStripHTML = `<div style="display:flex;gap:4px;margin-top:4px;overflow-x:auto">${act.photos.map(p => `<img src="${esc(p.url)}" style="height:${photoHeight()}px;border-radius:4px;object-fit:cover;flex-shrink:0">`).join('')}</div>`;
         }
         return `<li class="${rowCls}" style="cursor:pointer" draggable="true" ondragstart="event.dataTransfer.setData('application/x-activity-id','${act.id}');event.dataTransfer.effectAllowed='move'" onclick="openActivityModal('${act.id}')"><div class="item-check"><input type="checkbox" ${isVisited?'checked':''} onclick="event.stopPropagation();toggleActivityVisited('${act.id}')"></div>${seqNum!==null?`<span style="font-size:12px;color:var(--text-light);font-weight:600;min-width:20px">${seqNum}.</span>`:''}<span class="category-icon">${icon}</span><div class="item-body"><div class="item-title">${esc(act.name)}${optGroupLabel}${ratingHTML}</div><div class="item-meta">${meta.map(m=>`<span>${m}</span>`).join('')}</div>${photoStripHTML}</div><div class="item-actions">${dismissHTML}${reorderHTML}</div></li>`;
     }
@@ -3595,7 +3608,7 @@
         let html = `<strong>${catIcon} ${esc(activity.name || 'Activity')}</strong>`;
         if (statusText) html += ` <span style="font-size:11px">${statusText}</span>`;
         if (activity.photos?.length > 0) {
-            html += `<br><img src="${esc(activity.photos[0].url)}" style="width:80px;height:60px;object-fit:cover;border-radius:4px;margin-top:4px">`;
+            html += `<br><img src="${esc(activity.photos[0].url)}" style="height:${photoHeight()}px;max-width:200px;object-fit:cover;border-radius:4px;margin-top:4px">`;
         }
         if (activity.time) {
             html += `<br><span style="font-size:12px">🕐 ${formatTime(activity.time)}</span>`;
