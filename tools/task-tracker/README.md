@@ -13,13 +13,20 @@ A fully client-side, single-file task tracker that runs entirely in the browser.
 - **Priority Levels** — Customizable priority levels with icons (default: High/Medium/Low)
 - **Sizing / Effort** — Estimate task effort with customizable levels (default: S/M/L)
 - **Notes** — Add notes/descriptions to any task
-- **Progress Tracking** — Per-group and overall progress bars
+- **Links** — Attach URLs to both groups and individual tasks
+- **Categories** — Custom per-group categories with color coding and progress tracking
+- **Custom Columns** — Define arbitrary data columns per group with a columned layout option and resizable widths
+- **Group Status Badges** — Unstarted / In Progress / Completed badges on groups
+- **Progress Tracking** — Per-group and overall progress bars, with optional per-category breakdowns
 
 ### Organization
-- **Archive** — Archive completed tasks or entire groups
+- **Archive** — Archive individual tasks or entire groups; archived groups display nested in the Archive tab with constrained restore (must restore group before restoring its tasks)
 - **Trash** — Deleted items go to trash for 30 days before permanent removal
+- **Session Undo** — Ctrl+Z undo for archive, restore, and delete actions (kept in memory until page close)
 - **Configurable Dismiss Actions** — Choose between delete, archive, or both buttons per task
 - **Inline Delete Confirmations** — Red Yes / white No confirmation on all delete actions
+- **Next TODOs** — Pin important tasks into a dedicated "up next" section
+- **Drag-and-drop Reordering** — Reorder tasks within groups (with optional arrow-button mode)
 
 ### Data
 - **Auto-save** — All changes saved automatically to localStorage
@@ -39,6 +46,7 @@ A fully client-side, single-file task tracker that runs entirely in the browser.
 
 ### Customization
 - **Dark Mode** — Full dark theme support
+- **Color Customization** — Accent color and progress bar gradient end color
 - **Date Format** — Choose between YYYY-MM-DD, MM/DD/YYYY, or DD/MM/YYYY
 - **Configurable UI Text** — Edit all labels via YAML-style text editor
 - **Custom Icons** — Edit all icons (settings, edit, archive, delete, calendar, repeat, notes, etc.)
