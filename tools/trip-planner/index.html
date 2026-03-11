@@ -57,6 +57,8 @@
         .view-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
         .view-header h2 { font-size: 1.1rem; }
         .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; padding-bottom: 8px; }
+        .wrap-timeline { padding-bottom: 8px; }
+        .wrap-timeline .timeline { flex-wrap: wrap; }
 
         /* Cards */
         .card { background: var(--bg-card); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 12px; overflow: hidden; }
@@ -162,6 +164,7 @@
         .progress-fill { height: 100%; border-radius: 4px; transition: width .3s; background: var(--accent); }
         .progress-fill.success { background: var(--success); }
         .progress-fill.warning { background: var(--warning); }
+        .progress-fill.danger { background: var(--danger); }
 
         /* Confirmation code */
         .confirmation-code { font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; font-weight: 600; user-select: all; cursor: pointer; background: var(--accent-light); padding: 2px 8px; border-radius: 4px; font-size: 13px; }
@@ -184,6 +187,7 @@
 
         /* Map */
         #mapContainer { height: 400px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); }
+        .leaflet-marker-icon:hover { z-index: 10000 !important; }
         .map-wrapper { margin-bottom: 16px; }
 
         /* Tabs (desktop) */
@@ -307,6 +311,7 @@
         showPackingList: false,
         showBudget: true,
         showTravelTimes: true,
+        showPhotos: false,
     };
 
     let data = { trips: [] };
@@ -322,9 +327,10 @@
         editingType: null,
         itineraryMode: 'ordered',
         itineraryFilter: { legId: null, category: null, status: null },
-        mapFilter: { legId: null, dayPlanId: null, category: null },
+        mapFilter: { legId: null, dayPlanId: null, category: null, showTripRoute: false },
         collapsedDays: {},
         dismissedActivities: new Set(),
+        expandedDayPlans: new Set(),
     };
 
     // --- Utilities ---
@@ -597,12 +603,70 @@
 
     // --- Modal System ---
 
+    const FORM_CACHE_KEY = 'trip-planner-form-cache';
+    let formCacheTimer = null;
+
+    function snapshotModalForm() {
+        const body = document.getElementById('modalBody');
+        if (!body) return;
+        const fields = {};
+        let hasFields = false;
+        body.querySelectorAll('input, select, textarea').forEach(el => {
+            if (!el.id) return;
+            if (el.type === 'checkbox') fields[el.id] = { type: 'checkbox', checked: el.checked };
+            else fields[el.id] = { type: el.type || 'text', value: el.value };
+            hasFields = true;
+        });
+        body.querySelectorAll('.toggle').forEach(el => {
+            if (!el.id) return;
+            fields[el.id] = { type: 'toggle', on: el.classList.contains('on') };
+            hasFields = true;
+        });
+        if (hasFields) {
+            try { sessionStorage.setItem(FORM_CACHE_KEY, JSON.stringify({ editingType: state.editingType, editingId: state.editingId, fields })); } catch (e) {}
+        }
+    }
+
+    function startFormAutoSave() {
+        stopFormAutoSave();
+        formCacheTimer = setInterval(snapshotModalForm, 2000);
+    }
+
+    function stopFormAutoSave() {
+        if (formCacheTimer) { clearInterval(formCacheTimer); formCacheTimer = null; }
+    }
+
+    function clearFormCache() {
+        try { sessionStorage.removeItem(FORM_CACHE_KEY); } catch (e) {}
+    }
+
+    function getFormCache() {
+        try {
+            const raw = sessionStorage.getItem(FORM_CACHE_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) { return null; }
+    }
+
+    function restoreModalForm(cache) {
+        if (!cache || !cache.fields) return;
+        for (const [id, info] of Object.entries(cache.fields)) {
+            const el = document.getElementById(id);
+            if (!el) continue;
+            if (info.type === 'toggle') { if (info.on) el.classList.add('on'); else el.classList.remove('on'); }
+            else if (info.type === 'checkbox') { el.checked = info.checked; }
+            else { el.value = info.value; }
+        }
+    }
+
     function openModal(html) {
         document.getElementById('modalBody').innerHTML = html;
         document.getElementById('modalOverlay').classList.add('open');
+        startFormAutoSave();
     }
 
     function closeModal() {
+        stopFormAutoSave();
+        clearFormCache();
         document.getElementById('modalOverlay').classList.remove('open');
     }
 
@@ -626,9 +690,27 @@
 
     // --- Navigation ---
 
+    const NAV_STATE_KEY = 'trip-planner-nav-state';
+
+    function persistNavState() {
+        try { sessionStorage.setItem(NAV_STATE_KEY, JSON.stringify({ view: state.view, tripId: state.tripId, tripTab: state.tripTab })); } catch (e) {}
+    }
+
+    function restoreNavState() {
+        try {
+            const raw = sessionStorage.getItem(NAV_STATE_KEY);
+            if (!raw) return;
+            const s = JSON.parse(raw);
+            if (s.view === 'trip' && s.tripId && data.trips.some(t => t.id === s.tripId)) {
+                state.view = 'trip'; state.tripId = s.tripId; state.tripTab = s.tripTab || 'dashboard';
+            }
+        } catch (e) {}
+    }
+
     function showTripsView() {
         state.view = 'trips';
         state.tripId = null;
+        persistNavState();
         render();
     }
 
@@ -637,11 +719,13 @@
         state.tripId = tripId;
         state.tripTab = 'dashboard';
         state.dismissedActivities = new Set();
+        persistNavState();
         render();
     }
 
     function switchTripTab(tab) {
         state.tripTab = tab;
+        persistNavState();
         render();
     }
 
@@ -781,6 +865,8 @@
         state.editingId = tripId || null;
         state.editingType = 'trip';
         const trip = tripId ? getTrip(tripId) : null;
+        lastStartLocationResult = trip?.startLocationCoords || null;
+        lastEndLocationResult = trip?.endLocationCoords || null;
         openModal(`
             <div class="modal-header">
                 <h3>${trip ? 'Edit Trip' : 'New Trip'}</h3>
@@ -795,6 +881,13 @@
                 <div class="form-row">
                     <div class="form-group"><label>Status</label><select class="select" id="tripStatus">${statusOptions(trip?.status || 'planning')}</select></div>
                     <div class="form-group"><label>Currency</label><select class="select" id="tripCurrency">${currencyOptions(trip?.currency)}</select></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Budget</label><input class="input" id="tripBudget" type="number" min="0" step="0.01" value="${trip?.budget ?? ''}" placeholder="Total budget"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group search-wrap"><label>Starting Location</label><input class="input" id="tripStartLocation" value="${esc(trip?.startLocation || '')}" placeholder="Search city or address..." oninput="searchLocation(this.value,'startLocResults')" autocomplete="off"><div id="startLocResults" class="search-results" style="display:none"></div></div>
+                    <div class="form-group search-wrap"><label>Ending Location</label><input class="input" id="tripEndLocation" value="${esc(trip?.endLocation || '')}" placeholder="Search city or address..." oninput="searchLocation(this.value,'endLocResults')" autocomplete="off"><div id="endLocResults" class="search-results" style="display:none"></div></div>
                 </div>
                 <div class="form-group"><label>Notes</label><textarea class="textarea" id="tripNotes" placeholder="Trip notes...">${esc(trip?.notes || '')}</textarea></div>
             </div>
@@ -815,6 +908,11 @@
             endDate: document.getElementById('tripEnd').value,
             status: document.getElementById('tripStatus').value,
             currency: document.getElementById('tripCurrency').value,
+            budget: parseFloat(document.getElementById('tripBudget').value) || null,
+            startLocation: document.getElementById('tripStartLocation').value.trim(),
+            endLocation: document.getElementById('tripEndLocation').value.trim(),
+            startLocationCoords: lastStartLocationResult,
+            endLocationCoords: lastEndLocationResult,
             notes: document.getElementById('tripNotes').value.trim(),
             updatedAt: new Date().toISOString(),
         };
@@ -920,7 +1018,7 @@
     }
 
     function ensureTripArrays(trip) {
-        const defaults = { legs:[], dayPlans:[], lodging:[], transport:[], activities:[], optionGroups:[], packingList:[] };
+        const defaults = { legs:[], dayPlans:[], lodging:[], transport:[], activities:[], optionGroups:[], packingList:[], hotelOptions:[] };
         for (const [k, v] of Object.entries(defaults)) { if (!trip[k]) trip[k] = v; }
         return trip;
     }
@@ -936,6 +1034,7 @@
         for (const a of trip.activities || []) { a.id = remap(a.id); a.legId = remap(a.legId); a.optionGroupId = remap(a.optionGroupId); }
         for (const og of trip.optionGroups || []) { og.id = remap(og.id); og.legId = remap(og.legId); }
         for (const p of trip.packingList || []) { p.id = remap(p.id); }
+        for (const ho of trip.hotelOptions || []) { ho.id = remap(ho.id); }
     }
 
     // --- Calendar Export (.ics) ---
@@ -1019,6 +1118,122 @@
         return lines.join('\r\n');
     }
 
+    // --- WhatsApp Export ---
+
+    function generateWhatsAppText(tripId) {
+        const trip = getTrip(tripId);
+        if (!trip) return '';
+        const lines = [];
+        lines.push(`✈️ *${trip.name}*`);
+        if (trip.startDate) lines.push(`📅 ${formatDate(trip.startDate)}${trip.endDate ? ' – ' + formatDate(trip.endDate) : ''}`);
+
+        const sortedLegs = [...(trip.legs || [])].sort((a, b) => (a.startDate || '').localeCompare(b.startDate || ''));
+        const days = getDayRange(trip);
+
+        if (sortedLegs.length === 0 && days.length === 0) {
+            // No structure — just list activities
+            for (const a of trip.activities || []) {
+                const cat = CATEGORIES[a.category] || '';
+                const time = a.time ? formatTime(a.time) : '';
+                const dur = a.duration ? ` (${formatDuration(a.duration)})` : '';
+                lines.push(`${cat} ${a.name}${time ? ' — ' + time : ''}${dur}`);
+            }
+            return lines.join('\n');
+        }
+
+        let prevLegId = null;
+        let dayNum = 0;
+
+        for (const dateStr of days) {
+            const leg = getLegForDate(trip, dateStr);
+            const events = getEventsForDate(trip, dateStr);
+            const legId = leg ? leg.id : null;
+
+            // Print leg header when city changes
+            if (legId !== prevLegId && leg) {
+                lines.push('');
+                lines.push(`🏙️ *${leg.city}${leg.country ? ', ' + leg.country : ''}* (${formatDateRange(leg.startDate, leg.endDate)})`);
+                // Lodging for this leg
+                const legLodging = (trip.lodging || []).filter(l => l.legId === leg.id);
+                for (const l of legLodging) {
+                    lines.push(`🏨 ${l.name}${l.checkIn ? ' — ' + formatDate(l.checkIn) + (l.checkOut ? ' → ' + formatDate(l.checkOut) : '') : ''}`);
+                }
+                prevLegId = legId;
+            }
+
+            // Gather day content
+            const hasContent = events.transport.length > 0 || events.activities.length > 0 ||
+                events.dayPlans.some(dp => (dp.activityIds || []).length > 0);
+            if (!hasContent) continue;
+
+            dayNum++;
+            const dayLabel = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+            lines.push('');
+            lines.push(`📅 *Day ${dayNum} — ${dayLabel} ${formatDate(dateStr)}*`);
+
+            // Transport
+            for (const t of events.transport) {
+                const icon = TRANSPORT_TYPES[t.type] || '🚐';
+                const route = [t.fromCity, t.toCity].filter(Boolean).join(' → ');
+                const carrier = [t.carrier, t.flightNumber].filter(Boolean).join(' ');
+                const depTime = t.departure ? formatTime(t.departure.split('T')[1] || '') : '';
+                const arrTime = t.arrival ? formatTime(t.arrival.split('T')[1] || '') : '';
+                const timeStr = [depTime, arrTime].filter(Boolean).join(' → ');
+                lines.push(`${icon} ${carrier ? carrier + ' ' : ''}${route}${timeStr ? ' — ' + timeStr : ''}`);
+            }
+
+            // Activities (ordered by day plan if available)
+            const printed = new Set();
+            for (const dp of events.dayPlans) {
+                for (const aid of dp.activityIds || []) {
+                    const a = (trip.activities || []).find(x => x.id === aid);
+                    if (!a || printed.has(a.id)) continue;
+                    printed.add(a.id);
+                    const cat = CATEGORIES[a.category] || '';
+                    const time = a.time ? formatTime(a.time) : '';
+                    const dur = a.duration ? ` (${formatDuration(a.duration)})` : '';
+                    lines.push(`${cat} ${a.name}${time ? ' — ' + time : ''}${dur}`);
+                }
+            }
+            // Remaining activities not in day plans
+            for (const a of events.activities) {
+                if (printed.has(a.id)) continue;
+                printed.add(a.id);
+                const cat = CATEGORIES[a.category] || '';
+                const time = a.time ? formatTime(a.time) : '';
+                const dur = a.duration ? ` (${formatDuration(a.duration)})` : '';
+                lines.push(`${cat} ${a.name}${time ? ' — ' + time : ''}${dur}`);
+            }
+        }
+
+        return lines.join('\n');
+    }
+
+    async function exportWhatsApp(tripId) {
+        const text = generateWhatsAppText(tripId);
+        if (!text) { toast('Nothing to export'); return; }
+
+        if (navigator.share) {
+            try {
+                await navigator.share({ text });
+                toast('Shared!');
+                return;
+            } catch (err) {
+                if (err.name === 'AbortError') return; // User cancelled
+            }
+        }
+        // Fallback: copy to clipboard and open WhatsApp
+        try {
+            await navigator.clipboard.writeText(text);
+            toast('Copied! Opening WhatsApp…');
+        } catch {
+            // Last resort: prompt with text
+            prompt('Copy this text to share on WhatsApp:', text);
+            return;
+        }
+        window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    }
+
     // --- Settings Modal ---
 
     function openSettingsModal() {
@@ -1085,6 +1300,10 @@
                     <label>Show Packing List</label>
                     <button class="toggle ${settings.showPackingList ? 'on' : ''}" onclick="settings.showPackingList=!settings.showPackingList;saveSetting();this.classList.toggle('on')"></button>
                 </div>
+                <div class="toggle-wrap">
+                    <label>Show Photos</label>
+                    <button class="toggle ${settings.showPhotos ? 'on' : ''}" onclick="settings.showPhotos=!settings.showPhotos;saveSetting();this.classList.toggle('on')"></button>
+                </div>
 
                 <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
 
@@ -1092,6 +1311,7 @@
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
                         <button class="btn btn-sm" onclick="exportTrip('${state.tripId}');closeModal()">Export This Trip</button>
                         <button class="btn btn-sm" onclick="exportICS('${state.tripId}');closeModal()">Export Calendar (.ics)</button>
+                        <button class="btn btn-sm" onclick="exportWhatsApp('${state.tripId}');closeModal()">Share on WhatsApp</button>
                     </div>
                 ` : ''}
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -1166,6 +1386,12 @@
 
     let citySearchTimer = null;
     let lastCityResult = null;
+    let lastStartLocationResult = null;
+    let lastEndLocationResult = null;
+    let locationSearchTimer = null;
+    let _pendingPhotos = [];
+
+    const LEG_TYPE_ICONS = { home:'\u{1F3E0}', stayingWithFriend:'\u{1F6CB}\uFE0F', chill:'\u{1F60E}' };
 
     function renderLegTimeline(trip) {
         if (!trip) return '<div class="timeline"><span style="color:var(--text-muted);font-size:13px">No trip selected</span></div>';
@@ -1176,16 +1402,28 @@
                 <button class="btn btn-sm btn-primary" onclick="openLegModal()">+ Add City</button>
             </div>`;
         }
-        let html = '<div class="scroll-x"><div class="timeline">';
+        let html = '<div class="wrap-timeline"><div class="timeline">';
+        if (trip.startLocation) {
+            html += `<div class="leg-chip" style="opacity:0.7;cursor:pointer" onclick="openTripModal('${trip.id}')" title="Starting location"><span style="font-size:11px">\u{1F3E0}</span><span>${esc(trip.startLocation)}</span></div><span class="leg-connector">&rarr;</span>`;
+        } else if (legs.length > 0) {
+            html += `<div class="leg-chip" style="opacity:0.5;cursor:pointer;border-style:dashed" onclick="openTripModal('${trip.id}')" title="Set starting location"><span style="font-size:12px">+ Start</span></div><span class="leg-connector">&rarr;</span>`;
+        }
         legs.forEach((leg, i) => {
             if (i > 0) html += '<span class="leg-connector">&rarr;</span>';
             const dates = leg.startDate ? formatDateRange(leg.startDate, leg.endDate) : '';
+            const typeIcon = LEG_TYPE_ICONS[leg.legType] || '';
             html += `<div class="leg-chip" onclick="openLegModal('${leg.id}')" title="${esc(leg.city)}${leg.country ? ', ' + esc(leg.country) : ''}">
-                <span>${esc(leg.city)}</span>
+                ${typeIcon ? `<span style="font-size:11px">${typeIcon}</span>` : ''}<span>${esc(leg.city)}</span>
                 ${dates ? `<span style="font-size:11px;opacity:0.7">${dates}</span>` : ''}
             </div>`;
         });
+        if (trip.endLocation) {
+            html += `<span class="leg-connector">&rarr;</span><div class="leg-chip" style="opacity:0.7;cursor:pointer" onclick="openTripModal('${trip.id}')" title="Ending location"><span style="font-size:11px">\u{1F3E0}</span><span>${esc(trip.endLocation)}</span></div>`;
+        } else if (legs.length > 0) {
+            html += `<span class="leg-connector">&rarr;</span><div class="leg-chip" style="opacity:0.5;cursor:pointer;border-style:dashed" onclick="openTripModal('${trip.id}')" title="Set ending location"><span style="font-size:12px">+ End</span></div>`;
+        }
         html += `<button class="btn-icon" onclick="openLegModal()" title="Add city" style="flex-shrink:0">+</button>`;
+        if (legs.length >= 2) html += `<button class="btn-icon" onclick="reverseAllLegs()" title="Reverse leg order" style="flex-shrink:0;font-size:14px">\u21C4</button>`;
         html += '</div></div>';
         return html;
     }
@@ -1216,6 +1454,8 @@
                     <div class="form-group"><label>Start Date</label><input class="input" id="legStart" type="date" value="${leg?.startDate || ''}"></div>
                     <div class="form-group"><label>End Date</label><input class="input" id="legEnd" type="date" value="${leg?.endDate || ''}"></div>
                 </div>
+                <div class="form-group"><label>Type</label><select class="select" id="legType" onchange="document.getElementById('legHostAddressWrap').style.display=this.value==='stayingWithFriend'?'block':'none'"><option value="default"${(leg?.legType||'default')==='default'?' selected':''}>Regular</option><option value="home"${leg?.legType==='home'?' selected':''}>Home</option><option value="stayingWithFriend"${leg?.legType==='stayingWithFriend'?' selected':''}>Staying with Friend</option><option value="chill"${leg?.legType==='chill'?' selected':''}>Chill / No Plans</option></select></div>
+                <div class="form-group" id="legHostAddressWrap" style="display:${leg?.legType==='stayingWithFriend'?'block':'none'}"><label>Host Address</label><input class="input" id="legHostAddress" value="${esc(leg?.hostAddress || '')}" placeholder="Friend's address"></div>
                 <div class="form-group">
                     <label>Notes</label>
                     <textarea class="textarea" id="legNotes" placeholder="Notes about this stop...">${esc(leg?.notes || '')}</textarea>
@@ -1243,15 +1483,18 @@
         const startDate = document.getElementById('legStart').value;
         const endDate = document.getElementById('legEnd').value;
         const notes = document.getElementById('legNotes').value.trim();
+        const legType = document.getElementById('legType').value || 'default';
+        const hostAddress = document.getElementById('legHostAddress')?.value?.trim() || '';
         if (state.editingId) {
             const leg = trip.legs.find(l => l.id === state.editingId);
             if (leg) {
                 leg.city = city; leg.country = country; leg.startDate = startDate; leg.endDate = endDate; leg.notes = notes;
+                leg.legType = legType; leg.hostAddress = hostAddress;
                 if (lastCityResult) leg.coordinates = { lat: lastCityResult.lat, lng: lastCityResult.lng };
             }
         } else {
             const maxOrder = trip.legs.reduce((m, l) => Math.max(m, l.order || 0), 0);
-            trip.legs.push({ id: uid(), city, country, startDate, endDate, coordinates: lastCityResult ? { lat: lastCityResult.lat, lng: lastCityResult.lng } : null, order: maxOrder + 1, notes });
+            trip.legs.push({ id: uid(), city, country, startDate, endDate, coordinates: lastCityResult ? { lat: lastCityResult.lat, lng: lastCityResult.lng } : null, order: maxOrder + 1, notes, legType, hostAddress });
         }
         const legDates = trip.legs.filter(l => l.startDate).map(l => l.startDate).sort();
         const legEndDates = trip.legs.filter(l => l.endDate).map(l => l.endDate).sort();
@@ -1292,7 +1535,37 @@
         const tmpOrder = sorted[idx].order;
         sorted[idx].order = sorted[swapIdx].order;
         sorted[swapIdx].order = tmpOrder;
+        if (!trip._transportNeedsReview) trip._transportNeedsReview = true;
         save(); render(); openLegModal(legId);
+    }
+
+    function reverseAllLegs() {
+        const trip = getTrip(); if (!trip) return;
+        const legs = (trip.legs || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+        if (legs.length < 2) { toast('Need at least 2 legs to reverse'); return; }
+        const orders = legs.map(l => l.order);
+        for (let i = 0; i < legs.length; i++) {
+            legs[i].order = orders[legs.length - 1 - i];
+        }
+        for (const t of trip.transport || []) {
+            const tmpFromLegId = t.fromLegId; const tmpFromCity = t.fromCity;
+            t.fromLegId = t.toLegId; t.fromCity = t.toCity;
+            t.toLegId = tmpFromLegId; t.toCity = tmpFromCity;
+        }
+        const tmpStart = trip.startLocation;
+        trip.startLocation = trip.endLocation;
+        trip.endLocation = tmpStart;
+        const tmpStartCoords = trip.startLocationCoords;
+        trip.startLocationCoords = trip.endLocationCoords;
+        trip.endLocationCoords = tmpStartCoords;
+        trip._transportNeedsReview = true;
+        save(); render(); toast('Legs reversed — review transport plans');
+    }
+
+    function dismissTransportReview() {
+        const trip = getTrip(); if (!trip) return;
+        delete trip._transportNeedsReview;
+        save(); render(); toast('Transport review dismissed');
     }
 
     function searchCity(query) {
@@ -1341,6 +1614,55 @@
         resultsEl.style.display = 'none';
     }
 
+    function searchLocation(query, resultsElId) {
+        const resultsEl = document.getElementById(resultsElId);
+        if (!resultsEl) return;
+        if (!query || query.length < 2) { resultsEl.style.display = 'none'; clearTimeout(locationSearchTimer); return; }
+        clearTimeout(locationSearchTimer);
+        resultsEl.innerHTML = '<div class="search-loading">Searching...</div>';
+        resultsEl.style.display = 'block';
+        locationSearchTimer = setTimeout(async () => {
+            try {
+                const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
+                const results = await resp.json();
+                const el = document.getElementById(resultsElId);
+                if (!el) return;
+                if (results.length === 0) { el.innerHTML = '<div class="search-loading">No results found</div>'; return; }
+                el._results = results;
+                el.innerHTML = results.map((r, i) => {
+                    const parts = (r.display_name || '').split(',');
+                    const name = parts[0].trim();
+                    const rest = parts.slice(1).join(',').trim();
+                    return `<div class="search-result" onclick="selectLocationResult(${i},'${resultsElId}')"><div>${esc(name)}</div><div class="result-sub">${esc(rest)}</div></div>`;
+                }).join('');
+                el.style.display = 'block';
+            } catch (e) {
+                const el = document.getElementById(resultsElId);
+                if (el) el.innerHTML = '<div class="search-loading">Search failed</div>';
+            }
+        }, 1000);
+    }
+
+    function selectLocationResult(index, resultsElId) {
+        const resultsEl = document.getElementById(resultsElId);
+        if (!resultsEl || !resultsEl._results) return;
+        const r = resultsEl._results[index];
+        if (!r) return;
+        const coords = { lat: parseFloat(r.lat), lng: parseFloat(r.lon) };
+        const parts = (r.display_name || '').split(',');
+        const name = parts[0].trim();
+        if (resultsElId === 'startLocResults') {
+            lastStartLocationResult = coords;
+            const el = document.getElementById('tripStartLocation');
+            if (el) el.value = name;
+        } else if (resultsElId === 'endLocResults') {
+            lastEndLocationResult = coords;
+            const el = document.getElementById('tripEndLocation');
+            if (el) el.value = name;
+        }
+        resultsEl.style.display = 'none';
+    }
+
     function renderDashboard() {
         const trip = getTrip();
         const mc = document.getElementById('mainContent');
@@ -1361,12 +1683,22 @@
         if (settings.showBudget) {
             const catItems = [{ label:'Lodging', amount:budget.byCategory.lodging||0 },{ label:'Transport', amount:budget.byCategory.transport||0 },{ label:'Activities', amount:budget.byCategory.activities||0 }];
             const hasBudget = budget.total > 0;
+            const hasBudgetTarget = trip.budget > 0;
+            const budgetPct = hasBudgetTarget ? Math.round((budget.total / trip.budget) * 100) : 0;
+            const budgetBarClass = budgetPct > 100 ? 'danger' : (budgetPct >= 75 ? 'warning' : 'success');
+            const budgetHeaderRight = hasBudgetTarget
+                ? `<span style="font-weight:600">${formatCurrency(budget.total, trip.currency)} / ${formatCurrency(trip.budget, trip.currency)}</span>`
+                : `<span style="font-weight:600">${hasBudget ? formatCurrency(budget.total, trip.currency) : '\u2014'}</span>`;
             budgetHTML = `<div class="card" style="margin-bottom:12px">
-                <div class="card-header"><strong>Budget</strong><span style="font-weight:600">${hasBudget ? formatCurrency(budget.total, trip.currency) : '\u2014'}</span></div>
-                ${hasBudget ? `<div class="card-body" style="padding-top:8px">
+                <div class="card-header"><strong>Budget</strong>${budgetHeaderRight}</div>
+                ${hasBudgetTarget ? `<div class="card-body" style="padding-top:8px">
+                    <div class="progress-bar" style="margin-bottom:8px"><div class="progress-fill ${budgetBarClass}" style="width:${Math.min(budgetPct, 100)}%"></div></div>
                     ${catItems.map(c => { const pct = budget.total > 0 ? Math.round((c.amount / budget.total) * 100) : 0; return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13px"><span>${c.label}</span><span style="color:var(--text-muted)">${formatCurrency(c.amount, trip.currency)} (${pct}%)</span></div>`; }).join('')}
                     ${Object.keys(budget.byCurrency).length > 1 ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border-light);font-size:12px;color:var(--text-muted)">${Object.entries(budget.byCurrency).map(([cur, amt]) => `<span style="margin-right:12px">${formatCurrency(amt, cur)}</span>`).join('')}</div>` : ''}
-                </div>` : '<div class="card-body"><span style="font-size:13px;color:var(--text-muted)">No expenses recorded yet</span></div>'}
+                </div>` : (hasBudget ? `<div class="card-body" style="padding-top:8px">
+                    ${catItems.map(c => { const pct = budget.total > 0 ? Math.round((c.amount / budget.total) * 100) : 0; return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13px"><span>${c.label}</span><span style="color:var(--text-muted)">${formatCurrency(c.amount, trip.currency)} (${pct}%)</span></div>`; }).join('')}
+                    ${Object.keys(budget.byCurrency).length > 1 ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border-light);font-size:12px;color:var(--text-muted)">${Object.entries(budget.byCurrency).map(([cur, amt]) => `<span style="margin-right:12px">${formatCurrency(amt, cur)}</span>`).join('')}</div>` : ''}
+                </div>` : '<div class="card-body"><span style="font-size:13px;color:var(--text-muted)">No expenses recorded yet</span></div>')}
             </div>`;
         }
         function progressBarHTML(label, booked, total) {
@@ -1435,17 +1767,29 @@
         const legs = (trip.legs || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
         if (legs.length === 0) { items.push({ text:'Add cities to your trip', type:'leg', action:'openLegModal()', priority:0 }); return items; }
         for (const leg of legs) {
-            const ll = (trip.lodging || []).filter(l => l.legId === leg.id);
-            if (ll.length === 0) items.push({ text:`Add lodging for ${leg.city}`, type:'lodging', action:'openLodgingModal()', priority:1 });
-            else if (!ll.some(l => l.booked)) items.push({ text:`Book lodging for ${leg.city}`, type:'lodging', action:'openLodgingModal()', priority:1 });
+            const lt2 = leg.legType || 'default';
+            if (lt2 !== 'home' && lt2 !== 'stayingWithFriend') {
+                const ll = (trip.lodging || []).filter(l => l.legId === leg.id);
+                const hoCount = (trip.hotelOptions || []).filter(ho => ho.city === leg.city).length;
+                const optSuffix = hoCount > 0 ? ` (${hoCount} option${hoCount !== 1 ? 's' : ''})` : '';
+                if (ll.length === 0) items.push({ text:`Add lodging for ${leg.city}${optSuffix}`, type:'lodging', action:'openLodgingModal()', priority:1 });
+                else if (!ll.some(l => l.booked)) items.push({ text:`Book lodging for ${leg.city}${optSuffix}`, type:'lodging', action:'openLodgingModal()', priority:1 });
+            }
         }
         for (let i = 1; i < legs.length; i++) {
             const lt = (trip.transport || []).filter(t => t.toLegId === legs[i].id || t.fromLegId === legs[i-1].id);
             if (lt.length === 0) items.push({ text:`Add transport to ${legs[i].city}`, type:'transport', action:'openTransportModal()', priority:2 });
             else if (!lt.some(t => t.booked)) items.push({ text:`Book transport to ${legs[i].city}`, type:'transport', action:'openTransportModal()', priority:2 });
         }
+        if (trip._transportNeedsReview) {
+            for (const t of trip.transport || []) {
+                const label = [t.carrier, t.flightNumber].filter(Boolean).join(' ') || `${t.fromCity || '?'} \u2192 ${t.toCity || '?'}`;
+                items.push({ text:`Review transport: ${label} (legs reordered)`, type:'transport', action:`openTransportModal('${t.id}')`, priority:0 });
+            }
+            items.push({ text:'Dismiss transport review', type:'transport', action:`dismissTransportReview()`, priority:0 });
+        }
         for (const act of trip.activities || []) { if (act.reservationNeeded && !act.booked) items.push({ text:`Book ${act.name}`, type:'activity', action:`openActivityModal('${act.id}')`, priority:3 }); }
-        for (const leg of legs) { if (!(trip.activities || []).some(a => a.legId === leg.id)) items.push({ text:`Add activities for ${leg.city}`, type:'activity', action:'openActivityModal()', priority:3 }); }
+        for (const leg of legs) { const lt3 = leg.legType || 'default'; if (lt3 !== 'home' && lt3 !== 'chill' && !(trip.activities || []).some(a => a.legId === leg.id)) items.push({ text:`Add activities for ${leg.city}`, type:'activity', action:'openActivityModal()', priority:3 }); }
         items.sort((a, b) => a.priority - b.priority);
         return items;
     }
@@ -1589,6 +1933,94 @@
         l.booked = !l.booked; save(); render(); toast(l.booked ? 'Marked as booked' : 'Marked as unbooked');
     }
 
+    // --- Hotel Options CRUD ---
+
+    function cityOptionsForHotelOption(trip, selected) {
+        const cities = [...new Set((trip.legs || []).map(l => l.city).filter(Boolean))];
+        return `<option value="">Select city</option>` + cities.map(c => `<option value="${esc(c)}"${c === selected ? ' selected' : ''}>${esc(c)}</option>`).join('');
+    }
+
+    function openHotelOptionModal(optionId) {
+        const trip = getTrip(); if (!trip) return;
+        state.editingId = optionId || null; state.editingType = 'hotelOption';
+        const ho = optionId ? (trip.hotelOptions || []).find(x => x.id === optionId) : null;
+        openModal(`
+            <div class="modal-header"><h3>${ho ? 'Edit Hotel Option' : 'New Hotel Option'}</h3><button class="btn-icon" onclick="closeModal()">\u2715</button></div>
+            <div class="modal-body">
+                <div class="form-group"><label>Hotel Name</label><input class="input" id="hoName" value="${esc(ho?.name || '')}" placeholder="e.g. Hotel Ritz"></div>
+                <div class="form-group"><label>City</label><select class="select" id="hoCity">${cityOptionsForHotelOption(trip, ho?.city || '')}</select></div>
+                <div class="form-group"><label>Booking Link</label><input class="input" id="hoLink" value="${esc(ho?.link || '')}" placeholder="https://..."></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Cost per Night</label><input class="input" id="hoCost" type="number" step="0.01" min="0" value="${ho?.cost != null ? ho.cost : ''}" placeholder="0.00"></div>
+                    <div class="form-group"><label>Currency</label><select class="select" id="hoCurrency">${currencyOptions(ho?.currency || trip.currency)}</select></div>
+                </div>
+                <div class="form-group"><label>Notes</label><textarea class="textarea" id="hoNotes" placeholder="e.g. has pool, near metro, free breakfast">${esc(ho?.notes || '')}</textarea></div>
+            </div>
+            <div class="modal-footer">
+                ${ho ? `<button class="btn btn-danger" onclick="deleteHotelOption('${ho.id}')" style="margin-right:auto">Delete</button>` : ''}
+                <button class="btn" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveHotelOption()">Save</button>
+            </div>
+        `);
+    }
+
+    function saveHotelOption() {
+        const trip = getTrip(); if (!trip) return;
+        const name = document.getElementById('hoName').value.trim();
+        const city = document.getElementById('hoCity').value;
+        if (!name) { toast('Hotel name is required'); return; }
+        if (!city) { toast('City is required'); return; }
+        const data = { name, city, link: document.getElementById('hoLink').value.trim(), cost: document.getElementById('hoCost').value ? parseFloat(document.getElementById('hoCost').value) : null, currency: document.getElementById('hoCurrency').value, notes: document.getElementById('hoNotes').value.trim() };
+        if (!trip.hotelOptions) trip.hotelOptions = [];
+        if (state.editingId) { const existing = trip.hotelOptions.find(x => x.id === state.editingId); if (existing) Object.assign(existing, data); }
+        else { trip.hotelOptions.push({ id: uid(), ...data }); }
+        save(); closeModal(); render(); toast(state.editingId ? 'Hotel option updated' : 'Hotel option added');
+    }
+
+    function deleteHotelOption(id) {
+        showConfirm('Delete Hotel Option', 'Are you sure you want to delete this hotel option?').then(ok => {
+            if (!ok) return; const trip = getTrip(); if (!trip) return;
+            trip.hotelOptions = (trip.hotelOptions || []).filter(x => x.id !== id);
+            save(); closeModal(); render(); toast('Hotel option deleted');
+        });
+    }
+
+    function openQuickBookModal(hotelOptionId, prefillCheckIn) {
+        const trip = getTrip(); if (!trip) return;
+        const ho = (trip.hotelOptions || []).find(x => x.id === hotelOptionId);
+        if (!ho) { toast('Hotel option not found'); return; }
+        openModal(`
+            <div class="modal-header"><h3>Book: ${esc(ho.name)}</h3><button class="btn-icon" onclick="closeModal()">\u2715</button></div>
+            <div class="modal-body">
+                <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">${esc(ho.city)}${ho.cost != null ? ' &middot; ' + formatCurrency(ho.cost, ho.currency) + '/night' : ''}</div>
+                <input type="hidden" id="qbHotelOptionId" value="${esc(ho.id)}">
+                <div class="form-row">
+                    <div class="form-group"><label>Check-in</label><input class="input" id="qbCheckIn" type="date" value="${prefillCheckIn || ''}"></div>
+                    <div class="form-group"><label>Check-out</label><input class="input" id="qbCheckOut" type="date" value=""></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveQuickBook()">Book</button>
+            </div>
+        `);
+    }
+
+    function saveQuickBook() {
+        const trip = getTrip(); if (!trip) return;
+        const hoId = document.getElementById('qbHotelOptionId').value;
+        const ho = (trip.hotelOptions || []).find(x => x.id === hoId);
+        if (!ho) { toast('Hotel option not found'); return; }
+        const checkIn = document.getElementById('qbCheckIn').value;
+        const checkOut = document.getElementById('qbCheckOut').value;
+        if (!checkIn || !checkOut) { toast('Check-in and check-out dates are required'); return; }
+        if (checkOut <= checkIn) { toast('Check-out must be after check-in'); return; }
+        const legId = (trip.legs || []).find(l => l.city === ho.city)?.id || '';
+        if (!trip.lodging) trip.lodging = [];
+        trip.lodging.push({ id: uid(), name: ho.name, legId, address: '', checkIn, checkOut, cost: ho.cost, currency: ho.currency, booked: true, confirmationNumber: '', bookingPlatform: '', phone: '', coordinates: null, notes: ho.notes || '' });
+        save(); closeModal(); render(); toast('Lodging booked from hotel option');
+    }
+
     function openTransportModal(transportId) {
         const trip = getTrip(); if (!trip) return;
         state.editingId = transportId || null; state.editingType = 'transport';
@@ -1709,7 +2141,16 @@
             return `<div style="margin-bottom:20px"><h3 style="font-size:0.95rem;margin-bottom:8px;display:flex;align-items:center;gap:6px"><span>${icon}</span> ${esc(title)} <span style="font-size:12px;color:var(--text-muted);font-weight:normal">(${items.length})</span></h3>${content}</div>`;
         }
 
-        mc.innerHTML = `<div class="view-content"><div class="view-header"><h2>Reservations</h2></div>${renderSection('Flights','\u2708\uFE0F',flights,renderTransportCard,'No flights booked yet')}${renderSection('Trains','\u{1F686}',trains,renderTransportCard,'No trains booked yet')}${renderSection('Other Transport','\u{1F690}',otherTransport,renderTransportCard,'No other transport booked yet')}${renderSection('Hotels','\u{1F3E8}',hotels,renderLodgingCard,'No hotels booked yet')}${renderSection('Activity Reservations','\u{1F3AF}',reservedActivities,renderActivityResCard,'No activity reservations yet')}</div><button class="fab" onclick="openReservationQuickAdd()" title="Add reservation">+</button>`;
+        function renderHotelOptionCard(ho) {
+            const costHTML = ho.cost != null && ho.cost !== '' ? `<div style="margin-top:4px"><span style="font-size:13px;color:var(--text-muted)">${formatCurrency(ho.cost, ho.currency)}/night</span></div>` : '';
+            const linkHTML = ho.link ? `<div style="margin-top:4px"><a href="${esc(ho.link)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--purple)" onclick="event.stopPropagation()">Booking link</a></div>` : '';
+            const notesHTML = ho.notes ? `<div style="margin-top:4px;font-size:12px;color:var(--text-muted)">${esc(ho.notes)}</div>` : '';
+            return `<div class="card" style="margin-bottom:8px"><div class="card-body" style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span>\u{1F3E8}</span><strong>${esc(ho.name)}</strong><span class="badge" style="font-size:10px;background:var(--bg-secondary)">${esc(ho.city)}</span></div>${costHTML}${linkHTML}${notesHTML}</div><div class="item-actions"><button class="btn btn-sm" onclick="openQuickBookModal('${esc(ho.id)}')" title="Book this hotel" style="font-size:11px">Book</button><button class="btn-icon" onclick="openHotelOptionModal('${esc(ho.id)}')" title="Edit">\u270F\uFE0F</button></div></div></div>`;
+        }
+
+        const hotelOptions = (trip.hotelOptions || []).slice().sort((a, b) => (a.city || '').localeCompare(b.city || '') || (a.name || '').localeCompare(b.name || ''));
+
+        mc.innerHTML = `<div class="view-content"><div class="view-header"><h2>Reservations</h2></div>${renderSection('Flights','\u2708\uFE0F',flights,renderTransportCard,'No flights booked yet')}${renderSection('Trains','\u{1F686}',trains,renderTransportCard,'No trains booked yet')}${renderSection('Other Transport','\u{1F690}',otherTransport,renderTransportCard,'No other transport booked yet')}${renderSection('Hotels','\u{1F3E8}',hotels,renderLodgingCard,'No hotels booked yet')}${renderSection('Hotel Options','\u{1F50D}',hotelOptions,renderHotelOptionCard,'No hotel options yet')}${renderSection('Activity Reservations','\u{1F3AF}',reservedActivities,renderActivityResCard,'No activity reservations yet')}</div><button class="fab" onclick="openReservationQuickAdd()" title="Add reservation">+</button>`;
     }
 
     function openReservationQuickAdd() {
@@ -1718,6 +2159,7 @@
         <div style="display:flex;flex-direction:column;gap:8px">
             <button class="btn" onclick="closeModal();openLodgingModal()" style="justify-content:flex-start;height:48px"><span>\u{1F3E8}</span> Lodging</button>
             <button class="btn" onclick="closeModal();openTransportModal()" style="justify-content:flex-start;height:48px"><span>\u2708\uFE0F</span> Transport</button>
+            <button class="btn" onclick="closeModal();openHotelOptionModal()" style="justify-content:flex-start;height:48px"><span>\u{1F50D}</span> Hotel Option</button>
         </div></div>`);
     }
 
@@ -1730,15 +2172,55 @@
         openActivityModal(null, dateStr, legId);
     }
 
-    function openActivityModal(activityId, prefillDate, prefillLegId) {
+    function openLodgingModalForDate(dateStr, legId) {
+        openLodgingModal();
+        setTimeout(() => {
+            const ciEl = document.getElementById('lodgingCheckIn');
+            const legEl = document.getElementById('lodgingLeg');
+            if (ciEl && dateStr) ciEl.value = dateStr;
+            if (legEl && legId) legEl.value = legId;
+        }, 50);
+    }
+
+    function openTransportModalForDate(dateStr) {
+        openTransportModal();
+        setTimeout(() => {
+            const depEl = document.getElementById('transportDeparture');
+            if (depEl && dateStr) depEl.value = dateStr + 'T12:00';
+        }, 50);
+    }
+
+    function openHotelOptionModalForCity(legId) {
+        const trip = getTrip(); if (!trip) return;
+        openHotelOptionModal();
+        if (legId) {
+            const leg = (trip.legs || []).find(l => l.id === legId);
+            if (leg) setTimeout(() => { const el = document.getElementById('hoCity'); if (el) el.value = leg.city; }, 50);
+        }
+    }
+
+    function openActivityModal(activityId, prefillDate, prefillLegId, fromDayPlanId) {
         const trip = getTrip(); if (!trip) return;
         state.editingId = activityId || null; state.editingType = 'activity';
         const act = activityId ? trip.activities.find(a => a.id === activityId) : null;
         lastPlaceResult = act?.coordinates ? { lat: act.coordinates.lat, lng: act.coordinates.lng } : null;
         const ogOptions = `<option value="">None</option>` + (trip.optionGroups || []).map(og => `<option value="${og.id}"${og.id === act?.optionGroupId ? ' selected' : ''}>${esc(og.name)}</option>`).join('');
         const visitedSection = act?.visited ? `<hr style="border:none;border-top:1px solid var(--border);margin:16px 0"><div class="form-group"><label>Visited At</label><input class="input" id="actVisitedAt" type="datetime-local" value="${act.visitedAt ? act.visitedAt.slice(0, 16) : ''}"></div><div class="form-group"><label>Rating</label><div class="rating" id="actRatingWidget">${[1,2,3,4,5].map(s => `<span class="star${(act.rating || 0) >= s ? ' filled' : ''}" onclick="document.querySelectorAll('#actRatingWidget .star').forEach((st,i)=>{if(i<${s})st.classList.add('filled');else st.classList.remove('filled')});document.getElementById('actRatingVal').value='${s}'">&#9733;</span>`).join('')}</div><input type="hidden" id="actRatingVal" value="${act.rating || ''}"></div>` : '';
+
+        let dayPlanLinks = '';
+        if (act && !fromDayPlanId) {
+            const containingPlans = (trip.dayPlans || []).filter(dp => (dp.activityIds || []).includes(act.id));
+            if (containingPlans.length > 0) {
+                dayPlanLinks = `<div style="margin-top:8px;padding:8px 12px;background:var(--bg-secondary);border-radius:8px;font-size:13px"><span style="color:var(--text-muted)">In day plan${containingPlans.length > 1 ? 's' : ''}:</span> ${containingPlans.map(dp => `<a href="javascript:void(0)" onclick="openDayPlanFromActivity('${dp.id}')" style="margin-left:4px">${esc(dp.name || dp.id)}</a>`).join(', ')}</div>`;
+            }
+        }
+
+        const headerHtml = fromDayPlanId
+            ? `<div class="modal-header"><button class="btn btn-sm" onclick="saveActivity({returnToDayPlan:true})" style="margin-right:8px">\u2190 Back</button><h3>Edit Activity</h3><button class="btn-icon" onclick="closeModal()">\u2715</button></div>`
+            : `<div class="modal-header"><h3>${act ? 'Edit Activity' : 'New Activity'}</h3><button class="btn-icon" onclick="closeModal()">\u2715</button></div>`;
+
         openModal(`
-            <div class="modal-header"><h3>${act ? 'Edit Activity' : 'New Activity'}</h3><button class="btn-icon" onclick="closeModal()">\u2715</button></div>
+            ${headerHtml}
             <div class="modal-body">
                 <div class="form-group"><label>Name</label><input class="input" id="actName" value="${esc(act?.name || '')}" placeholder="e.g. Visit the Louvre"></div>
                 <div class="form-row">
@@ -1762,24 +2244,85 @@
                 <div class="toggle-wrap"><label>Must happen on specific date/time</label><button class="toggle${act?.isFixed ? ' on' : ''}" id="actFixedToggle" onclick="this.classList.toggle('on')"></button></div>
                 <div class="form-group"><label>Option Group</label><select class="select" id="actOptionGroup">${ogOptions}</select></div>
                 <div class="form-group"><label>Notes</label><textarea class="textarea" id="actNotes" placeholder="Activity notes...">${esc(act?.notes || '')}</textarea></div>
+                <div class="form-group"><label>Photos <span style="font-weight:normal;color:var(--text-muted);font-size:12px">(max 5)</span></label><div id="actPhotos" style="display:flex;flex-wrap:wrap;gap:4px"></div><div style="display:flex;gap:8px;margin-top:4px"><button type="button" class="btn btn-sm" onclick="addPhotoFromFile()">Upload</button><button type="button" class="btn btn-sm" onclick="addPhotoFromUrl()">From URL</button></div></div>
                 ${visitedSection}
+                ${dayPlanLinks}
             </div>
             <div class="modal-footer">
                 ${act ? `<button class="btn btn-danger" onclick="deleteActivity('${act.id}')" style="margin-right:auto">Delete</button>` : ''}
-                <button class="btn" onclick="closeModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveActivity()">Save</button>
+                <button class="btn" onclick="${fromDayPlanId ? 'returnToDayPlanModal()' : 'closeModal()'}">Cancel</button>
+                <button class="btn btn-primary" onclick="saveActivity(${fromDayPlanId ? '{returnToDayPlan:true}' : ''})">${fromDayPlanId ? 'Save & Back' : 'Save'}</button>
             </div>
         `);
+        initPhotoEditor(act?.photos || []);
     }
 
-    function saveActivity() {
+    function initPhotoEditor(existingPhotos) {
+        _pendingPhotos = (existingPhotos || []).slice();
+        renderPhotoThumbnails();
+    }
+
+    function renderPhotoThumbnails() {
+        const el = document.getElementById('actPhotos'); if (!el) return;
+        if (_pendingPhotos.length === 0) { el.innerHTML = '<span style="font-size:12px;color:var(--text-muted)">No photos</span>'; return; }
+        el.innerHTML = _pendingPhotos.map((p, i) => `<div style="position:relative;width:48px;height:48px;flex-shrink:0"><img src="${esc(p.url)}" style="width:48px;height:48px;object-fit:cover;border-radius:4px;border:1px solid var(--border)"><button type="button" onclick="removePhoto(${i})" style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--danger);color:#fff;border:none;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">&times;</button></div>`).join('');
+    }
+
+    function addPhotoFromFile() {
+        if (_pendingPhotos.length >= 5) { toast('Max 5 photos per activity'); return; }
+        const inp = document.createElement('input');
+        inp.type = 'file'; inp.accept = 'image/*';
+        inp.onchange = async (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async () => {
+                try {
+                    const resized = await resizeImage(reader.result, 800, 0.7);
+                    _pendingPhotos.push({ url: resized });
+                    renderPhotoThumbnails();
+                } catch (err) { toast('Failed to process image'); }
+            };
+            reader.readAsDataURL(file);
+        };
+        inp.click();
+    }
+
+    function addPhotoFromUrl() {
+        if (_pendingPhotos.length >= 5) { toast('Max 5 photos per activity'); return; }
+        const url = prompt('Enter image URL:');
+        if (url && url.trim()) { _pendingPhotos.push({ url: url.trim() }); renderPhotoThumbnails(); }
+    }
+
+    function removePhoto(index) {
+        _pendingPhotos.splice(index, 1);
+        renderPhotoThumbnails();
+    }
+
+    function resizeImage(dataUrl, maxWidth, quality) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                let w = img.width, h = img.height;
+                if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+                const canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = reject;
+            img.src = dataUrl;
+        });
+    }
+
+    function saveActivity(opts) {
         const trip = getTrip(); if (!trip) return;
         const name = document.getElementById('actName').value.trim();
         if (!name) { toast('Activity name is required'); return; }
         const coordinates = lastPlaceResult ? { lat: lastPlaceResult.lat, lng: lastPlaceResult.lng } : null;
         let osmLink = '';
         if (coordinates?.lat && coordinates?.lng) osmLink = `https://www.openstreetmap.org/?mlat=${coordinates.lat}&mlon=${coordinates.lng}#map=17/${coordinates.lat}/${coordinates.lng}`;
-        const actData = { name, legId: document.getElementById('actLeg').value || '', category: document.getElementById('actCategory').value, address: document.getElementById('actAddress').value.trim(), coordinates, date: document.getElementById('actDate').value, time: document.getElementById('actTime').value, duration: parseInt(document.getElementById('actDuration').value) || 0, cost: parseFloat(document.getElementById('actCost').value) || 0, currency: document.getElementById('actCurrency').value, url: document.getElementById('actUrl').value.trim(), reservationNeeded: document.getElementById('actReservationToggle').classList.contains('on'), booked: document.getElementById('actBookedToggle').classList.contains('on') && document.getElementById('actReservationToggle').classList.contains('on'), isPooled: document.getElementById('actPooledToggle').classList.contains('on'), isFixed: document.getElementById('actFixedToggle').classList.contains('on'), optionGroupId: document.getElementById('actOptionGroup').value || null, osmLink, notes: document.getElementById('actNotes').value.trim() };
+        const actData = { name, legId: document.getElementById('actLeg').value || '', category: document.getElementById('actCategory').value, address: document.getElementById('actAddress').value.trim(), coordinates, date: document.getElementById('actDate').value, time: document.getElementById('actTime').value, duration: parseInt(document.getElementById('actDuration').value) || 0, cost: parseFloat(document.getElementById('actCost').value) || 0, currency: document.getElementById('actCurrency').value, url: document.getElementById('actUrl').value.trim(), reservationNeeded: document.getElementById('actReservationToggle').classList.contains('on'), booked: document.getElementById('actBookedToggle').classList.contains('on') && document.getElementById('actReservationToggle').classList.contains('on'), isPooled: document.getElementById('actPooledToggle').classList.contains('on'), isFixed: document.getElementById('actFixedToggle').classList.contains('on'), optionGroupId: document.getElementById('actOptionGroup').value || null, osmLink, notes: document.getElementById('actNotes').value.trim(), photos: _pendingPhotos.slice() };
         if (state.editingId) {
             const act = trip.activities.find(a => a.id === state.editingId);
             if (act) { Object.assign(act, actData); const rEl = document.getElementById('actRatingVal'); if (rEl) act.rating = parseInt(rEl.value) || 0; const vEl = document.getElementById('actVisitedAt'); if (vEl?.value) act.visitedAt = new Date(vEl.value).toISOString(); }
@@ -1788,7 +2331,13 @@
             const maxOrder = trip.activities.length > 0 ? Math.max(...trip.activities.map(a => a.order || 0)) : 0;
             trip.activities.push({ id: uid(), ...actData, visited: false, visitedAt: null, rating: 0, order: maxOrder + 1 });
         }
-        save(); closeModal(); render(); toast(state.editingId ? 'Activity updated' : 'Activity created');
+        save();
+        if (opts?.returnToDayPlan && _dayPlanReturnState) {
+            toast('Activity saved');
+            returnToDayPlanModal();
+        } else {
+            closeModal(); render(); toast(state.editingId ? 'Activity updated' : 'Activity created');
+        }
     }
 
     async function deleteActivity(id) {
@@ -1815,34 +2364,109 @@
         save(); render();
     }
 
-    function openDayPlanModal(dayPlanId) {
+    let _dayPlanReturnState = null;
+    let _activityReturnState = null;
+    let _dayPlanOpenedFromActivity = false;
+
+    function snapshotDayPlanForm(dayPlanId) {
+        const activityIds = [];
+        document.querySelectorAll('#dpActivityList .item-row').forEach(row => {
+            const cb = row.querySelector('input[type="checkbox"]');
+            if (cb) activityIds.push({ id: cb.value, checked: cb.checked });
+        });
+        return {
+            dayPlanId,
+            name: document.getElementById('dpName')?.value || '',
+            legId: document.getElementById('dpLeg')?.value || '',
+            date: document.getElementById('dpDate')?.value || '',
+            notes: document.getElementById('dpNotes')?.value || '',
+            activityIds
+        };
+    }
+
+    function snapshotActivityForm(activityId) {
+        return { activityId, lastPlaceResult };
+    }
+
+    function openActivityFromDayPlan(activityId) {
+        _activityReturnState = null; // no nesting
+        const dpId = state.editingId;
+        _dayPlanReturnState = snapshotDayPlanForm(dpId);
+        stopFormAutoSave(); clearFormCache();
+        openActivityModal(activityId, null, null, dpId);
+    }
+
+    function openActivityDirectFromDayPlan(activityId) {
+        _dayPlanReturnState = null;
+        _activityReturnState = null;
+        _dayPlanOpenedFromActivity = false;
+        stopFormAutoSave(); clearFormCache();
+        openActivityModal(activityId);
+    }
+
+    function openDayPlanFromActivity(dayPlanId) {
+        _dayPlanReturnState = null; // no nesting
+        const actId = state.editingId;
+        _activityReturnState = snapshotActivityForm(actId);
+        stopFormAutoSave(); clearFormCache();
+        openDayPlanModal(dayPlanId, null, actId);
+    }
+
+    function returnToDayPlanModal() {
+        const rs = _dayPlanReturnState;
+        _dayPlanReturnState = null;
+        if (!rs) { closeModal(); return; }
+        stopFormAutoSave(); clearFormCache();
+        openDayPlanModal(rs.dayPlanId, rs);
+    }
+
+    function returnToActivityModal() {
+        const rs = _activityReturnState;
+        _activityReturnState = null;
+        if (!rs) { closeModal(); return; }
+        stopFormAutoSave(); clearFormCache();
+        openActivityModal(rs.activityId);
+        lastPlaceResult = rs.lastPlaceResult;
+    }
+
+    function openDayPlanModal(dayPlanId, restoreState, fromActivityId) {
         const trip = getTrip(); if (!trip) return;
+        _dayPlanOpenedFromActivity = !!fromActivityId;
         state.editingId = dayPlanId || null; state.editingType = 'dayPlan';
         const dp = dayPlanId ? (trip.dayPlans || []).find(d => d.id === dayPlanId) : null;
-        const selectedLegId = dp?.legId || '';
+        const selectedLegId = restoreState ? restoreState.legId : (dp?.legId || '');
+        const restoredChecked = restoreState ? new Map(restoreState.activityIds.map(a => [a.id, a.checked])) : null;
         const includedIds = new Set(dp?.activityIds || []);
         const buildPicker = (legId) => {
             const legActs = (trip.activities || []).filter(a => !legId || a.legId === legId);
             if (legActs.length === 0) return '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">No activities for this leg</div>';
             const included = (dp?.activityIds || []).map(aid => legActs.find(a => a.id === aid)).filter(Boolean);
             const excluded = legActs.filter(a => !includedIds.has(a.id));
-            return `<div class="item-list" id="dpActivityList">${[...included, ...excluded].map((a, idx) => `<div class="item-row" data-activity-id="${a.id}" draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${idx}');event.dataTransfer.effectAllowed='move'" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="event.preventDefault();this.classList.remove('drag-over');handleDayPlanDrop(event,${idx})"><span class="drag-handle">\u2630</span><div class="item-check"><input type="checkbox" id="dpAct_${a.id}" value="${a.id}" ${includedIds.has(a.id) ? 'checked' : ''}></div><div class="item-body"><span class="category-icon">${CATEGORIES[a.category] || '\u{1F4CC}'}</span><span>${esc(a.name)}</span>${a.time ? `<span style="color:var(--text-muted);font-size:12px;margin-left:4px">${formatTime(a.time)}</span>` : ''}</div></div>`).join('')}</div>`;
+            const isChecked = (a) => restoredChecked ? (restoredChecked.get(a.id) ?? includedIds.has(a.id)) : includedIds.has(a.id);
+            const actClickFn = _dayPlanOpenedFromActivity ? 'openActivityDirectFromDayPlan' : 'openActivityFromDayPlan';
+            return `<div class="item-list" id="dpActivityList">${[...included, ...excluded].map((a, idx) => `<div class="item-row" data-activity-id="${a.id}" draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${idx}');event.dataTransfer.effectAllowed='move'" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="event.preventDefault();this.classList.remove('drag-over');handleDayPlanDrop(event,${idx})"><span class="drag-handle">\u2630</span><div class="item-check"><input type="checkbox" id="dpAct_${a.id}" value="${a.id}" ${isChecked(a) ? 'checked' : ''}></div><div class="item-body"><span class="category-icon">${CATEGORIES[a.category] || '\u{1F4CC}'}</span><span style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted" onclick="event.stopPropagation();${actClickFn}('${a.id}')">${esc(a.name)}</span>${a.time ? `<span style="color:var(--text-muted);font-size:12px;margin-left:4px">${formatTime(a.time)}</span>` : ''}</div></div>`).join('')}</div>`;
         };
+        const rName = restoreState ? restoreState.name : (dp?.name || '');
+        const rDate = restoreState ? restoreState.date : (dp?.assignedDate || '');
+        const rNotes = restoreState ? restoreState.notes : (dp?.notes || '');
+        const headerHtml = fromActivityId
+            ? `<div class="modal-header"><button class="btn btn-sm" onclick="returnToActivityModal()" style="margin-right:8px">\u2190 Back</button><h3>Edit Day Plan</h3><button class="btn-icon" onclick="closeModal()">\u2715</button></div>`
+            : `<div class="modal-header"><h3>${dp ? 'Edit Day Plan' : 'New Day Plan'}</h3><button class="btn-icon" onclick="closeModal()">\u2715</button></div>`;
         openModal(`
-            <div class="modal-header"><h3>${dp ? 'Edit Day Plan' : 'New Day Plan'}</h3><button class="btn-icon" onclick="closeModal()">\u2715</button></div>
+            ${headerHtml}
             <div class="modal-body">
-                <div class="form-group"><label>Name</label><input class="input" id="dpName" value="${esc(dp?.name || '')}" placeholder="e.g. Day Plan A"></div>
+                <div class="form-group"><label>Name</label><input class="input" id="dpName" value="${esc(rName)}" placeholder="e.g. Day Plan A"></div>
                 <div class="form-row">
                     <div class="form-group"><label>Leg</label><select class="select" id="dpLeg" onchange="refreshDayPlanActivities()">${legOptions(trip, selectedLegId)}</select></div>
-                    <div class="form-group"><label>Assigned Date</label><input class="input" id="dpDate" type="date" value="${dp?.assignedDate || ''}"></div>
+                    <div class="form-group"><label>Assigned Date</label><input class="input" id="dpDate" type="date" value="${rDate}"></div>
                 </div>
-                <div class="form-group"><label>Notes</label><textarea class="textarea" id="dpNotes" placeholder="Day plan notes...">${esc(dp?.notes || '')}</textarea></div>
-                <div class="form-group"><label>Activities</label><div id="dpActivityPicker">${buildPicker(selectedLegId)}</div></div>
+                <div class="form-group"><label>Notes</label><textarea class="textarea" id="dpNotes" placeholder="Day plan notes...">${esc(rNotes)}</textarea></div>
+                <div class="form-group"><label>Activities <span style="font-weight:normal;color:var(--text-muted);font-size:12px">(click name to edit)</span></label><div id="dpActivityPicker">${buildPicker(selectedLegId)}</div></div>
             </div>
             <div class="modal-footer">
                 ${dp ? `<button class="btn btn-danger" onclick="deleteDayPlan('${dp.id}')" style="margin-right:auto">Delete</button>` : ''}
-                <button class="btn" onclick="closeModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveDayPlan()">Save</button>
+                <button class="btn" onclick="${fromActivityId ? 'returnToActivityModal()' : 'closeModal()'}">Cancel</button>
+                <button class="btn btn-primary" onclick="saveDayPlan(${fromActivityId ? '{returnToActivity:true}' : ''})">Save</button>
             </div>
         `);
     }
@@ -1857,7 +2481,8 @@
         if (legActs.length === 0) { pickerEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">No activities for this leg</div>'; return; }
         const checked = legActs.filter(a => checkedIds.has(a.id));
         const unchecked = legActs.filter(a => !checkedIds.has(a.id));
-        pickerEl.innerHTML = `<div class="item-list" id="dpActivityList">${[...checked, ...unchecked].map((a, idx) => `<div class="item-row" data-activity-id="${a.id}" draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${idx}');event.dataTransfer.effectAllowed='move'" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="event.preventDefault();this.classList.remove('drag-over');handleDayPlanDrop(event,${idx})"><span class="drag-handle">\u2630</span><div class="item-check"><input type="checkbox" id="dpAct_${a.id}" value="${a.id}" ${checkedIds.has(a.id) ? 'checked' : ''}></div><div class="item-body"><span class="category-icon">${CATEGORIES[a.category] || '\u{1F4CC}'}</span><span>${esc(a.name)}</span></div></div>`).join('')}</div>`;
+        const actClickFn = _dayPlanOpenedFromActivity ? 'openActivityDirectFromDayPlan' : 'openActivityFromDayPlan';
+        pickerEl.innerHTML = `<div class="item-list" id="dpActivityList">${[...checked, ...unchecked].map((a, idx) => `<div class="item-row" data-activity-id="${a.id}" draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${idx}');event.dataTransfer.effectAllowed='move'" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="event.preventDefault();this.classList.remove('drag-over');handleDayPlanDrop(event,${idx})"><span class="drag-handle">\u2630</span><div class="item-check"><input type="checkbox" id="dpAct_${a.id}" value="${a.id}" ${checkedIds.has(a.id) ? 'checked' : ''}></div><div class="item-body"><span class="category-icon">${CATEGORIES[a.category] || '\u{1F4CC}'}</span><span style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted" onclick="event.stopPropagation();${actClickFn}('${a.id}')">${esc(a.name)}</span></div></div>`).join('')}</div>`;
     }
 
     function handleDayPlanDrop(event, targetIdx) {
@@ -1871,7 +2496,7 @@
         else list.insertBefore(sourceRow, targetRow);
     }
 
-    function saveDayPlan() {
+    function saveDayPlan(opts) {
         const trip = getTrip(); if (!trip) return;
         const name = document.getElementById('dpName').value.trim();
         if (!name) { toast('Day plan name is required'); return; }
@@ -1880,7 +2505,13 @@
         const dpData = { name, legId: document.getElementById('dpLeg').value || '', assignedDate: document.getElementById('dpDate').value || null, activityIds, notes: document.getElementById('dpNotes').value.trim() };
         if (state.editingId) { const dp = (trip.dayPlans || []).find(d => d.id === state.editingId); if (dp) Object.assign(dp, dpData); }
         else { if (!trip.dayPlans) trip.dayPlans = []; const maxOrder = trip.dayPlans.length > 0 ? Math.max(...trip.dayPlans.map(d => d.order || 0)) : 0; trip.dayPlans.push({ id: uid(), ...dpData, order: maxOrder + 1 }); }
-        save(); closeModal(); render(); toast(state.editingId ? 'Day plan updated' : 'Day plan created');
+        save();
+        if (opts?.returnToActivity && _activityReturnState) {
+            toast('Day plan saved');
+            returnToActivityModal();
+        } else {
+            closeModal(); render(); toast(state.editingId ? 'Day plan updated' : 'Day plan created');
+        }
     }
 
     async function deleteDayPlan(id) {
@@ -1894,6 +2525,29 @@
         const trip = getTrip(); if (!trip) return;
         const dp = (trip.dayPlans || []).find(d => d.id === dpId); if (!dp) return;
         dp.assignedDate = date || null; save(); render();
+    }
+
+    function useDayPlanForDate(dpId, dateStr) {
+        const trip = getTrip(); if (!trip) return;
+        const dp = (trip.dayPlans || []).find(d => d.id === dpId); if (!dp) return;
+        const leg = getLegForDate(trip, dateStr);
+        for (const actId of (dp.activityIds || [])) {
+            const act = (trip.activities || []).find(a => a.id === actId);
+            if (act) {
+                act.date = dateStr;
+                if (leg) act.legId = leg.id;
+            }
+        }
+        dp.usedDate = dateStr;
+        dp.assignedDate = null;
+        save(); render(); toast(`Day plan "${dp.name}" applied to ${formatDate(dateStr)}`);
+    }
+
+    function unarchiveDayPlan(dpId) {
+        const trip = getTrip(); if (!trip) return;
+        const dp = (trip.dayPlans || []).find(d => d.id === dpId); if (!dp) return;
+        dp.usedDate = null;
+        save(); render(); toast('Day plan restored to pool');
     }
 
     function openOptionGroupModal(ogId) {
@@ -1985,10 +2639,44 @@
         return result;
     }
 
+    function hasBookedLodgingForNight(trip, dateStr) {
+        for (const l of trip.lodging || []) {
+            if (l.booked && l.checkIn && l.checkOut && l.checkIn <= dateStr && dateStr < l.checkOut) return true;
+        }
+        return false;
+    }
+
     function getLegForDate(trip, dateStr) {
         if (!trip || !dateStr) return null;
         for (const leg of trip.legs || []) { if (leg.startDate && leg.endDate && dateStr >= leg.startDate && dateStr <= leg.endDate) return leg; }
         return null;
+    }
+
+    function computeLegDayNumbers(trip) {
+        const result = new Map();
+        const days = getDayRange(trip);
+        if (days.length === 0) return result;
+        const legDays = new Map();
+        days.forEach((dateStr, i) => {
+            const leg = getLegForDate(trip, dateStr);
+            if (leg) {
+                if (!legDays.has(leg.id)) legDays.set(leg.id, []);
+                legDays.get(leg.id).push(i + 1);
+            }
+        });
+        legDays.forEach((nums, legId) => {
+            const ranges = [];
+            let start = nums[0], end = nums[0];
+            for (let i = 1; i < nums.length; i++) {
+                if (nums[i] === end + 1) { end = nums[i]; }
+                else { ranges.push(start === end ? String(start) : `${start}\u2013${end}`); start = end = nums[i]; }
+            }
+            ranges.push(start === end ? String(start) : `${start}\u2013${end}`);
+            const label = ranges.join(', ');
+            const prefix = (nums.length === 1) ? 'Day' : 'Days';
+            result.set(legId, { short: label, full: `${prefix} ${label}` });
+        });
+        return result;
     }
 
     function toggleDayCollapsed(dateStr) { state.collapsedDays[dateStr] = !state.collapsedDays[dateStr]; render(); }
@@ -2005,6 +2693,82 @@
         save(); render();
     }
 
+    function findTransportBetween(trip, fromCity, toCity) {
+        return (trip.transport || []).filter(t => {
+            const fc = (t.fromCity || '').toLowerCase();
+            const tc = (t.toCity || '').toLowerCase();
+            return fc === (fromCity || '').toLowerCase() && tc === (toCity || '').toLowerCase();
+        });
+    }
+
+    function renderTravelBanner(trip, fromCity, toCity, dateHint) {
+        const transports = findTransportBetween(trip, fromCity, toCity);
+        const hasBooked = transports.some(t => t.booked);
+        const escAttr = s => esc(s).replace(/'/g, '&#39;');
+        if (transports.length > 0) {
+            const t = transports[0];
+            const icon = TRANSPORT_TYPES[t.type] || '\u{1F690}';
+            const label = [t.carrier, t.flightNumber].filter(Boolean).join(' ');
+            const timeStr = t.departure ? formatTime(t.departure.split('T')[1]?.substring(0,5)||'') : '';
+            const badge = hasBooked ? '<span class="badge badge-ready" style="font-size:10px">Booked</span>' : '<span class="badge badge-booking" style="font-size:10px">Unbooked</span>';
+            return `<div style="margin:4px 0;padding:8px 16px;background:var(--bg-secondary);border-radius:8px;display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer" onclick="openTransportModal('${t.id}')"><span>${icon}</span><strong>${esc(fromCity)} \u2192 ${esc(toCity)}</strong>${label ? `<span style="color:var(--text-muted)">${esc(label)}</span>` : ''}${timeStr ? `<span style="color:var(--text-muted)">${timeStr}</span>` : ''}${badge}</div>`;
+        }
+        return `<div style="margin:4px 0;padding:8px 16px;background:var(--bg-secondary);border-radius:8px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px"><span style="color:var(--text-muted)">\u{1F6A9} ${esc(fromCity)} \u2192 ${esc(toCity)}</span><button class="btn btn-sm" style="font-size:11px" onclick="openTransportModalPrefilled('${escAttr(fromCity)}','${escAttr(toCity)}','${dateHint || ''}')">+ Add Transport</button></div>`;
+    }
+
+    function openTransportModalPrefilled(fromCity, toCity, dateHint) {
+        const trip = getTrip(); if (!trip) return;
+        const fromLeg = (trip.legs || []).find(l => l.city === fromCity);
+        const toLeg = (trip.legs || []).find(l => l.city === toCity);
+        openTransportModal();
+        setTimeout(() => {
+            const fromEl = document.getElementById('transportFromLeg');
+            const toEl = document.getElementById('transportToLeg');
+            const depEl = document.getElementById('transportDeparture');
+            if (fromEl && fromLeg) fromEl.value = fromLeg.id;
+            if (toEl && toLeg) toEl.value = toLeg.id;
+            if (depEl && dateHint) depEl.value = dateHint + 'T12:00';
+        }, 50);
+    }
+
+    function _renderDayPlanCard(dp, trip, days, opts) {
+        const isExpanded = state.expandedDayPlans.has(dp.id);
+        const actNames = (dp.activityIds || []).map(aid => { const a = (trip.activities || []).find(x => x.id === aid); return a ? esc(a.name) : '?'; });
+        const toggleExpand = `state.expandedDayPlans.has('${dp.id}')?state.expandedDayPlans.delete('${dp.id}'):state.expandedDayPlans.add('${dp.id}');render()`;
+        let expandedBody = '';
+        if (isExpanded) {
+            expandedBody = (dp.activityIds || []).map(aid => {
+                const a = (trip.activities || []).find(x => x.id === aid);
+                if (!a) return `<div style="padding:4px 0;font-size:13px;color:var(--text-muted)">? (missing)</div>`;
+                const catIcon = CATEGORIES[a.category] || '\u{1F4CC}';
+                let photoStrip = '';
+                if (settings.showPhotos && a.photos?.length > 0) {
+                    photoStrip = `<div style="display:flex;gap:4px;margin:4px 0 8px 28px;overflow-x:auto">${a.photos.map(p => `<img src="${esc(p.url)}" style="height:50px;border-radius:4px;object-fit:cover;flex-shrink:0">`).join('')}</div>`;
+                }
+                return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border-light)"><span class="category-icon">${catIcon}</span><div style="flex:1"><div style="font-size:13px;font-weight:500">${esc(a.name)}</div><div style="font-size:12px;color:var(--text-muted)">${a.time ? formatTime(a.time) : ''}${a.time && a.duration ? ' \u00B7 ' : ''}${a.duration ? formatDuration(a.duration) : ''}</div></div></div>${photoStrip}`;
+            }).join('');
+        }
+        const collapsedContent = !isExpanded ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">${actNames.length > 0 ? actNames.join(' &rarr; ') : 'No activities'}</div>` : '';
+        return `<div class="card" style="margin-bottom:8px${opts?.archived ? ';opacity:0.7' : ''}"><div class="card-body">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                <div style="flex:1;cursor:pointer" onclick="${toggleExpand}">
+                    <strong style="font-size:14px">${esc(dp.name || 'Unnamed Plan')}</strong>
+                    ${dp.assignedDate ? `<span class="badge" style="font-size:10px;margin-left:6px;background:var(--accent);color:white">${formatDate(dp.assignedDate)}</span>` : ''}
+                    ${opts?.legName ? `<span class="badge" style="font-size:10px;margin-left:6px;background:var(--bg-secondary)">${esc(opts.legName)}</span>` : ''}
+                    ${opts?.usedDate ? `<span style="font-size:11px;color:var(--text-muted);margin-left:6px">used ${formatDate(opts.usedDate)}</span>` : ''}
+                    ${collapsedContent}
+                    ${dp.notes && !isExpanded ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px">${esc(dp.notes)}</div>` : ''}
+                </div>
+                <div style="display:flex;gap:4px;flex-shrink:0">
+                    ${opts?.archived ? `<button class="btn btn-sm btn-ghost" onclick="unarchiveDayPlan('${dp.id}')">Restore</button>` : ''}
+                    ${!opts?.archived && days.length > 0 ? `<select class="select" style="width:auto;height:30px;font-size:12px" onchange="if(this.value)useDayPlanForDate('${dp.id}',this.value)"><option value="">Use on\u2026</option>${days.map(d => `<option value="${d}">${formatDate(d)}</option>`).join('')}</select>` : ''}
+                    <button class="btn btn-sm btn-ghost" onclick="openDayPlanModal('${dp.id}')">Edit</button>
+                </div>
+            </div>
+            ${isExpanded ? `<div style="margin-top:8px;border-top:1px solid var(--border-light);padding-top:8px">${expandedBody}</div>` : ''}
+        </div></div>`;
+    }
+
     function renderItinerary() {
         const trip = getTrip(); const mc = document.getElementById('mainContent');
         if (!trip) { mc.innerHTML = '<div class="view-content"><div class="empty-state"><div class="empty-icon">\u{1F4C5}</div><p>No trip selected.</p></div></div>'; return; }
@@ -2019,6 +2783,7 @@
             <div class="segmented" style="flex-shrink:0">
                 <button class="segmented-btn${mode === 'ordered' ? ' active' : ''}" onclick="state.itineraryMode='ordered';render()">Ordered</button>
                 <button class="segmented-btn${mode === 'unordered' ? ' active' : ''}" onclick="state.itineraryMode='unordered';render()">Unordered</button>
+                <button class="segmented-btn${mode === 'dayplans' ? ' active' : ''}" onclick="state.itineraryMode='dayplans';render()">Day Plans</button>
             </div>
         </div>`;
         let smartPasteBtn = `<div style="margin-bottom:12px;display:flex;gap:8px"><button class="btn btn-sm" onclick="openSmartPaste()">\u{1F4CB} Smart Paste</button></div>`;
@@ -2028,28 +2793,97 @@
             const legs = (trip.legs || []).slice().sort((a,b) => (a.order||0)-(b.order||0));
             const filteredLegs = filter.legId ? legs.filter(l => l.id === filter.legId) : legs;
             if (filteredLegs.length === 0) html += `<div class="empty-state"><p>No legs to show.</p></div>`;
+            const assignedActIds = new Set();
             for (const leg of filteredLegs) {
-                let acts = (trip.activities || []).filter(a => a.legId === leg.id);
+                let acts = (trip.activities || []).filter(a => {
+                    if (a.legId === leg.id) return true;
+                    if (!a.legId && a.date && leg.startDate && leg.endDate && a.date >= leg.startDate && a.date <= leg.endDate) return true;
+                    return false;
+                });
+                acts.forEach(a => assignedActIds.add(a.id));
                 acts = _applyActivityFilters(acts, filter);
                 acts.sort((a,b) => (a.order||0)-(b.order||0));
                 html += `<div class="card" style="margin-bottom:12px"><div class="card-header"><strong>${esc(leg.city)}${leg.country ? ', '+esc(leg.country) : ''}</strong><span style="font-size:13px;color:var(--text-muted)">${formatDateRange(leg.startDate,leg.endDate)}</span></div><div class="card-body">`;
                 if (acts.length === 0) html += `<p style="color:var(--text-muted);font-size:13px">No activities for this leg.</p>`;
                 else { html += `<ul class="item-list">`; for (const act of acts) html += _renderActivityRow(act, trip, null, null); html += `</ul>`; }
+                html += `<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap"><button class="btn btn-sm btn-ghost" style="font-size:12px" onclick="openActivityModal(null,null,'${leg.id}')">+ Activity</button><button class="btn btn-sm btn-ghost" style="font-size:12px" onclick="openLodgingModalForDate('','${leg.id}')">+ Lodging</button><button class="btn btn-sm btn-ghost" style="font-size:12px" onclick="openTransportModalForDate('')">+ Transport</button><button class="btn btn-sm btn-ghost" style="font-size:12px" onclick="openHotelOptionModalForCity('${leg.id}')">+ Hotel Option</button></div>`;
                 html += `</div></div>`;
             }
-            let noLegActs = (trip.activities || []).filter(a => !a.legId);
+            let noLegActs = (trip.activities || []).filter(a => !a.legId && !assignedActIds.has(a.id));
             noLegActs = _applyActivityFilters(noLegActs, filter);
-            if (noLegActs.length > 0) { html += `<div class="card" style="margin-bottom:12px"><div class="card-header"><strong>Unassigned</strong></div><div class="card-body"><ul class="item-list">`; for (const act of noLegActs) html += _renderActivityRow(act, trip, null, null); html += `</ul></div></div>`; }
+            if (noLegActs.length > 0) {
+                html += `<div class="card" style="margin-bottom:12px"><div class="card-header"><strong>Unassigned</strong></div><div class="card-body"><ul class="item-list">`;
+                for (const act of noLegActs) html += _renderActivityRow(act, trip, null, null);
+                html += `</ul><div style="margin-top:6px"><button class="btn btn-sm btn-ghost" style="font-size:12px" onclick="openActivityModal()">+ Activity</button></div></div></div>`;
+            }
             html += `</div><button class="fab" onclick="openActivityModal()" title="Add Activity">+</button>`;
+            mc.innerHTML = html; return;
+        }
+
+        if (mode === 'dayplans') {
+            let html = `<div class="view-content">${filterBarHTML}`;
+            const allPlans = (trip.dayPlans || []);
+            const legs = (trip.legs || []).slice().sort((a,b) => (a.order||0)-(b.order||0));
+            const filteredLegs = filter.legId ? legs.filter(l => l.id === filter.legId) : legs;
+            const floatingPlans = allPlans.filter(dp => !dp.usedDate);
+            const archivedPlans = allPlans.filter(dp => dp.usedDate);
+
+            html += `<div style="margin-bottom:12px;display:flex;gap:8px"><button class="btn btn-sm btn-primary" onclick="openDayPlanModal()">+ New Day Plan</button></div>`;
+
+            if (floatingPlans.length === 0 && archivedPlans.length === 0) {
+                html += `<div class="empty-state"><div class="empty-icon">\u{1F4CB}</div><p>No day plans yet. Create a day plan to organize activities into reusable daily itineraries.</p></div>`;
+            } else {
+                for (const leg of filteredLegs) {
+                    const legPlans = floatingPlans.filter(dp => dp.legId === leg.id);
+                    if (legPlans.length === 0) continue;
+                    html += `<h3 style="font-size:14px;color:var(--text-muted);margin:16px 0 8px">${esc(leg.city)}</h3>`;
+                    for (const dp of legPlans) {
+                        html += _renderDayPlanCard(dp, trip, days, {});
+                    }
+                }
+
+                const unassignedPlans = floatingPlans.filter(dp => !dp.legId || !legs.some(l => l.id === dp.legId));
+                if (unassignedPlans.length > 0) {
+                    html += `<h3 style="font-size:14px;color:var(--text-muted);margin:16px 0 8px">Unassigned</h3>`;
+                    for (const dp of unassignedPlans) {
+                        html += _renderDayPlanCard(dp, trip, days, {});
+                    }
+                }
+
+                if (archivedPlans.length > 0) {
+                    const filteredArchived = filter.legId ? archivedPlans.filter(dp => dp.legId === filter.legId) : archivedPlans;
+                    if (filteredArchived.length > 0) {
+                        html += `<details style="margin-top:16px"><summary style="font-size:14px;color:var(--text-muted);cursor:pointer">Archived (${filteredArchived.length})</summary><div style="margin-top:8px">`;
+                        for (const dp of filteredArchived) {
+                            const legName = legs.find(l => l.id === dp.legId)?.city || '';
+                            html += _renderDayPlanCard(dp, trip, days, { archived: true, legName, usedDate: dp.usedDate });
+                        }
+                        html += `</div></details>`;
+                    }
+                }
+            }
+
+            html += `</div><button class="fab" onclick="openDayPlanModal()" title="New Day Plan">+</button>`;
             mc.innerHTML = html; return;
         }
 
         let dayCardsHTML = '';
         if (days.length === 0) { dayCardsHTML = `<div class="empty-state" style="padding:24px 0"><p>Set trip dates to see your day-by-day itinerary.</p></div>`; }
         else {
+            let prevCity = null;
+            let shownStartBanner = false;
             for (let i = 0; i < days.length; i++) {
                 const dateStr = days[i]; const leg = getLegForDate(trip, dateStr);
                 if (filter.legId && (!leg || leg.id !== filter.legId)) continue;
+                const curCity = leg ? leg.city : null;
+                if (!shownStartBanner && curCity && trip.startLocation && trip.startLocation.toLowerCase() !== curCity.toLowerCase()) {
+                    dayCardsHTML += renderTravelBanner(trip, trip.startLocation, curCity, days[0]);
+                    shownStartBanner = true;
+                } else if (!shownStartBanner) { shownStartBanner = true; }
+                if (prevCity && curCity && prevCity.toLowerCase() !== curCity.toLowerCase()) {
+                    dayCardsHTML += renderTravelBanner(trip, prevCity, curCity, dateStr);
+                }
+                prevCity = curCity;
                 const events = getEventsForDate(trip, dateStr); const collapsed = state.collapsedDays[dateStr];
                 const d = new Date(dateStr + 'T00:00:00'); const dayOfWeek = d.toLocaleDateString('en-US',{weekday:'long'});
                 const isToday = dateStr === today;
@@ -2057,13 +2891,15 @@
                 filteredActs = _sortActivitiesForDate(filteredActs, dateStr, today, events.dayPlans);
                 const legLabel = leg ? esc(leg.city) : '';
                 const todayBadge = isToday ? ' <span class="badge badge-in-progress" style="font-size:10px;margin-left:6px">Today</span>' : '';
-                dayCardsHTML += `<div class="card day-card" ${isToday ? 'style="border-left:3px solid var(--purple)"' : ''}>
+                const usedPlan = (trip.dayPlans || []).find(dp => dp.usedDate === dateStr);
+                const planBadge = usedPlan ? ` <span style="font-size:11px;color:var(--purple)">&middot; ${esc(usedPlan.name)}</span>` : '';
+                dayCardsHTML += `<div class="card day-card" ${isToday ? 'style="border-left:3px solid var(--purple)"' : ''} ondragover="event.preventDefault()" ondrop="var aid=event.dataTransfer.getData('application/x-activity-id');if(aid){event.stopPropagation();moveActivityToDate(aid,'${dateStr}')}">
                     <div class="day-card-header" onclick="toggleDayCollapsed('${dateStr}')">
-                        <div><div class="day-title">Day ${i+1} &mdash; ${formatDate(dateStr)}${todayBadge}</div><div class="day-subtitle">${dayOfWeek}${legLabel ? ' &middot; '+legLabel : ''}</div></div>
+                        <div><div class="day-title">Day ${i+1} &mdash; ${formatDate(dateStr)}${todayBadge}</div><div class="day-subtitle">${dayOfWeek}${legLabel ? ' &middot; '+legLabel : ''}${planBadge}</div></div>
                         <span style="font-size:18px;transition:transform .2s;${collapsed ? '' : 'transform:rotate(180deg)'}">\u25BC</span>
                     </div>`;
                 if (!collapsed) {
-                    dayCardsHTML += `<div class="card-body" style="padding:8px 16px 12px">`;
+                    dayCardsHTML += `<div class="card-body" style="padding:8px 16px 12px" ondragover="event.preventDefault();this.style.outline='2px solid var(--purple)'" ondragleave="this.style.outline=''" ondrop="event.stopPropagation();this.style.outline='';var aid=event.dataTransfer.getData('application/x-activity-id');if(aid)moveActivityToDate(aid,'${dateStr}')">`;
                     for (const t of events.transport) {
                         const icon = TRANSPORT_TYPES[t.type] || '\u{1F690}'; const timeStr = t.departure ? formatTime(t.departure.split('T')[1]?.substring(0,5)||'') : '';
                         dayCardsHTML += `<div class="item-row" style="margin-bottom:6px;cursor:pointer" onclick="openTransportModal('${t.id}')"><span class="category-icon">${icon}</span><div class="item-body"><div class="item-title">${esc(t.carrier||'')} ${esc(t.flightNumber||'')} ${esc(t.fromCity||'')} \u2192 ${esc(t.toCity||'')}</div><div class="item-meta">${timeStr ? '<span>'+timeStr+'</span>' : ''}</div></div><div class="item-actions">${t.booked ? '<span class="badge badge-ready" style="font-size:10px">Booked</span>' : '<span class="badge badge-booking" style="font-size:10px">Unbooked</span>'}</div></div>`;
@@ -2080,29 +2916,71 @@
                     } else if (events.transport.length === 0 && events.lodging.length === 0) {
                         dayCardsHTML += `<p style="color:var(--text-muted);font-size:13px;padding:4px 0">No events for this day.</p>`;
                     }
+                    if (leg && !hasBookedLodgingForNight(trip, dateStr)) {
+                        const dayHotelOpts = (trip.hotelOptions || []).filter(ho => ho.city === leg.city);
+                        if (dayHotelOpts.length > 0) {
+                            dayCardsHTML += `<details style="margin-top:8px;margin-bottom:4px"><summary style="font-size:12px;color:var(--text-muted);cursor:pointer">Hotel options for ${esc(leg.city)} (${dayHotelOpts.length})</summary><div style="margin-top:6px">`;
+                            for (const ho of dayHotelOpts) {
+                                const costStr = ho.cost != null ? formatCurrency(ho.cost, ho.currency) + '/night' : '';
+                                const linkStr = ho.link ? ` <a href="${esc(ho.link)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--purple)" onclick="event.stopPropagation()">link</a>` : '';
+                                dayCardsHTML += `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;font-size:13px"><div><strong>${esc(ho.name)}</strong>${costStr ? ` <span style="color:var(--text-muted)">${costStr}</span>` : ''}${linkStr}</div><button class="btn btn-sm" style="font-size:11px;padding:2px 8px" onclick="openQuickBookModal('${esc(ho.id)}','${dateStr}')">Book</button></div>`;
+                            }
+                            dayCardsHTML += `</div></details>`;
+                        }
+                    }
+                    if (leg) {
+                        const availablePlans = (trip.dayPlans || []).filter(dp => dp.legId === leg.id && !dp.usedDate && !dp.assignedDate);
+                        if (availablePlans.length > 0) {
+                            dayCardsHTML += `<details style="margin-top:8px;margin-bottom:4px"><summary style="font-size:12px;color:var(--purple);cursor:pointer;font-weight:600">Day plans for ${esc(leg.city)} (${availablePlans.length})</summary><div style="margin-top:6px">`;
+                            for (const dp of availablePlans) {
+                                const actNames = (dp.activityIds || []).map(aid => { const a = (trip.activities || []).find(x => x.id === aid); return a ? esc(a.name) : '?'; });
+                                dayCardsHTML += `<div class="card" style="margin-bottom:6px;border:1px solid var(--border)"><div class="card-body" style="padding:8px 12px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="flex:1;min-width:0"><strong style="font-size:13px">${esc(dp.name)}</strong><div style="font-size:12px;color:var(--text-muted);margin-top:2px">${actNames.length > 0 ? actNames.join(' \u2192 ') : 'No activities'}</div>${dp.notes ? `<div style="font-size:11px;color:var(--text-light);margin-top:2px">${esc(dp.notes)}</div>` : ''}</div><div style="display:flex;gap:4px;flex-shrink:0"><button class="btn btn-sm btn-primary" style="font-size:11px" onclick="useDayPlanForDate('${dp.id}','${dateStr}')">Use</button><button class="btn btn-sm btn-ghost" style="font-size:11px" onclick="openDayPlanModal('${dp.id}')">Edit</button></div></div></div></div>`;
+                            }
+                            dayCardsHTML += `</div></details>`;
+                        }
+                    }
                     const addLegId = leg ? leg.id : '';
-                    dayCardsHTML += `<button class="btn btn-sm btn-ghost" style="margin-top:6px;font-size:12px" onclick="openActivityModalForDate('${dateStr}','${addLegId}')">+ Add Activity</button>`;
+                    dayCardsHTML += `<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap"><button class="btn btn-sm btn-ghost" style="font-size:12px" onclick="openActivityModalForDate('${dateStr}','${addLegId}')">+ Activity</button><button class="btn btn-sm btn-ghost" style="font-size:12px" onclick="openLodgingModalForDate('${dateStr}','${addLegId}')">+ Lodging</button><button class="btn btn-sm btn-ghost" style="font-size:12px" onclick="openTransportModalForDate('${dateStr}')">+ Transport</button><button class="btn btn-sm btn-ghost" style="font-size:12px" onclick="openHotelOptionModalForCity('${addLegId}')">+ Hotel Option</button></div>`;
                     dayCardsHTML += `</div>`;
                 }
                 dayCardsHTML += `</div>`;
             }
+            if (prevCity && trip.endLocation && trip.endLocation.toLowerCase() !== prevCity.toLowerCase()) {
+                dayCardsHTML += renderTravelBanner(trip, prevCity, trip.endLocation, days[days.length - 1]);
+            }
         }
 
-        const floatingPlans = (trip.dayPlans || []).filter(dp => !dp.assignedDate);
+        const floatingPlans = (trip.dayPlans || []).filter(dp => !dp.assignedDate && !dp.usedDate);
+        const usedPlans = (trip.dayPlans || []).filter(dp => dp.usedDate);
         let floatingHTML = '';
         if (floatingPlans.length > 0) {
             floatingHTML += `<div style="margin-top:16px"><h3 style="font-size:14px;color:var(--text-muted);margin-bottom:8px">Floating Day Plans</h3>`;
             for (const dp of floatingPlans) {
                 const actNames = (dp.activityIds || []).map(aid => { const a = (trip.activities || []).find(x => x.id === aid); return a ? esc(a.name) : '?'; }).join(', ');
-                floatingHTML += `<div class="card" style="margin-bottom:8px"><div class="card-body" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><strong style="font-size:14px">${esc(dp.name || 'Unnamed Plan')}</strong><div style="font-size:12px;color:var(--text-muted)">${actNames || 'No activities'}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm btn-ghost" onclick="openDayPlanModal('${dp.id}')">Edit</button>${days.length > 0 ? `<select class="select" style="width:auto;height:30px;font-size:12px" onchange="if(this.value)assignDayPlan('${dp.id}',this.value)"><option value="">Assign to...</option>${days.map(d => `<option value="${d}">${formatDate(d)}</option>`).join('')}</select>` : ''}</div></div></div>`;
+                const legName = (trip.legs || []).find(l => l.id === dp.legId)?.city || '';
+                floatingHTML += `<div class="card" style="margin-bottom:8px"><div class="card-body" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><strong style="font-size:14px">${esc(dp.name || 'Unnamed Plan')}</strong>${legName ? `<span class="badge" style="font-size:10px;margin-left:6px;background:var(--bg-secondary)">${esc(legName)}</span>` : ''}<div style="font-size:12px;color:var(--text-muted)">${actNames || 'No activities'}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm btn-ghost" onclick="openDayPlanModal('${dp.id}')">Edit</button>${days.length > 0 ? `<select class="select" style="width:auto;height:30px;font-size:12px" onchange="if(this.value)useDayPlanForDate('${dp.id}',this.value)"><option value="">Use on...</option>${days.map(d => `<option value="${d}">${formatDate(d)}</option>`).join('')}</select>` : ''}</div></div></div>`;
             }
             floatingHTML += `</div>`;
+        }
+        if (usedPlans.length > 0) {
+            floatingHTML += `<details style="margin-top:16px"><summary style="font-size:14px;color:var(--text-muted);cursor:pointer">Archived Day Plans (${usedPlans.length})</summary><div style="margin-top:8px">`;
+            for (const dp of usedPlans) {
+                const actNames = (dp.activityIds || []).map(aid => { const a = (trip.activities || []).find(x => x.id === aid); return a ? esc(a.name) : '?'; }).join(', ');
+                floatingHTML += `<div class="card" style="margin-bottom:8px;opacity:0.7"><div class="card-body" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><strong style="font-size:14px">${esc(dp.name || 'Unnamed Plan')}</strong><span style="font-size:11px;color:var(--text-muted);margin-left:6px">used ${formatDate(dp.usedDate)}</span><div style="font-size:12px;color:var(--text-muted)">${actNames || 'No activities'}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm btn-ghost" style="font-size:11px" onclick="unarchiveDayPlan('${dp.id}')">Restore</button><button class="btn btn-sm btn-ghost" style="font-size:11px" onclick="openDayPlanModal('${dp.id}')">Edit</button></div></div></div>`;
+            }
+            floatingHTML += `</div></details>`;
         }
 
         let pooledActs = (trip.activities || []).filter(a => a.isPooled);
         const assignedPooledIds = new Set();
         for (const dp of trip.dayPlans || []) { if (dp.assignedDate) for (const aid of dp.activityIds || []) assignedPooledIds.add(aid); }
         pooledActs = pooledActs.filter(a => !a.date && !assignedPooledIds.has(a.id));
+        const usedOptionGroupIds = new Set();
+        for (const a of trip.activities || []) { if (a.optionGroupId && a.visited) usedOptionGroupIds.add(a.optionGroupId); }
+        pooledActs = pooledActs.filter(a => {
+            if (!a.optionGroupId || !usedOptionGroupIds.has(a.optionGroupId)) return true;
+            return a.visited;
+        });
         pooledActs = _applyActivityFilters(pooledActs, filter);
         let poolHTML = '';
         if (pooledActs.length > 0) {
@@ -2148,6 +3026,25 @@
         }
     }
 
+    function moveActivityToDate(actId, newDate) {
+        const trip = getTrip(); if (!trip) return;
+        const act = (trip.activities || []).find(a => a.id === actId);
+        if (!act) return;
+        const oldDate = act.date;
+        act.date = newDate;
+        const newLeg = getLegForDate(trip, newDate);
+        if (newLeg) act.legId = newLeg.id;
+        for (const dp of trip.dayPlans || []) {
+            if (dp.assignedDate === oldDate) dp.activityIds = (dp.activityIds || []).filter(id => id !== actId);
+        }
+        const targetDp = (trip.dayPlans || []).find(dp => dp.assignedDate === newDate);
+        if (targetDp && !(targetDp.activityIds || []).includes(actId)) {
+            if (!targetDp.activityIds) targetDp.activityIds = [];
+            targetDp.activityIds.push(actId);
+        }
+        save(); render(); toast(`Moved to ${formatDate(newDate)}`);
+    }
+
     function _renderActivityRow(act, trip, dateStr, seqNum) {
         const icon = CATEGORIES[act.category] || '\u{1F4CC}';
         const isDismissed = state.dismissedActivities.has(act.id);
@@ -2166,7 +3063,11 @@
         const today2 = new Date().toISOString().split('T')[0];
         let dismissHTML = '';
         if (dateStr===today2 && !isVisited) { dismissHTML = isDismissed ? `<button class="btn-icon btn-sm" title="Restore" onclick="event.stopPropagation();undismissActivity('${act.id}')" style="font-size:12px">\u21A9</button>` : `<button class="btn-icon btn-sm" title="Skip" onclick="event.stopPropagation();dismissActivity('${act.id}')" style="font-size:12px">\u2715</button>`; }
-        return `<li class="${rowCls}" style="cursor:pointer" onclick="openActivityModal('${act.id}')"><div class="item-check"><input type="checkbox" ${isVisited?'checked':''} onclick="event.stopPropagation();toggleActivityVisited('${act.id}')"></div>${seqNum!==null?`<span style="font-size:12px;color:var(--text-light);font-weight:600;min-width:20px">${seqNum}.</span>`:''}<span class="category-icon">${icon}</span><div class="item-body"><div class="item-title">${esc(act.name)}${optGroupLabel}${ratingHTML}</div><div class="item-meta">${meta.map(m=>`<span>${m}</span>`).join('')}</div></div><div class="item-actions">${dismissHTML}${reorderHTML}</div></li>`;
+        let photoStripHTML = '';
+        if (settings.showPhotos && act.photos?.length > 0) {
+            photoStripHTML = `<div style="display:flex;gap:4px;margin-top:4px;overflow-x:auto">${act.photos.map(p => `<img src="${esc(p.url)}" style="height:60px;border-radius:4px;object-fit:cover;flex-shrink:0">`).join('')}</div>`;
+        }
+        return `<li class="${rowCls}" style="cursor:pointer" draggable="true" ondragstart="event.dataTransfer.setData('application/x-activity-id','${act.id}');event.dataTransfer.effectAllowed='move'" onclick="openActivityModal('${act.id}')"><div class="item-check"><input type="checkbox" ${isVisited?'checked':''} onclick="event.stopPropagation();toggleActivityVisited('${act.id}')"></div>${seqNum!==null?`<span style="font-size:12px;color:var(--text-light);font-weight:600;min-width:20px">${seqNum}.</span>`:''}<span class="category-icon">${icon}</span><div class="item-body"><div class="item-title">${esc(act.name)}${optGroupLabel}${ratingHTML}</div><div class="item-meta">${meta.map(m=>`<span>${m}</span>`).join('')}</div>${photoStripHTML}</div><div class="item-actions">${dismissHTML}${reorderHTML}</div></li>`;
     }
 
     function openSmartPaste() {
@@ -2336,6 +3237,7 @@
             html += `<option value="${esc(k)}"${k === selectedCategory ? ' selected' : ''}>${v} ${k.charAt(0).toUpperCase() + k.slice(1)}</option>`;
         });
         html += '</select>';
+        html += `<button class="btn btn-sm${state.mapFilter.showTripRoute ? ' btn-primary' : ''}" onclick="state.mapFilter.showTripRoute=!state.mapFilter.showTripRoute;render()" title="Show route between cities">🛤️ Route</button>`;
         html += '</div>';
 
         html += '<div class="map-wrapper"><div id="mapContainer"></div></div>';
@@ -2480,6 +3382,18 @@
         const items = getVisibleMapItems(trip);
         const markerList = [];
 
+        const legDayNumbers = computeLegDayNumbers(trip);
+
+        let activityOrderMap = null;
+        const dayPlanId = state.mapFilter.dayPlanId;
+        if (dayPlanId) {
+            const dp = (trip.dayPlans || []).find(d => d.id === dayPlanId);
+            if (dp && dp.activityIds) {
+                activityOrderMap = new Map();
+                dp.activityIds.forEach((actId, i) => activityOrderMap.set(actId, i + 1));
+            }
+        }
+
         items.forEach(item => {
             const lat = item.data.coordinates.lat;
             const lng = item.data.coordinates.lng;
@@ -2503,15 +3417,26 @@
             } else if (item.type === 'activity') {
                 const isVisited = item.data.visited;
                 const fillColor = isVisited ? '#16a34a' : '#2563eb';
+                const seqNum = activityOrderMap ? activityOrderMap.get(item.data.id) : null;
 
-                marker = L.circleMarker([lat, lng], {
-                    radius: 7,
-                    fillColor: fillColor,
-                    color: fillColor,
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 0.7
-                });
+                if (seqNum) {
+                    const icon = L.divIcon({
+                        className: 'activity-marker',
+                        html: `<div style="width:24px;height:24px;border-radius:50%;background:${fillColor};color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3)">${seqNum}</div>`,
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12]
+                    });
+                    marker = L.marker([lat, lng], { icon, zIndexOffset: 200 });
+                } else {
+                    marker = L.circleMarker([lat, lng], {
+                        radius: 7,
+                        fillColor: fillColor,
+                        color: fillColor,
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.7
+                    });
+                }
 
                 const popupHtml = buildActivityPopup(item.data);
                 marker.bindPopup(popupHtml);
@@ -2519,21 +3444,52 @@
                 mapMarkers.addLayer(marker);
 
             } else if (item.type === 'leg') {
-                marker = L.circleMarker([lat, lng], {
-                    radius: 12,
-                    fillColor: '#f59e0b',
-                    color: '#f59e0b',
-                    weight: 3,
-                    opacity: 1,
-                    fillOpacity: 0.5
-                });
+                const dayInfo = legDayNumbers.get(item.data.id);
+                const dayLabel = dayInfo ? dayInfo.short : '';
 
-                const popupHtml = `<strong>${esc(item.data.city)}</strong>${item.data.country ? '<br>' + esc(item.data.country) : ''}`;
+                if (dayLabel) {
+                    const icon = L.divIcon({
+                        className: 'city-marker',
+                        html: `<div style="display:flex;flex-direction:column;align-items:center"><div style="min-width:28px;height:28px;border-radius:14px;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 6px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3);white-space:nowrap">${esc(dayLabel)}</div><div style="font-size:10px;font-weight:600;color:var(--text-primary,#1f2937);margin-top:2px;white-space:nowrap;text-shadow:0 0 3px #fff,0 0 3px #fff">${esc(item.data.city)}</div></div>`,
+                        iconSize: [60, 44],
+                        iconAnchor: [30, 14]
+                    });
+                    marker = L.marker([lat, lng], { icon, zIndexOffset: 100 });
+                } else {
+                    const icon = L.divIcon({
+                        className: 'city-marker',
+                        html: `<div style="display:flex;flex-direction:column;align-items:center"><div style="width:16px;height:16px;border-radius:50%;background:#f59e0b;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3)"></div><div style="font-size:10px;font-weight:600;color:var(--text-primary,#1f2937);margin-top:2px;white-space:nowrap;text-shadow:0 0 3px #fff,0 0 3px #fff">${esc(item.data.city)}</div></div>`,
+                        iconSize: [60, 34],
+                        iconAnchor: [30, 8]
+                    });
+                    marker = L.marker([lat, lng], { icon, zIndexOffset: 100 });
+                }
+
+                const popupHtml = `<strong>${esc(item.data.city)}</strong>${item.data.country ? '<br>' + esc(item.data.country) : ''}${dayInfo ? '<br><span style="font-size:12px;color:#6b7280">' + esc(dayInfo.full) + '</span>' : ''}`;
                 marker.bindPopup(popupHtml);
                 markerList.push(marker);
                 mapMarkers.addLayer(marker);
             }
         });
+
+        // Add start/end location markers when trip route is visible
+        if (state.mapFilter.showTripRoute && !state.mapFilter.dayPlanId) {
+            const addHomeMarker = (coords, label) => {
+                if (!coords?.lat || !coords?.lng) return;
+                const icon = L.divIcon({
+                    className: 'home-marker',
+                    html: `<div style="display:flex;flex-direction:column;align-items:center"><div style="width:28px;height:28px;border-radius:14px;background:#16a34a;color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3)">\u{1F3E0}</div><div style="font-size:10px;font-weight:600;color:var(--text-primary,#1f2937);margin-top:2px;white-space:nowrap;text-shadow:0 0 3px #fff,0 0 3px #fff">${esc(label)}</div></div>`,
+                    iconSize: [60, 44],
+                    iconAnchor: [30, 14]
+                });
+                const marker = L.marker([coords.lat, coords.lng], { icon });
+                marker.bindPopup(`<strong>\u{1F3E0} ${esc(label)}</strong>`);
+                markerList.push(marker);
+                mapMarkers.addLayer(marker);
+            };
+            addHomeMarker(trip.startLocationCoords, trip.startLocation || 'Start');
+            addHomeMarker(trip.endLocationCoords, trip.endLocation || 'End');
+        }
 
         fitMapBounds();
     }
@@ -2559,6 +3515,9 @@
 
         let html = `<strong>${catIcon} ${esc(activity.name || 'Activity')}</strong>`;
         if (statusText) html += ` <span style="font-size:11px">${statusText}</span>`;
+        if (activity.photos?.length > 0) {
+            html += `<br><img src="${esc(activity.photos[0].url)}" style="width:80px;height:60px;object-fit:cover;border-radius:4px;margin-top:4px">`;
+        }
         if (activity.time) {
             html += `<br><span style="font-size:12px">🕐 ${formatTime(activity.time)}</span>`;
         }
@@ -2592,8 +3551,17 @@
         if (!trip) return;
 
         const dayPlanId = state.mapFilter.dayPlanId;
-        if (!dayPlanId) return;
 
+        if (dayPlanId) {
+            drawDayPlanRoute(trip, dayPlanId);
+        }
+
+        if (state.mapFilter.showTripRoute && !dayPlanId) {
+            drawTripRoute(trip);
+        }
+    }
+
+    function drawDayPlanRoute(trip, dayPlanId) {
         const dp = (trip.dayPlans || []).find(d => d.id === dayPlanId);
         if (!dp || !dp.activityIds || dp.activityIds.length < 2) return;
 
@@ -2650,6 +3618,77 @@
         }).catch(() => {
             drawFallbackRouteLines(orderedCoords);
         });
+    }
+
+    function drawTripRoute(trip) {
+        const legs = (trip.legs || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+        const orderedCoords = [];
+        if (trip.startLocationCoords?.lat != null && trip.startLocationCoords?.lng != null) {
+            orderedCoords.push({ lat: trip.startLocationCoords.lat, lng: trip.startLocationCoords.lng, name: trip.startLocation || 'Start' });
+        }
+        legs.forEach(leg => {
+            if (leg.coordinates && leg.coordinates.lat != null && leg.coordinates.lng != null) {
+                orderedCoords.push({ lat: leg.coordinates.lat, lng: leg.coordinates.lng, name: leg.city || 'City' });
+            }
+        });
+        if (trip.endLocationCoords?.lat != null && trip.endLocationCoords?.lng != null) {
+            orderedCoords.push({ lat: trip.endLocationCoords.lat, lng: trip.endLocationCoords.lng, name: trip.endLocation || 'End' });
+        }
+
+        if (orderedCoords.length < 2) return;
+
+        const osrmCoords = orderedCoords.map(c => [c.lng, c.lat]);
+
+        getOSRMRoute(osrmCoords).then(result => {
+            if (!map || !mapRoutes) return;
+
+            if (result && result.geometry) {
+                const routeCoords = result.geometry.coordinates.map(c => [c[1], c[0]]);
+                const routeLine = L.polyline(routeCoords, {
+                    color: '#f59e0b',
+                    weight: 4,
+                    opacity: 0.8
+                });
+                mapRoutes.addLayer(routeLine);
+            } else {
+                drawFallbackTripRouteLines(orderedCoords);
+            }
+
+            addTripRouteArrows(orderedCoords);
+        }).catch(() => {
+            drawFallbackTripRouteLines(orderedCoords);
+            addTripRouteArrows(orderedCoords);
+        });
+    }
+
+    function drawFallbackTripRouteLines(orderedCoords) {
+        if (!map || !mapRoutes) return;
+        for (let i = 0; i < orderedCoords.length - 1; i++) {
+            const line = L.polyline(
+                [[orderedCoords[i].lat, orderedCoords[i].lng], [orderedCoords[i + 1].lat, orderedCoords[i + 1].lng]],
+                { color: '#f59e0b', weight: 3, opacity: 0.7 }
+            );
+            mapRoutes.addLayer(line);
+        }
+    }
+
+    function addTripRouteArrows(orderedCoords) {
+        if (!map || !mapRoutes) return;
+        for (let i = 0; i < orderedCoords.length - 1; i++) {
+            const midLat = (orderedCoords[i].lat + orderedCoords[i + 1].lat) / 2;
+            const midLng = (orderedCoords[i].lng + orderedCoords[i + 1].lng) / 2;
+            const dLng = orderedCoords[i + 1].lng - orderedCoords[i].lng;
+            const dLat = orderedCoords[i + 1].lat - orderedCoords[i].lat;
+            const angle = Math.atan2(dLng, dLat) * (180 / Math.PI);
+            const icon = L.divIcon({
+                className: '',
+                html: `<div style="font-size:18px;color:#f59e0b;font-weight:700;transform:rotate(${angle - 90}deg);text-shadow:0 0 3px #fff,0 0 3px #fff">\u27A4</div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+            const marker = L.marker([midLat, midLng], { icon, interactive: false });
+            mapRoutes.addLayer(marker);
+        }
     }
 
     function drawFallbackRouteLines(orderedCoords) {
@@ -2785,8 +3824,39 @@
 
     // === INIT ===
 
+    function reopenCachedForm() {
+        const cache = getFormCache();
+        if (!cache || !cache.editingType) return;
+        const openers = {
+            trip: () => openTripModal(cache.editingId),
+            leg: () => openLegModal(cache.editingId),
+            lodging: () => openLodgingModal(cache.editingId),
+            transport: () => openTransportModal(cache.editingId),
+            activity: () => openActivityModal(cache.editingId),
+            hotelOption: () => openHotelOptionModal(cache.editingId),
+            dayPlan: () => openDayPlanModal(cache.editingId),
+            optionGroup: () => openOptionGroupModal(cache.editingId),
+        };
+        const opener = openers[cache.editingType];
+        if (!opener) { clearFormCache(); return; }
+        opener();
+        setTimeout(() => { restoreModalForm(cache); toast('Form restored'); }, 50);
+    }
+
     loadSettings();
-    loadData().then(() => render());
+    loadData().then(() => {
+        restoreNavState();
+        render();
+        const cache = getFormCache();
+        if (cache && cache.editingType) {
+            const label = cache.editingType.replace(/([A-Z])/g, ' $1').toLowerCase().trim();
+            const banner = document.createElement('div');
+            banner.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:9999;background:var(--purple,#7c3aed);color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 12px rgba(0,0,0,.2)';
+            banner.innerHTML = `<span>Unsaved ${esc(label)} form found</span><button style="background:#fff;color:var(--purple,#7c3aed);border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600" onclick="this.parentElement.remove();reopenCachedForm()">Restore</button><button style="background:none;border:none;color:#fff;cursor:pointer;font-size:16px;padding:0 4px" onclick="this.parentElement.remove();clearFormCache()">\u2715</button>`;
+            document.body.appendChild(banner);
+            setTimeout(() => { if (banner.parentElement) banner.remove(); }, 15000);
+        }
+    });
     </script>
 </body>
 </html>
