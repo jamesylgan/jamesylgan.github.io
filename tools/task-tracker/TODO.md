@@ -13,3 +13,6 @@ Move the edit modal to an inline editing experience when clicking a task element
 
 ### Next TODOs click-to-scroll
 Clicking an item in the Next TODOs section scrolls to and highlights the corresponding task under its group. Gated behind a setting. Include a secondary setting to change the behavior from click-on-item to a dedicated button to the right of the edit icon (only shown on tasks in the Next TODOs list, not on the real task element under the group).
+
+### Drag-and-drop group reorganization
+Allow reordering groups via drag and drop. Settings-gated with a toggle switch to the right of the tabs (Active/Archived/Trash) that turns group reorganize mode on/off (default: off).
