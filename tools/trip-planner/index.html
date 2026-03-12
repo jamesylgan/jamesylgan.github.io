@@ -1789,7 +1789,6 @@
 
                 ${state.view === 'trip' ? `
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-                        <button class="btn btn-sm" onclick="exportTrip('${state.tripId}');closeModal()">Export This Trip</button>
                         <button class="btn btn-sm" onclick="exportICS('${state.tripId}');closeModal()">Export Calendar (.ics)</button>
                         <button class="btn btn-sm" onclick="exportWhatsApp('${state.tripId}');closeModal()">Share Itinerary</button>
                         <button class="btn btn-sm" onclick="closeModal();setTimeout(()=>shareTripFile('${state.tripId}'),100)">Share Trip File</button>
@@ -1798,7 +1797,7 @@
                 ` : ''}
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
                     <button class="btn btn-sm" onclick="document.getElementById('importFile').click();closeModal()">Import</button>
-                    <button class="btn btn-sm" onclick="exportAll();closeModal()">Export All</button>
+                    <button class="btn btn-sm" onclick="exportAll();closeModal()">Export All Trips</button>
                     ${canInstallPWA() ? '<button class="btn btn-sm" onclick="installPWA();closeModal()">Install App</button>' : ''}
                     <button class="btn btn-sm" onclick="clearAppCache();closeModal()">Clear Cache</button>
                     <button class="btn btn-sm btn-danger" onclick="clearAllData()" style="margin-left:auto">Clear All Data</button>
@@ -3848,7 +3847,6 @@
         html += `<div style="display:flex;gap:6px;align-items:center;margin-bottom:16px;flex-wrap:wrap">`;
         html += `<button class="btn btn-sm" onclick="exportGPX()">📥 Export GPX</button>`;
         if (window.__ANDROID_APP__) {
-            html += `<button id="vectorToggleBtn" class="btn btn-sm${_offlineLayerEnabled ? ' btn-primary' : ''}" onclick="_toggleOfflineLayer(this)" title="Toggle offline vector map layer">🗺️ Vector</button>`;
             html += `<button class="btn btn-sm" onclick="openOfflineMapsModal()">📶 Offline Maps</button>`;
         }
         html += `<select class="select" style="min-width:0;flex:1" onchange="state.mapFilter.category=this.value||null;render()">`;
@@ -4038,15 +4036,9 @@
     let _offlineVectorLayer = null;   // world basemap layer
     let _offlineRegionLayers = [];    // per-region detail layers
     let _offlineLayerEnabled = false;
-    let _offlineLayerUserPref = false; // what the user manually chose
-
-    function _toggleOfflineLayer(btn) {
-        _offlineLayerUserPref = !_offlineLayerUserPref;
-        _applyOfflineLayerState();
-    }
 
     function _applyOfflineLayerState() {
-        const shouldEnable = navigator.onLine === false || _offlineLayerUserPref;
+        const shouldEnable = navigator.onLine === false;
         if (shouldEnable === _offlineLayerEnabled) return;
         _offlineLayerEnabled = shouldEnable;
         if (map) {
@@ -4055,11 +4047,6 @@
                 if (_offlineLayerEnabled) layer.addTo(map);
                 else map.removeLayer(layer);
             });
-        }
-        // Update toggle button appearance if visible
-        const btn = document.getElementById('vectorToggleBtn');
-        if (btn) {
-            btn.className = 'btn btn-sm' + (_offlineLayerEnabled ? ' btn-primary' : '');
         }
     }
 
