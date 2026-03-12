@@ -457,6 +457,28 @@
 
     function isTravelMode() { return settings.viewMode === 'travel'; }
 
+    function tripFilename(name, ext) {
+        return (name || 'trip').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') + '.' + ext;
+    }
+
+    async function compressAndEncode(str) {
+        const stream = new Blob([new TextEncoder().encode(str)]).stream().pipeThrough(new CompressionStream('gzip'));
+        const buf = await new Response(stream).arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let bin = '';
+        for (const b of bytes) bin += String.fromCharCode(b);
+        return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    async function decodeAndDecompress(encoded) {
+        const b64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+        return new Response(stream).text();
+    }
+
     function getTripTravelStatus(trip) {
         if (!trip || !trip.startDate) return 'pre';
         const today = localDateStr(new Date());
@@ -1059,7 +1081,7 @@
             exportedAt: new Date().toISOString(),
             trip,
         };
-        downloadJSON(payload, `trip-${trip.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json`);
+        downloadJSON(payload, tripFilename(trip.name, 'json'));
     }
 
     function downloadJSON(obj, filename) {
@@ -1187,7 +1209,7 @@
         const blob = new Blob([cal], { type: 'text/calendar' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `${trip.name.replace(/[^a-z0-9]/gi, '-')}.ics`; a.click();
+        a.href = url; a.download = tripFilename(trip.name, 'ics'); a.click();
         URL.revokeObjectURL(url);
         toast('Calendar exported');
     }
@@ -1307,19 +1329,26 @@
         window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
     }
 
-    async function shareExportWhatsApp(tripId) {
+    async function shareTripLink(tripId) {
         const trip = getTrip(tripId);
         if (!trip) { toast('No trip to share'); return; }
         const payload = { version: 1, format: 'trip-planner-single', exportedAt: new Date().toISOString(), trip };
-        const json = JSON.stringify(payload, null, 2);
-        const filename = `trip-${trip.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json`;
-        const file = new File([json], filename, { type: 'application/json' });
-        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-            try { await navigator.share({ files: [file], title: trip.name }); toast('Shared!'); return; } catch (err) { if (err.name === 'AbortError') return; }
+        const json = JSON.stringify(payload);
+        try {
+            const encoded = await compressAndEncode(json);
+            const url = window.location.origin + window.location.pathname + '#trip=' + encoded;
+            if (url.length > 100000) {
+                toast('Trip too large for link — use Export instead');
+                return;
+            }
+            if (navigator.share) {
+                try { await navigator.share({ title: trip.name, url }); toast('Shared!'); return; } catch (err) { if (err.name === 'AbortError') return; }
+            }
+            await navigator.clipboard.writeText(url);
+            toast('Share link copied to clipboard!');
+        } catch (err) {
+            toast('Failed to create share link');
         }
-        // Fallback: download the file
-        downloadJSON(payload, filename);
-        toast('File downloaded — attach it in WhatsApp');
     }
 
     // --- Settings Modal ---
@@ -1428,7 +1457,7 @@
                         <button class="btn btn-sm" onclick="exportTrip('${state.tripId}');closeModal()">Export This Trip</button>
                         <button class="btn btn-sm" onclick="exportICS('${state.tripId}');closeModal()">Export Calendar (.ics)</button>
                         <button class="btn btn-sm" onclick="exportWhatsApp('${state.tripId}');closeModal()">Share Itinerary</button>
-                        <button class="btn btn-sm" onclick="shareExportWhatsApp('${state.tripId}');closeModal()">Share Export JSON</button>
+                        <button class="btn btn-sm" onclick="shareTripLink('${state.tripId}');closeModal()">Share Link</button>
                     </div>
                 ` : ''}
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -4112,7 +4141,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = (trip.name || 'trip').replace(/[^a-zA-Z0-9_-]/g, '_') + '.gpx';
+        a.download = tripFilename(trip.name, 'gpx');
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -4176,9 +4205,75 @@
         setTimeout(() => { restoreModalForm(cache); toast('Form restored'); }, 50);
     }
 
+    function sanitizeSharePayload(trip) {
+        if (!trip || typeof trip !== 'object' || Array.isArray(trip)) throw new Error('Invalid trip');
+        if (typeof trip.name !== 'string' || !trip.name || typeof trip.id !== 'string' || !trip.id) throw new Error('Invalid trip data');
+        // Only allow known top-level keys
+        const allowedTopKeys = ['id','name','startDate','endDate','legs','dayPlans','lodging','transport','activities','optionGroups','packingList','hotelOptions','notes','currency','timezone','coverPhoto'];
+        const sanitized = {};
+        for (const k of allowedTopKeys) { if (trip[k] !== undefined) sanitized[k] = trip[k]; }
+        // Validate string fields don't contain script injections
+        function checkStr(val) {
+            if (val == null) return val;
+            if (typeof val !== 'string') return String(val);
+            if (/<script/i.test(val) || /javascript:/i.test(val) || /on\w+\s*=/i.test(val)) throw new Error('Suspicious content detected');
+            return val;
+        }
+        // Deep-walk all string values in the object
+        function walkAndCheck(obj) {
+            if (obj == null) return obj;
+            if (typeof obj === 'string') return checkStr(obj);
+            if (typeof obj === 'number' || typeof obj === 'boolean') return obj;
+            if (Array.isArray(obj)) return obj.map(walkAndCheck);
+            if (typeof obj === 'object') {
+                const out = {};
+                for (const [k, v] of Object.entries(obj)) out[k] = walkAndCheck(v);
+                return out;
+            }
+            return obj;
+        }
+        // Validate arrays are actually arrays
+        for (const k of ['legs','dayPlans','lodging','transport','activities','optionGroups','packingList','hotelOptions']) {
+            if (sanitized[k] !== undefined && !Array.isArray(sanitized[k])) throw new Error(`Invalid ${k}: expected array`);
+        }
+        return walkAndCheck(sanitized);
+    }
+
+    async function checkShareLink() {
+        const hash = window.location.hash;
+        if (!hash.startsWith('#trip=')) return;
+        try {
+            const encoded = hash.slice(6);
+            if (!/^[A-Za-z0-9_-]+$/.test(encoded)) throw new Error('Invalid encoding');
+            if (encoded.length > 500000) throw new Error('Payload too large');
+            const json = await decodeAndDecompress(encoded);
+            if (json.length > 5 * 1024 * 1024) throw new Error('Decompressed payload too large');
+            const payload = JSON.parse(json);
+            if (payload.format !== 'trip-planner-single' || payload.version !== 1) throw new Error('Invalid format');
+            const sanitized = sanitizeSharePayload(payload.trip);
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+            const clean = ensureTripArrays(sanitized);
+            const existing = data.trips.find(t => t.id === clean.id);
+            if (existing) {
+                const ok = await showConfirm('Import Shared Trip', `A trip with this ID already exists ("${existing.name}"). Import as copy?`);
+                if (!ok) return;
+                regenerateIds(clean);
+            }
+            data.trips.push(clean);
+            save();
+            openTrip(clean.id);
+            toast(`Imported "${esc(clean.name)}"`);
+        } catch (err) {
+            console.error('Share link import failed:', err);
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+            toast('Invalid or corrupted share link');
+        }
+    }
+
     loadSettings();
-    loadData().then(() => {
+    loadData().then(async () => {
         restoreNavState();
+        await checkShareLink();
         render();
         const cache = getFormCache();
         if (cache && cache.editingType) {
