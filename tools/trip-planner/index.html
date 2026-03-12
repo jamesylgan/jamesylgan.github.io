@@ -1497,18 +1497,27 @@
         const json = JSON.stringify(payload);
         try {
             const encoded = encodeShareData(json);
+            // Verify roundtrip before sharing
+            const verify = LZ.decompress(encoded);
+            if (!verify || verify !== json) {
+                toast('LZ roundtrip failed — cannot share');
+                console.error('LZ verify failed', { encodedLen: encoded.length, verifyLen: verify?.length, match: verify === json });
+                return;
+            }
             const url = window.location.origin + window.location.pathname + '#trip=' + encoded;
-            if (url.length > 100000) {
+            if (url.length > 200000) {
                 toast('Trip too large for link — use Export instead');
                 return;
             }
-            if (navigator.share) {
-                try { await navigator.share({ title: trip.name, url }); toast('Shared!'); return; } catch (err) { if (err.name === 'AbortError') return; }
+            try {
+                await navigator.clipboard.writeText(url);
+                toast('Share link copied to clipboard! (' + (encoded.length/1024).toFixed(0) + 'KB)');
+            } catch {
+                // Clipboard API not available — show in a prompt
+                prompt('Copy this share link:', url);
             }
-            await navigator.clipboard.writeText(url);
-            toast('Share link copied to clipboard!');
         } catch (err) {
-            toast('Failed to create share link');
+            toast('Failed to create share link: ' + err.message);
         }
     }
 
@@ -4463,12 +4472,14 @@
                 throw new Error('This is an old-format share link that is no longer supported. Please ask the sender to generate a new share link.');
             }
 
-            steps.push('Decoding data (' + encoded.length + ' chars)');
-            const json = decodeShareData(encoded);
+            steps.push('LZ decompress (' + encoded.length + ' chars)');
+            const lzDirect = LZ.decompress(encoded);
+            const lzOk = lzDirect && lzDirect.length > 0;
+            if (!lzOk) throw new Error('LZ.decompress returned ' + (lzDirect === null ? 'null' : lzDirect === '' ? 'empty string' : typeof lzDirect) + '. encoded[0..3]=' + encoded.slice(0,4) + ' encoded[-4..]=' + encoded.slice(-4));
 
-            steps.push('Parsing JSON (' + json.length + ' chars)');
-            if (json.length > 5 * 1024 * 1024) throw new Error('Decompressed data too large');
-            const payload = JSON.parse(json);
+            steps.push('Parsing JSON (' + lzDirect.length + ' chars, starts=' + lzDirect.slice(0,20) + ')');
+            if (lzDirect.length > 5 * 1024 * 1024) throw new Error('Decompressed data too large');
+            const payload = JSON.parse(lzDirect);
 
             steps.push('Validating format (v=' + payload.version + ', fmt=' + payload.format + ')');
             if (payload.format !== 'trip-planner-single' || payload.version !== 1) throw new Error('Expected format=trip-planner-single v=1, got format=' + payload.format + ' v=' + payload.version);
