@@ -1,4 +1,4 @@
-const CACHE_NAME = 'trip-planner-v6';
+const CACHE_NAME = 'trip-planner-v7';
 const PRECACHE_URLS = [
     './',
     './index.html',
@@ -27,6 +27,26 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+    const url = new URL(e.request.url);
+
+    // Handle share_target POST: extract shared file, redirect to app with file in cache
+    if (e.request.method === 'POST' && url.pathname.endsWith('/tools/trip-planner/')) {
+        e.respondWith((async () => {
+            const formData = await e.request.formData();
+            const file = formData.get('file');
+            if (file) {
+                // Store file in a temporary cache for the app to pick up
+                const cache = await caches.open('share-target');
+                await cache.put('shared-file', new Response(file, {
+                    headers: { 'Content-Type': file.type, 'X-File-Name': file.name }
+                }));
+            }
+            // Redirect to the app (GET) with a flag so the app knows to check for shared file
+            return Response.redirect(url.pathname + '?shared=1', 303);
+        })());
+        return;
+    }
+
     // HTML navigation: network-first, fall back to cache for offline
     if (e.request.mode === 'navigate') {
         e.respondWith(
