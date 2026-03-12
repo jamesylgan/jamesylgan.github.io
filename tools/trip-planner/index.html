@@ -36,7 +36,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg); color: var(--text);
             max-width: 960px; margin: 0 auto; padding: 0;
-            padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
             min-height: 100vh;
         }
         a { color: var(--accent); text-decoration: none; }
@@ -340,7 +340,7 @@
         editingType: null,
         itineraryMode: 'ordered',
         itineraryFilter: { legId: null, category: null, status: null },
-        mapFilter: { legId: null, dayPlanId: null, category: null, showTripRoute: false },
+        mapFilter: { legId: null, dayDate: null, dayPlanId: null, category: null, showTripRoute: false },
         collapsedDays: {},
         dismissedActivities: new Set(),
         expandedDayPlans: new Set(),
@@ -366,6 +366,11 @@
         el.classList.add('show');
         clearTimeout(toastTimer);
         toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+    }
+
+    function localDateStr(d) {
+        if (!d || isNaN(d)) return '';
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     }
 
     function formatDate(dateStr) {
@@ -454,7 +459,7 @@
 
     function getTripTravelStatus(trip) {
         if (!trip || !trip.startDate) return 'pre';
-        const today = new Date().toISOString().split('T')[0];
+        const today = localDateStr(new Date());
         if (today < trip.startDate) return 'pre';
         if (trip.endDate && today > trip.endDate) return 'post';
         return 'during';
@@ -462,7 +467,7 @@
 
     function getCurrentTravelLeg(trip) {
         if (!trip) return null;
-        const today = new Date().toISOString().split('T')[0];
+        const today = localDateStr(new Date());
         const legs = (trip.legs || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
         for (const leg of legs) {
             if (leg.startDate && leg.endDate && today >= leg.startDate && today <= leg.endDate) return leg;
@@ -473,6 +478,7 @@
     function toggleViewMode() {
         settings.viewMode = settings.viewMode === 'plan' ? 'travel' : 'plan';
         saveSetting();
+        state.mapFilter._travelDefaultsApplied = false;
         render();
     }
 
@@ -772,7 +778,12 @@
             if (!raw) return;
             const s = JSON.parse(raw);
             if (s.view === 'trip' && s.tripId && data.trips.some(t => t.id === s.tripId)) {
-                state.view = 'trip'; state.tripId = s.tripId; state.tripTab = s.tripTab || 'dashboard';
+                state.view = 'trip'; state.tripId = s.tripId;
+                if (isTravelMode()) {
+                    state.tripTab = settings.travelDefaultTab || 'map';
+                } else {
+                    state.tripTab = s.tripTab || 'dashboard';
+                }
             }
         } catch (e) {}
     }
@@ -788,9 +799,7 @@
         state.view = 'trip';
         state.tripId = tripId;
         if (isTravelMode()) {
-            const trip = data.trips.find(t => t.id === tripId);
-            const status = getTripTravelStatus(trip);
-            state.tripTab = status === 'pre' ? 'actions' : (settings.travelDefaultTab || 'map');
+            state.tripTab = settings.travelDefaultTab || 'map';
         } else {
             state.tripTab = 'dashboard';
         }
@@ -877,7 +886,8 @@
 
     function renderBottomNav() {
         const nav = document.getElementById('bottomNav');
-        const tabs = _getVisibleTabs();
+        let tabs = _getVisibleTabs();
+        if (isTravelMode()) tabs = tabs.filter(t => t.id !== 'actions');
         nav.style.display = '';
         nav.innerHTML = `<div class="bottom-nav-inner">${tabs.map(t =>
             `<button class="nav-item${state.tripTab === t.id ? ' active' : ''}" onclick="switchTripTab('${t.id}')"><span class="nav-icon">${t.icon}</span>${t.label}</button>`
@@ -1406,10 +1416,12 @@
                 ${state.view === 'trip' ? `
                 <div class="form-group" style="margin-top:12px">
                     <label>Travel Mode Default Tab</label>
-                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Which tab opens first when entering a trip in Travel Mode during the trip.</p>
+                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Which tab opens first when entering a trip in Travel Mode.</p>
                     <div class="segmented" style="margin-top:4px">
-                        <button class="segmented-btn${settings.travelDefaultTab === 'map' ? ' active' : ''}" onclick="setTravelDefaultTab('map',this)">Map</button>
+                        <button class="segmented-btn${settings.travelDefaultTab === 'dashboard' ? ' active' : ''}" onclick="setTravelDefaultTab('dashboard',this)">Dashboard</button>
                         <button class="segmented-btn${settings.travelDefaultTab === 'itinerary' ? ' active' : ''}" onclick="setTravelDefaultTab('itinerary',this)">Itinerary</button>
+                        <button class="segmented-btn${settings.travelDefaultTab === 'reservations' ? ' active' : ''}" onclick="setTravelDefaultTab('reservations',this)">Reservations</button>
+                        <button class="segmented-btn${settings.travelDefaultTab === 'map' ? ' active' : ''}" onclick="setTravelDefaultTab('map',this)">Map</button>
                     </div>
                 </div>
                 ` : ''}
@@ -1817,12 +1829,13 @@
             </div>`;
         }
         function progressBarHTML(label, booked, total) {
-            if (total === 0) return '';
+            if (total === 0 || booked === total) return '';
             const pct = Math.round((booked / total) * 100);
-            const cls = pct === 100 ? 'success' : (pct >= 50 ? '' : 'warning');
+            const cls = pct >= 50 ? '' : 'warning';
             return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>${label}</span><span style="color:var(--text-muted)">${booked}/${total} booked</span></div><div class="progress-bar"><div class="progress-fill ${cls}" style="width:${pct}%"></div></div></div>`;
         }
-        const progressHTML = (progress.totalLodging > 0 || progress.totalTransport > 0 || progress.totalReservations > 0) ? `<div class="card" style="margin-bottom:12px"><div class="card-header"><strong>Booking Progress</strong></div><div class="card-body">${progressBarHTML('Lodging', progress.bookedLodging, progress.totalLodging)}${progressBarHTML('Transport', progress.bookedTransport, progress.totalTransport)}${progressBarHTML('Activities', progress.bookedActivities, progress.totalReservations)}</div></div>` : '';
+        const _progressBody = progressBarHTML('Lodging', progress.bookedLodging, progress.totalLodging) + progressBarHTML('Transport', progress.bookedTransport, progress.totalTransport) + progressBarHTML('Activities', progress.bookedActivities, progress.totalReservations);
+        const progressHTML = _progressBody ? `<div class="card" style="margin-bottom:12px"><div class="card-header"><strong>Booking Progress</strong></div><div class="card-body">${_progressBody}</div></div>` : '';
         let actionsHTML = '';
         if (topActions.length > 0) {
             actionsHTML = `<div class="card" style="margin-bottom:12px"><div class="card-header"><strong>Action Items</strong><button class="btn btn-ghost btn-sm" onclick="switchTripTab('actions')">View All</button></div><div class="card-body" style="padding:8px 0">${topActions.map(a => `<div class="item-row" style="cursor:pointer;margin:0 8px 4px" onclick="${esc(a.action)}"><div class="item-body"><div class="item-title" style="font-size:13px">${esc(a.text)}</div></div><span style="color:var(--text-light);font-size:14px">\u203A</span></div>`).join('')}</div></div>`;
@@ -2226,7 +2239,7 @@
         const trip = getTrip(); const mc = document.getElementById('mainContent');
         if (!trip) { mc.innerHTML = '<div class="view-content"><div class="empty-state"><p>No trip selected.</p></div></div>'; return; }
         const _travelActive = isTravelMode();
-        const _today = new Date().toISOString().split('T')[0];
+        const _today = localDateStr(new Date());
         let transport = trip.transport || []; let lodging = trip.lodging || []; let activities = trip.activities || [];
         if (_travelActive) {
             transport = transport.filter(t => !t.departure || t.departure.split('T')[0] >= _today);
@@ -2760,7 +2773,7 @@
         const end = new Date(trip.endDate + 'T00:00:00');
         if (isNaN(start) || isNaN(end) || end < start) return [];
         const days = []; const cur = new Date(start);
-        while (cur <= end) { days.push(cur.toISOString().split('T')[0]); cur.setDate(cur.getDate() + 1); }
+        while (cur <= end) { days.push(localDateStr(cur)); cur.setDate(cur.getDate() + 1); }
         return days;
     }
 
@@ -2921,20 +2934,23 @@
     function renderItinerary() {
         const trip = getTrip(); const mc = document.getElementById('mainContent');
         if (!trip) { mc.innerHTML = '<div class="view-content"><div class="empty-state"><div class="empty-icon">\u{1F4C5}</div><p>No trip selected.</p></div></div>'; return; }
-        const days = getDayRange(trip); const today = new Date().toISOString().split('T')[0];
+        const days = getDayRange(trip); const today = localDateStr(new Date());
         const _travelActive = isTravelMode();
-        const filter = state.itineraryFilter; const mode = _travelActive ? 'ordered' : state.itineraryMode;
+        const filter = state.itineraryFilter; const mode = state.itineraryMode;
         const statusOpts = [{value:'',label:'All status'},{value:'booked',label:'Booked'},{value:'unbooked',label:'Unbooked'},{value:'visited',label:'Visited'}];
         const catOpts = [{value:'',label:'All categories'}].concat(Object.entries(CATEGORIES).map(([k,v]) => ({value:k,label:v+' '+k.charAt(0).toUpperCase()+k.slice(1)})));
-        let filterBarHTML = _travelActive ? '' : `<div class="filter-bar">
-            <select class="select" onchange="state.itineraryFilter.legId=this.value||null;render()">${legOptions(trip, filter.legId)}</select>
-            <select class="select" onchange="state.itineraryFilter.category=this.value||null;render()">${catOpts.map(o => `<option value="${o.value}"${o.value === (filter.category || '') ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select>
-            <select class="select" onchange="state.itineraryFilter.status=this.value||null;render()">${statusOpts.map(o => `<option value="${o.value}"${o.value === (filter.status || '') ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select>
-            <div class="segmented" style="flex-shrink:0">
+        const _modeSegmented = `<div class="segmented" style="flex-shrink:0">
                 <button class="segmented-btn${mode === 'ordered' ? ' active' : ''}" onclick="state.itineraryMode='ordered';render()">Ordered</button>
                 <button class="segmented-btn${mode === 'unordered' ? ' active' : ''}" onclick="state.itineraryMode='unordered';render()">Unordered</button>
                 <button class="segmented-btn${mode === 'dayplans' ? ' active' : ''}" onclick="state.itineraryMode='dayplans';render()">Day Plans</button>
-            </div>
+            </div>`;
+        let filterBarHTML = _travelActive ? `<div class="filter-bar">
+            <select class="select" onchange="state.itineraryFilter.category=this.value||null;render()">${catOpts.map(o => `<option value="${o.value}"${o.value === (filter.category || '') ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select>
+            ${_modeSegmented}</div>` : `<div class="filter-bar">
+            <select class="select" onchange="state.itineraryFilter.legId=this.value||null;render()">${legOptions(trip, filter.legId)}</select>
+            <select class="select" onchange="state.itineraryFilter.category=this.value||null;render()">${catOpts.map(o => `<option value="${o.value}"${o.value === (filter.category || '') ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select>
+            <select class="select" onchange="state.itineraryFilter.status=this.value||null;render()">${statusOpts.map(o => `<option value="${o.value}"${o.value === (filter.status || '') ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select>
+            ${_modeSegmented}
         </div>`;
         let smartPasteBtn = _travelActive ? '' : `<div style="margin-bottom:12px;display:flex;gap:8px"><button class="btn btn-sm" onclick="openSmartPaste()">\u{1F4CB} Smart Paste</button></div>`;
 
@@ -3000,7 +3016,21 @@
             let html = `<div class="view-content">${filterBarHTML}`;
             const allPlans = (trip.dayPlans || []);
             const legs = (trip.legs || []).slice().sort((a,b) => (a.order||0)-(b.order||0));
-            const filteredLegs = filter.legId ? legs.filter(l => l.id === filter.legId) : legs;
+            let filteredLegs = filter.legId ? legs.filter(l => l.id === filter.legId) : legs;
+            if (_travelActive && getTripTravelStatus(trip) !== 'pre') {
+                const _curLeg = getCurrentTravelLeg(trip);
+                const _travelLegIds = new Set();
+                if (_curLeg) {
+                    _travelLegIds.add(_curLeg.id);
+                    const _ci = legs.findIndex(l => l.id === _curLeg.id);
+                    if (_ci >= 0 && _ci < legs.length - 1) _travelLegIds.add(legs[_ci + 1].id);
+                } else {
+                    for (const leg of legs) {
+                        if (leg.startDate && leg.startDate > today) { _travelLegIds.add(leg.id); break; }
+                    }
+                }
+                if (_travelLegIds.size > 0) filteredLegs = filteredLegs.filter(l => _travelLegIds.has(l.id));
+            }
             const floatingPlans = allPlans.filter(dp => !dp.usedDate);
             const archivedPlans = allPlans.filter(dp => dp.usedDate);
 
@@ -3106,7 +3136,7 @@
                             dayCardsHTML += `</div></details>`;
                         }
                     }
-                    if (!_travelActive && leg) {
+                    if (leg) {
                         const availablePlans = (trip.dayPlans || []).filter(dp => dp.legId === leg.id && !dp.usedDate && !dp.assignedDate);
                         if (availablePlans.length > 0) {
                             dayCardsHTML += `<details style="margin-top:8px;margin-bottom:4px"><summary style="font-size:12px;color:var(--purple);cursor:pointer;font-weight:600">Day plans for ${esc(leg.city)} (${availablePlans.length})</summary><div style="margin-top:6px">`;
@@ -3243,7 +3273,7 @@
         if (isVisited && act.rating) { ratingHTML='<span class="rating" style="margin-left:4px">'; for(let s=1;s<=5;s++)ratingHTML+=`<span class="star${s<=act.rating?' filled':''}">★</span>`; ratingHTML+='</span>'; }
         let reorderHTML = '';
         if (seqNum !== null && dateStr) { const dp = (trip.dayPlans||[]).find(d=>d.assignedDate===dateStr); if(dp?.activityIds?.length>1){ const idx=dp.activityIds.indexOf(act.id); if(idx>=0) reorderHTML=`<button class="btn-icon btn-sm" style="font-size:12px" onclick="event.stopPropagation();reorderDayActivities('${dp.id}',${idx},${Math.max(0,idx-1)})" ${idx===0?'disabled':''}>↑</button><button class="btn-icon btn-sm" style="font-size:12px" onclick="event.stopPropagation();reorderDayActivities('${dp.id}',${idx},${Math.min(dp.activityIds.length-1,idx+1)})" ${idx===dp.activityIds.length-1?'disabled':''}>↓</button>`; } }
-        const today2 = new Date().toISOString().split('T')[0];
+        const today2 = localDateStr(new Date());
         let dismissHTML = '';
         if (dateStr===today2 && !isVisited) { dismissHTML = isDismissed ? `<button class="btn-icon btn-sm" title="Restore" onclick="event.stopPropagation();undismissActivity('${act.id}')" style="font-size:12px">\u21A9</button>` : `<button class="btn-icon btn-sm" title="Skip" onclick="event.stopPropagation();dismissActivity('${act.id}')" style="font-size:12px">\u2715</button>`; }
         let photoStripHTML = '';
@@ -3390,42 +3420,77 @@
         }
 
         const legs = (trip.legs || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+        const days = getDayRange(trip);
+        const _travelActive = isTravelMode();
+        const _tripStatus = getTripTravelStatus(trip);
+
+        // In travel mode, default to current leg + current day on first render
+        if (_travelActive && _tripStatus === 'during' && !state.mapFilter._travelDefaultsApplied) {
+            const curLeg = getCurrentTravelLeg(trip);
+            const _today = localDateStr(new Date());
+            if (curLeg) state.mapFilter.legId = curLeg.id;
+            if (days.includes(_today)) state.mapFilter.dayDate = _today;
+            state.mapFilter._travelDefaultsApplied = true;
+        }
+
         const selectedLegId = state.mapFilter.legId;
-
-        const dayPlans = (trip.dayPlans || []).filter(dp => !selectedLegId || dp.legId === selectedLegId);
+        const selectedDayDate = state.mapFilter.dayDate;
         const selectedDayPlanId = state.mapFilter.dayPlanId;
-
         const selectedCategory = state.mapFilter.category;
 
+        const dayPlans = (trip.dayPlans || []).filter(dp => !selectedLegId || dp.legId === selectedLegId);
+
+        // Day filter: itinerary days, optionally filtered by selected leg
+        let filteredDays = days;
+        if (selectedLegId) {
+            filteredDays = days.filter(d => { const leg = getLegForDate(trip, d); return leg && leg.id === selectedLegId; });
+        }
+
         let html = '<div class="view-content">';
-        html += '<div class="filter-bar">';
-        html += `<select class="select" onchange="state.mapFilter.legId=this.value||null;state.mapFilter.dayPlanId=null;render()">`;
-        html += `<option value="">All legs</option>`;
-        legs.forEach(l => {
-            html += `<option value="${esc(l.id)}"${l.id === selectedLegId ? ' selected' : ''}>${esc(l.city)}</option>`;
+        html += '<div class="filter-bar" style="gap:4px">';
+
+        // Day filter (itinerary days)
+        html += `<select class="select" style="min-width:0" onchange="state.mapFilter.dayDate=this.value||null;if(this.value)state.mapFilter.dayPlanId=null;render()">`;
+        html += `<option value="">All days</option>`;
+        filteredDays.forEach((d, i) => {
+            const dayNum = days.indexOf(d) + 1;
+            html += `<option value="${d}"${d === selectedDayDate ? ' selected' : ''}>Day ${dayNum} – ${formatDate(d)}</option>`;
         });
         html += '</select>';
 
-        html += `<select class="select" onchange="state.mapFilter.dayPlanId=this.value||null;render()">`;
-        html += `<option value="">All days</option>`;
+        // Day plan filter
+        html += `<select class="select" style="min-width:0" onchange="state.mapFilter.dayPlanId=this.value||null;if(this.value)state.mapFilter.dayDate=null;render()">`;
+        html += `<option value="">All plans</option>`;
         dayPlans.forEach(dp => {
             const label = dp.name || (dp.assignedDate ? formatDate(dp.assignedDate) : dp.id);
             html += `<option value="${esc(dp.id)}"${dp.id === selectedDayPlanId ? ' selected' : ''}>${esc(label)}</option>`;
         });
         html += '</select>';
 
-        html += `<select class="select" onchange="state.mapFilter.category=this.value||null;render()">`;
+        // Leg filter
+        html += `<select class="select" style="min-width:0" onchange="state.mapFilter.legId=this.value||null;state.mapFilter.dayPlanId=null;state.mapFilter.dayDate=null;render()">`;
+        html += `<option value="">All legs</option>`;
+        legs.forEach(l => {
+            html += `<option value="${esc(l.id)}"${l.id === selectedLegId ? ' selected' : ''}>${esc(l.city)}</option>`;
+        });
+        html += '</select>';
+
+        // Route toggle
+        html += `<button class="btn btn-sm${state.mapFilter.showTripRoute ? ' btn-primary' : ''}" style="flex-shrink:0" onclick="state.mapFilter.showTripRoute=!state.mapFilter.showTripRoute;render()" title="Show route between cities">🛤️ Route</button>`;
+        html += '</div>';
+
+        html += '<div class="map-wrapper"><div id="mapContainer"></div></div>';
+
+        // Export GPX + category filter row
+        html += `<div style="display:flex;gap:6px;align-items:center;margin-bottom:16px;flex-wrap:wrap">`;
+        html += `<button class="btn btn-sm" onclick="exportGPX()">📥 Export GPX</button>`;
+        html += `<select class="select" style="min-width:0;flex:1" onchange="state.mapFilter.category=this.value||null;render()">`;
         html += `<option value="">All categories</option>`;
         Object.entries(CATEGORIES).forEach(([k, v]) => {
             html += `<option value="${esc(k)}"${k === selectedCategory ? ' selected' : ''}>${v} ${k.charAt(0).toUpperCase() + k.slice(1)}</option>`;
         });
         html += '</select>';
-        html += `<button class="btn btn-sm${state.mapFilter.showTripRoute ? ' btn-primary' : ''}" onclick="state.mapFilter.showTripRoute=!state.mapFilter.showTripRoute;render()" title="Show route between cities">🛤️ Route</button>`;
         html += '</div>';
-
-        html += '<div class="map-wrapper"><div id="mapContainer"></div></div>';
-
-        html += '<div style="margin-bottom:16px"><button class="btn btn-sm" onclick="exportGPX()">📥 Export GPX</button></div>';
 
         const visibleItems = getVisibleMapItems(trip);
         if (visibleItems.length > 0) {
@@ -3473,8 +3538,10 @@
         const items = [];
         const legId = state.mapFilter.legId;
         const dayPlanId = state.mapFilter.dayPlanId;
+        const dayDate = state.mapFilter.dayDate;
         const category = state.mapFilter.category;
 
+        // Day plan filter: show only activities in that plan
         if (dayPlanId) {
             const dp = (trip.dayPlans || []).find(d => d.id === dayPlanId);
             if (dp) {
@@ -3486,6 +3553,28 @@
                         }
                     }
                 });
+            }
+            return items;
+        }
+
+        // Day (date) filter: show activities/transport/lodging for that date
+        if (dayDate) {
+            const events = getEventsForDate(trip, dayDate);
+            events.activities.forEach(a => {
+                if (a.coordinates && a.coordinates.lat != null && a.coordinates.lng != null) {
+                    if (!category || a.category === category) {
+                        items.push({ type: 'activity', data: a });
+                    }
+                }
+            });
+            events.lodging.forEach(l => {
+                if (l.coordinates && l.coordinates.lat != null && l.coordinates.lng != null) {
+                    items.push({ type: 'lodging', data: l });
+                }
+            });
+            const leg = getLegForDate(trip, dayDate);
+            if (leg && leg.coordinates && leg.coordinates.lat != null && leg.coordinates.lng != null) {
+                items.push({ type: 'leg', data: leg });
             }
             return items;
         }
