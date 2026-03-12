@@ -66,6 +66,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "trip_planner_prefs";
     private static final String PREF_MAP_REPOS = "map_repos"; // JSON array of repo URLs
     private static final String PREF_CONFIG_PREFIX = "repo_config_"; // cached config per repo
+    private static final String PREF_ASSETS_PREFIX = "repo_assets_"; // cached release asset names per repo
 
     private WebView webView;
     private WebViewAssetLoader assetLoader;
@@ -368,8 +369,11 @@ public class MainActivity extends AppCompatActivity {
         /** Clear cached config for a repo (call when all its maps are deleted). */
         @JavascriptInterface
         public void clearCachedConfig(String repoSlug) {
-            String cacheKey = PREF_CONFIG_PREFIX + repoSlug.replace("/", "_");
-            getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().remove(cacheKey).apply();
+            String slugKey = repoSlug.replace("/", "_");
+            getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                    .remove(PREF_CONFIG_PREFIX + slugKey)
+                    .remove(PREF_ASSETS_PREFIX + slugKey)
+                    .apply();
         }
 
         /**
@@ -423,6 +427,66 @@ public class MainActivity extends AppCompatActivity {
         public String getCachedRepoConfig(String repoSlug) {
             SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
             String cacheKey = PREF_CONFIG_PREFIX + repoSlug.replace("/", "_");
+            return prefs.getString(cacheKey, null);
+        }
+
+        /**
+         * Fetch release asset filenames from a GitHub repo's latest release.
+         * Caches on success; returns cached version on network failure.
+         */
+        @JavascriptInterface
+        public String fetchReleaseAssets(String repoSlug) {
+            SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+            String cacheKey = PREF_ASSETS_PREFIX + repoSlug.replace("/", "_");
+
+            try {
+                String url = "https://api.github.com/repos/" + repoSlug + "/releases/latest";
+                HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+                conn.setRequestProperty("User-Agent", "TripPlanner/1.0");
+                conn.setRequestProperty("Accept", "application/vnd.github+json");
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(15000);
+
+                int code = conn.getResponseCode();
+                if (code != 200) {
+                    conn.disconnect();
+                    String cached = prefs.getString(cacheKey, null);
+                    return cached != null ? cached : "[]";
+                }
+
+                InputStream is = conn.getInputStream();
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                byte[] buf = new byte[8192];
+                int n;
+                while ((n = is.read(buf)) != -1) baos.write(buf, 0, n);
+                is.close();
+                conn.disconnect();
+
+                // Parse release JSON, extract asset filenames
+                JSONObject release = new JSONObject(baos.toString("UTF-8"));
+                org.json.JSONArray assets = release.optJSONArray("assets");
+                org.json.JSONArray names = new org.json.JSONArray();
+                if (assets != null) {
+                    for (int i = 0; i < assets.length(); i++) {
+                        JSONObject asset = assets.getJSONObject(i);
+                        names.put(asset.getString("name"));
+                    }
+                }
+
+                String result = names.toString();
+                prefs.edit().putString(cacheKey, result).apply();
+                return result;
+            } catch (Exception e) {
+                String cached = prefs.getString(cacheKey, null);
+                return cached != null ? cached : "[]";
+            }
+        }
+
+        /** Get cached release asset filenames (no network). Returns null if not cached. */
+        @JavascriptInterface
+        public String getCachedReleaseAssets(String repoSlug) {
+            SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+            String cacheKey = PREF_ASSETS_PREFIX + repoSlug.replace("/", "_");
             return prefs.getString(cacheKey, null);
         }
 
