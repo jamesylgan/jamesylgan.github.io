@@ -4455,9 +4455,14 @@
             steps.push('Validating link format');
             if (!encoded || encoded.length === 0) throw new Error('Empty share data');
             if (encoded.length > 500000) throw new Error('Share data too large (' + encoded.length + ' chars)');
-            if (!/^[A-Za-z0-9_\-+/=]+$/.test(encoded)) throw new Error('Invalid characters in share data');
+            if (!/^[A-Za-z0-9_.+\-/=]+$/.test(encoded)) throw new Error('Invalid characters in share data');
 
-            steps.push('Decoding data (' + encoded.length + ' chars, prefix=' + encoded[0] + ')');
+            // Detect old gzip-format links (prefix z or r with base64 payload) — these are incompatible
+            if ((encoded[0] === 'z' || encoded[0] === 'r') && /^[A-Za-z0-9_\-+/=]+$/.test(encoded.slice(1)) && !/[.]/.test(encoded)) {
+                throw new Error('This is an old-format share link that is no longer supported. Please ask the sender to generate a new share link.');
+            }
+
+            steps.push('Decoding data (' + encoded.length + ' chars)');
             const json = decodeShareData(encoded);
 
             steps.push('Parsing JSON (' + json.length + ' chars)');
