@@ -1624,6 +1624,7 @@
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
                     <button class="btn btn-sm" onclick="document.getElementById('importFile').click();closeModal()">Import</button>
                     <button class="btn btn-sm" onclick="exportAll();closeModal()">Export All</button>
+                    <button class="btn btn-sm" onclick="clearAppCache();closeModal()">Clear Cache</button>
                     <button class="btn btn-sm btn-danger" onclick="clearAllData()" style="margin-left:auto">Clear All Data</button>
                 </div>
             </div>
@@ -4512,7 +4513,21 @@
     }
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').catch(() => {});
+        navigator.serviceWorker.register('sw.js').then(reg => {
+            reg.update();
+            navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
+        }).catch(() => {});
+    }
+
+    async function clearAppCache() {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+        if ('serviceWorker' in navigator) {
+            const reg = await navigator.serviceWorker.getRegistration();
+            if (reg) await reg.unregister();
+        }
+        toast('Cache cleared — reloading…');
+        setTimeout(() => location.reload(true), 500);
     }
     if ('launchQueue' in window) {
         window.launchQueue.setConsumer(async (params) => {
