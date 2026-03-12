@@ -465,7 +465,8 @@
     // --- Pure-JS LZ compression for URL-safe share links ---
     // Minimal LZ-String implementation (compressToEncodedURIComponent / decompressFromEncodedURIComponent)
     const LZ = (() => {
-        const keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.';
+        // Case-insensitive: 32 chars (5 bits/char) — survives URL lowercasing
+        const keyStr = 'abcdefghijklmnopqrstuvwxyz012345';
         const baseReverse = {};
         for (let i = 0; i < keyStr.length; i++) baseReverse[keyStr[i]] = i;
 
@@ -608,11 +609,12 @@
         return {
             compress(input) {
                 if (input == null) return '';
-                return _compress(input, 6, (a) => keyStr[a]);
+                return _compress(input, 5, (a) => keyStr[a]);
             },
             decompress(input) {
                 if (input == null || input === '') return '';
-                return _decompress(input.length, 32, (idx) => baseReverse[input[idx]]);
+                input = input.toLowerCase();
+                return _decompress(input.length, 16, (idx) => baseReverse[input[idx]]);
             }
         };
     })();
@@ -4465,7 +4467,7 @@
             steps.push('Validating link format');
             if (!encoded || encoded.length === 0) throw new Error('Empty share data');
             if (encoded.length > 500000) throw new Error('Share data too large (' + encoded.length + ' chars)');
-            if (!/^[A-Za-z0-9_.+\-/=]+$/.test(encoded)) throw new Error('Invalid characters in share data');
+            if (!/^[a-z0-9A-Z_.+\-/=]+$/.test(encoded)) throw new Error('Invalid characters in share data');
 
             // Detect old gzip-format links (prefix z or r with base64 payload) — these are incompatible
             if ((encoded[0] === 'z' || encoded[0] === 'r') && /^[A-Za-z0-9_\-+/=]+$/.test(encoded.slice(1)) && !/[.]/.test(encoded)) {
