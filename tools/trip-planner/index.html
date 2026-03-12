@@ -4008,10 +4008,11 @@
                 const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
                 const pmtilesTheme = isDark ? 'dark' : 'light';
 
-                // World basemap layer (zoom 0-4, always available)
+                // World basemap layer (zoom 0-4 data, crisp vector up to z14, CSS-scaled beyond)
                 _offlineVectorLayer = protomapsL.leafletLayer({
                     url: 'https://bellevue.tech/tools/trip-planner/offline-pmtiles/world-overview.pmtiles',
                     maxDataZoom: 4,
+                    maxNativeZoom: 14,
                     maxZoom: 19,
                     flavor: pmtilesTheme
                 });
@@ -4077,9 +4078,11 @@
         regions.filter(r => r.status === 'complete').forEach(r => {
             try {
                 const filename = r.id + '.pmtiles';
+                const nativeZoom = r.maxZoom || 14;
                 const layer = protomapsL.leafletLayer({
                     url: 'https://bellevue.tech/tools/trip-planner/offline-pmtiles/' + filename,
-                    maxDataZoom: r.maxZoom || 14,
+                    maxDataZoom: nativeZoom,
+                    maxNativeZoom: nativeZoom,
                     maxZoom: 19,
                     flavor: theme
                 });
