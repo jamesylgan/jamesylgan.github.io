@@ -1337,6 +1337,37 @@
         for (const ho of trip.hotelOptions || []) { ho.id = remap(ho.id); }
     }
 
+    // --- Android WebView bridge ---
+    // Called by MainActivity.java via evaluateJavascript() when a .trip file
+    // is opened from WhatsApp, a file manager, or the share sheet.
+    window.importTripFromAndroid = function(jsonString) {
+        try {
+            const imported = JSON.parse(jsonString);
+            if (!imported.version || !imported.format) throw new Error('Invalid file format');
+            if (imported.format === 'trip-planner-single') {
+                const trip = imported.trip;
+                if (!trip) throw new Error('No trip data found');
+                const existing = data.trips.find(t => t.id === trip.id);
+                if (existing) regenerateIds(trip);
+                data.trips.push(ensureTripArrays(trip));
+                save();
+                render();
+                openTrip(trip.id);
+                toast('Trip imported from file');
+            } else if (imported.format === 'trip-planner-full') {
+                data = imported.data || { trips: [] };
+                if (imported.settings) { settings = { ...DEFAULT_SETTINGS, ...imported.settings }; saveSetting(); applyTheme(); }
+                save();
+                render();
+                toast('All data imported from file');
+            } else {
+                toast('Unknown file format');
+            }
+        } catch (err) {
+            toast('Import failed: ' + err.message);
+        }
+    };
+
     // --- Calendar Export (.ics) ---
 
     function exportICS(tripId) {
