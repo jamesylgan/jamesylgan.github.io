@@ -463,10 +463,9 @@
     }
 
     // --- Pure-JS LZ compression for URL-safe share links ---
-    // Minimal LZ-String implementation (compressToEncodedURIComponent / decompressFromEncodedURIComponent)
+    // LZ-String with 64-char URI-safe alphabet (6 bits/char)
     const LZ = (() => {
-        // Case-insensitive: 32 chars (5 bits/char) — survives URL lowercasing
-        const keyStr = 'abcdefghijklmnopqrstuvwxyz012345';
+        const keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
         const baseReverse = {};
         for (let i = 0; i < keyStr.length; i++) baseReverse[keyStr[i]] = i;
 
@@ -609,37 +608,60 @@
         return {
             compress(input) {
                 if (input == null) return '';
-                return _compress(input, 5, (a) => keyStr[a]);
+                return _compress(input, 6, (a) => keyStr[a]);
             },
             decompress(input) {
                 if (input == null || input === '') return '';
-                input = input.toLowerCase();
-                return _decompress(input.length, 16, (idx) => baseReverse[input[idx]]);
+                return _decompress(input.length, 32, (idx) => baseReverse[input[idx]]);
             }
         };
     })();
 
-    function encodeShareData(str) {
-        return LZ.compress(str);
+    // Strip null, empty string, empty array, empty object values for smaller compression input
+    function stripDefaults(obj) {
+        if (obj === null || obj === undefined) return undefined;
+        if (typeof obj === 'string') return obj === '' ? undefined : obj;
+        if (typeof obj !== 'object') return obj;
+        if (Array.isArray(obj)) return obj.map(stripDefaults);
+        const out = {};
+        for (const [k, v] of Object.entries(obj)) {
+            const sv = stripDefaults(v);
+            if (sv !== undefined && !(Array.isArray(sv) && sv.length === 0) &&
+                !(typeof sv === 'object' && !Array.isArray(sv) && sv !== null && Object.keys(sv).length === 0)) {
+                out[k] = sv;
+            }
+        }
+        return out;
+    }
+
+    // Encode share data: strip defaults, minify, LZ compress, prepend length for truncation detection
+    function encodeShareData(tripPayload) {
+        const stripped = stripDefaults(tripPayload);
+        const json = JSON.stringify(stripped);
+        const compressed = LZ.compress(json);
+        // Prepend length so we can detect truncation: "1234.compressed..."
+        return compressed.length + '.' + compressed;
     }
 
     function decodeShareData(encoded) {
-        // Try LZ decode first (current format)
+        // New format: "length.lzdata"
+        const dotIdx = encoded.indexOf('.');
+        if (dotIdx > 0 && dotIdx < 8) {
+            const expectedLen = parseInt(encoded.slice(0, dotIdx), 10);
+            const lzData = encoded.slice(dotIdx + 1);
+            if (!isNaN(expectedLen) && lzData.length !== expectedLen) {
+                throw new Error('URL truncated: expected ' + expectedLen + ' chars, got ' + lzData.length + ' (lost ' + (expectedLen - lzData.length) + ' chars)');
+            }
+            const result = LZ.decompress(lzData);
+            if (result && result.length > 0) return result;
+            throw new Error('LZ decompress failed on ' + lzData.length + ' chars');
+        }
+        // Legacy: try direct LZ decode (old 32-char format)
         const lzResult = LZ.decompress(encoded);
         if (lzResult && lzResult.length > 0) {
             try { JSON.parse(lzResult); return lzResult; } catch {}
         }
-        // Fallback: raw base64 (r prefix)
-        try {
-            const payload = encoded[0] === 'r' ? encoded.slice(1) : encoded;
-            let b64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-            while (b64.length % 4) b64 += '=';
-            const bin = atob(b64);
-            const bytes = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-            return new TextDecoder().decode(bytes);
-        } catch {}
-        return encoded;
+        throw new Error('Could not decode share data (' + encoded.length + ' chars)');
     }
 
     function getTripTravelStatus(trip) {
@@ -1498,7 +1520,9 @@
         const payload = { version: 1, format: 'trip-planner-single', exportedAt: new Date().toISOString(), trip };
         const json = JSON.stringify(payload, null, 2);
         const filename = tripFilename(trip.name, 'trip');
-        const file = new File([json], filename, { type: 'application/json' });
+        // Use octet-stream so browsers don't append .json to our .trip extension
+        const mime = 'application/octet-stream';
+        const file = new File([json], filename, { type: mime });
         // Try native share sheet (works great on mobile for WhatsApp, Telegram, etc.)
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
             try {
@@ -1510,12 +1534,53 @@
             }
         }
         // Fallback: download the file
-        const blob = new Blob([json], { type: 'application/json' });
+        const blob = new Blob([json], { type: mime });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url; a.download = filename; a.click();
         URL.revokeObjectURL(url);
         toast('Trip file downloaded');
+    }
+
+    const SHARE_LINK_MAX_URL = 8000; // Max URL length for reliable sharing
+
+    async function shareTripLink(tripId) {
+        const trip = getTrip(tripId);
+        if (!trip) { toast('No trip to share'); return; }
+        const payload = { version: 1, format: 'trip-planner-single', trip };
+        try {
+            const encoded = encodeShareData(payload);
+            const url = window.location.origin + window.location.pathname + '#trip=' + encoded;
+            if (url.length > SHARE_LINK_MAX_URL) {
+                toast('Trip too large for link (' + (url.length/1024).toFixed(0) + 'KB) — use Share Trip File instead');
+                return;
+            }
+            // Verify roundtrip
+            const json = decodeShareData(encoded);
+            const rt = JSON.parse(json);
+            if (!rt.trip || rt.trip.name !== trip.name) {
+                toast('Roundtrip verification failed');
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(url);
+                toast('Share link copied! (' + url.length + ' chars)');
+            } catch {
+                prompt('Copy this share link:', url);
+            }
+        } catch (err) {
+            toast('Failed: ' + err.message);
+        }
+    }
+
+    function canShareAsLink(tripId) {
+        try {
+            const trip = getTrip(tripId);
+            if (!trip) return false;
+            const payload = { version: 1, format: 'trip-planner-single', trip };
+            const encoded = encodeShareData(payload);
+            return (encoded.length + 60) <= SHARE_LINK_MAX_URL;
+        } catch { return false; }
     }
 
     // --- Settings Modal ---
@@ -1625,6 +1690,7 @@
                         <button class="btn btn-sm" onclick="exportICS('${state.tripId}');closeModal()">Export Calendar (.ics)</button>
                         <button class="btn btn-sm" onclick="exportWhatsApp('${state.tripId}');closeModal()">Share Itinerary</button>
                         <button class="btn btn-sm" onclick="shareTripFile('${state.tripId}');closeModal()">Share Trip File</button>
+                        ${canShareAsLink(state.tripId) ? `<button class="btn btn-sm" onclick="shareTripLink('${state.tripId}');closeModal()">Share Link</button>` : ''}
                     </div>
                 ` : ''}
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -4458,39 +4524,25 @@
         if (!hash.startsWith('#trip=')) return;
         history.replaceState(null, '', window.location.pathname + window.location.search);
         const encoded = hash.slice(6);
-        const steps = [];
         try {
-            steps.push('Validating link format');
             if (!encoded || encoded.length === 0) throw new Error('Empty share data');
             if (encoded.length > 500000) throw new Error('Share data too large (' + encoded.length + ' chars)');
-            if (!/^[a-z0-9A-Z_.+\-/=]+$/.test(encoded)) throw new Error('Invalid characters in share data');
 
-            // Detect old gzip-format links (prefix z or r with base64 payload) — these are incompatible
-            if ((encoded[0] === 'z' || encoded[0] === 'r') && /^[A-Za-z0-9_\-+/=]+$/.test(encoded.slice(1)) && !/[.]/.test(encoded)) {
-                throw new Error('This is an old-format share link that is no longer supported. Please ask the sender to generate a new share link.');
+            const json = decodeShareData(encoded);
+            if (!json || json.length === 0) throw new Error('Decode returned empty result');
+            if (json.length > 5 * 1024 * 1024) throw new Error('Decompressed data too large');
+
+            const payload = JSON.parse(json);
+            if (payload.format !== 'trip-planner-single' || payload.version !== 1) {
+                throw new Error('Unknown format: ' + payload.format + ' v' + payload.version);
             }
 
-            steps.push('LZ decompress (' + encoded.length + ' chars)');
-            const lzDirect = LZ.decompress(encoded);
-            const lzOk = lzDirect && lzDirect.length > 0;
-            if (!lzOk) throw new Error('LZ.decompress returned ' + (lzDirect === null ? 'null' : lzDirect === '' ? 'empty string' : typeof lzDirect) + '. encoded[0..3]=' + encoded.slice(0,4) + ' encoded[-4..]=' + encoded.slice(-4));
-
-            steps.push('Parsing JSON (' + lzDirect.length + ' chars, starts=' + lzDirect.slice(0,20) + ')');
-            if (lzDirect.length > 5 * 1024 * 1024) throw new Error('Decompressed data too large');
-            const payload = JSON.parse(lzDirect);
-
-            steps.push('Validating format (v=' + payload.version + ', fmt=' + payload.format + ')');
-            if (payload.format !== 'trip-planner-single' || payload.version !== 1) throw new Error('Expected format=trip-planner-single v=1, got format=' + payload.format + ' v=' + payload.version);
-
-            steps.push('Sanitizing trip data');
             const sanitized = sanitizeSharePayload(payload.trip);
-
             _pendingShareTrip = sanitized;
             showShareModal('ready', null, sanitized);
         } catch (err) {
-            console.error('Share link import failed at step: ' + steps[steps.length - 1], err);
-            const detail = 'Step: ' + (steps[steps.length - 1] || 'init') + '\nError: ' + err.message + '\n\nDebug: encoded.length=' + encoded.length + ', prefix=' + (encoded[0] || '?') + ', first40=' + encoded.slice(0, 40);
-            showShareModal('error', detail);
+            console.error('Share link import failed:', err);
+            showShareModal('error', err.message);
         }
     }
 
