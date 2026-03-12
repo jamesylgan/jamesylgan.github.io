@@ -1220,11 +1220,10 @@
         lines.push(`✈️ *${trip.name}*`);
         if (trip.startDate) lines.push(`📅 ${formatDate(trip.startDate)}${trip.endDate ? ' – ' + formatDate(trip.endDate) : ''}`);
 
-        const sortedLegs = [...(trip.legs || [])].sort((a, b) => (a.startDate || '').localeCompare(b.startDate || ''));
-        const days = getDayRange(trip);
+        const sortedLegs = [...(trip.legs || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
 
-        if (sortedLegs.length === 0 && days.length === 0) {
-            // No structure — just list activities
+        if (sortedLegs.length === 0) {
+            // No legs — just list activities
             for (const a of trip.activities || []) {
                 const cat = CATEGORIES[a.category] || '';
                 const time = a.time ? formatTime(a.time) : '';
@@ -1234,68 +1233,49 @@
             return lines.join('\n');
         }
 
-        let prevLegId = null;
-        let dayNum = 0;
+        const printedTransport = new Set();
 
-        for (const dateStr of days) {
-            const leg = getLegForDate(trip, dateStr);
-            const events = getEventsForDate(trip, dateStr);
-            const legId = leg ? leg.id : null;
-
-            // Print leg header when city changes
-            if (legId !== prevLegId && leg) {
-                lines.push('');
-                lines.push(`🏙️ *${leg.city}${leg.country ? ', ' + leg.country : ''}* (${formatDateRange(leg.startDate, leg.endDate)})`);
-                // Lodging for this leg
-                const legLodging = (trip.lodging || []).filter(l => l.legId === leg.id);
-                for (const l of legLodging) {
-                    lines.push(`🏨 ${l.name}${l.checkIn ? ' — ' + formatDate(l.checkIn) + (l.checkOut ? ' → ' + formatDate(l.checkOut) : '') : ''}`);
-                }
-                prevLegId = legId;
-            }
-
-            // Gather day content
-            const hasContent = events.transport.length > 0 || events.activities.length > 0 ||
-                events.dayPlans.some(dp => (dp.activityIds || []).length > 0);
-            if (!hasContent) continue;
-
-            dayNum++;
-            const dayLabel = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+        for (let li = 0; li < sortedLegs.length; li++) {
+            const leg = sortedLegs[li];
+            const nights = (leg.startDate && leg.endDate) ? daysBetween(leg.startDate, leg.endDate) : 0;
+            const nightsStr = nights > 0 ? ` · ${nights} night${nights !== 1 ? 's' : ''}` : '';
             lines.push('');
-            lines.push(`📅 *Day ${dayNum} — ${dayLabel} ${formatDate(dateStr)}*`);
+            lines.push(`🏙️ *${leg.city}${leg.country ? ', ' + leg.country : ''}* (${formatDateRange(leg.startDate, leg.endDate)}${nightsStr})`);
 
-            // Transport
-            for (const t of events.transport) {
+            // Transport into this leg
+            const inbound = (trip.transport || []).filter(t => t.toLegId === leg.id || (li > 0 && t.fromLegId === sortedLegs[li - 1].id));
+            for (const t of inbound) {
+                if (printedTransport.has(t.id)) continue;
+                printedTransport.add(t.id);
                 const icon = TRANSPORT_TYPES[t.type] || '🚐';
                 const route = [t.fromCity, t.toCity].filter(Boolean).join(' → ');
                 const carrier = [t.carrier, t.flightNumber].filter(Boolean).join(' ');
                 const depTime = t.departure ? formatTime(t.departure.split('T')[1] || '') : '';
                 const arrTime = t.arrival ? formatTime(t.arrival.split('T')[1] || '') : '';
                 const timeStr = [depTime, arrTime].filter(Boolean).join(' → ');
-                lines.push(`${icon} ${carrier ? carrier + ' ' : ''}${route}${timeStr ? ' — ' + timeStr : ''}`);
+                const depDate = t.departure ? formatDate(t.departure.split('T')[0]) : '';
+                lines.push(`${icon} ${carrier ? carrier + ' ' : ''}${route}${depDate ? ' — ' + depDate : ''}${timeStr ? ' ' + timeStr : ''}`);
             }
 
-            // Activities (ordered by day plan if available)
-            const printed = new Set();
-            for (const dp of events.dayPlans) {
-                for (const aid of dp.activityIds || []) {
-                    const a = (trip.activities || []).find(x => x.id === aid);
-                    if (!a || printed.has(a.id)) continue;
-                    printed.add(a.id);
-                    const cat = CATEGORIES[a.category] || '';
-                    const time = a.time ? formatTime(a.time) : '';
-                    const dur = a.duration ? ` (${formatDuration(a.duration)})` : '';
-                    lines.push(`${cat} ${a.name}${time ? ' — ' + time : ''}${dur}`);
-                }
+            // Lodging for this leg
+            const legLodging = (trip.lodging || []).filter(l => l.legId === leg.id);
+            for (const l of legLodging) {
+                lines.push(`🏨 ${l.name}${l.checkIn ? ' — ' + formatDate(l.checkIn) + (l.checkOut ? ' → ' + formatDate(l.checkOut) : '') : ''}`);
             }
-            // Remaining activities not in day plans
-            for (const a of events.activities) {
-                if (printed.has(a.id)) continue;
-                printed.add(a.id);
+
+            // Activities for this leg
+            const legActs = (trip.activities || []).filter(a => {
+                if (a.legId === leg.id) return true;
+                if (!a.legId && a.date && leg.startDate && leg.endDate && a.date >= leg.startDate && a.date <= leg.endDate) return true;
+                return false;
+            }).sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.time || '').localeCompare(b.time || ''));
+            for (const a of legActs) {
                 const cat = CATEGORIES[a.category] || '';
+                const dateStr = a.date ? formatDate(a.date) : '';
                 const time = a.time ? formatTime(a.time) : '';
                 const dur = a.duration ? ` (${formatDuration(a.duration)})` : '';
-                lines.push(`${cat} ${a.name}${time ? ' — ' + time : ''}${dur}`);
+                const when = [dateStr, time].filter(Boolean).join(' ');
+                lines.push(`${cat} ${a.name}${when ? ' — ' + when : ''}${dur}`);
             }
         }
 
@@ -1325,6 +1305,21 @@
             return;
         }
         window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    }
+
+    async function shareExportWhatsApp(tripId) {
+        const trip = getTrip(tripId);
+        if (!trip) { toast('No trip to share'); return; }
+        const payload = { version: 1, format: 'trip-planner-single', exportedAt: new Date().toISOString(), trip };
+        const json = JSON.stringify(payload, null, 2);
+        const filename = `trip-${trip.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.json`;
+        const file = new File([json], filename, { type: 'application/json' });
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            try { await navigator.share({ files: [file], title: trip.name }); toast('Shared!'); return; } catch (err) { if (err.name === 'AbortError') return; }
+        }
+        // Fallback: download the file
+        downloadJSON(payload, filename);
+        toast('File downloaded — attach it in WhatsApp');
     }
 
     // --- Settings Modal ---
@@ -1432,7 +1427,8 @@
                     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
                         <button class="btn btn-sm" onclick="exportTrip('${state.tripId}');closeModal()">Export This Trip</button>
                         <button class="btn btn-sm" onclick="exportICS('${state.tripId}');closeModal()">Export Calendar (.ics)</button>
-                        <button class="btn btn-sm" onclick="exportWhatsApp('${state.tripId}');closeModal()">Share on WhatsApp</button>
+                        <button class="btn btn-sm" onclick="exportWhatsApp('${state.tripId}');closeModal()">Share Itinerary</button>
+                        <button class="btn btn-sm" onclick="shareExportWhatsApp('${state.tripId}');closeModal()">Share Export JSON</button>
                     </div>
                 ` : ''}
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
