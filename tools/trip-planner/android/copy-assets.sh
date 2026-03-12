@@ -9,8 +9,9 @@ RES_DIR="$SCRIPT_DIR/app/src/main/res"
 WEB_DIR="$SCRIPT_DIR/.."
 
 # --- Web assets (served by WebViewAssetLoader) ---
-rm -rf "$ASSETS_DIR"
+# Remove old web files but preserve non-web assets (e.g. world-overview.pmtiles)
 mkdir -p "$ASSETS_DIR"
+find "$ASSETS_DIR" -maxdepth 1 \( -name '*.html' -o -name '*.js' -o -name '*.json' -o -name '*.png' \) -delete 2>/dev/null || true
 
 cp "$WEB_DIR/index.html"    "$ASSETS_DIR/"
 cp "$WEB_DIR/sw.js"         "$ASSETS_DIR/"

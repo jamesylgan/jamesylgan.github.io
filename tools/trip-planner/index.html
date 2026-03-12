@@ -12,6 +12,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/protomaps-leaflet@5.1.0/dist/protomaps-leaflet.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
@@ -1132,7 +1133,10 @@
                     <div class="card-body">
                         <div style="display:flex;justify-content:space-between;align-items:center">
                             <strong style="font-size:1.05rem">${esc(t.name)}</strong>
-                            <span class="badge badge-${t.status}">${TRIP_STATUSES[t.status] || 'Planning'}</span>
+                            <div style="display:flex;align-items:center;gap:8px">
+                                <span class="badge badge-${t.status}">${TRIP_STATUSES[t.status] || 'Planning'}</span>
+                                <button class="btn-icon" style="font-size:14px;opacity:0.5" onclick="event.stopPropagation();deleteTrip('${t.id}')" title="Delete trip">\u{1F5D1}</button>
+                            </div>
                         </div>
                         <div class="trip-dates">${dates}</div>
                         <div class="trip-stats">
@@ -1270,7 +1274,12 @@
     }
 
     function downloadJSON(obj, filename) {
-        const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+        const content = JSON.stringify(obj, null, 2);
+        if (window.__ANDROID_APP__ && typeof AndroidNative !== 'undefined') {
+            AndroidNative.saveFile(content, filename, 'application/json');
+            return;
+        }
+        const blob = new Blob([content], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url; a.download = filename; a.click();
@@ -1422,11 +1431,16 @@
             ...events,
             'END:VCALENDAR'
         ].join('\r\n');
-        const blob = new Blob([cal], { type: 'text/calendar' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = tripFilename(trip.name, 'ics'); a.click();
-        URL.revokeObjectURL(url);
+        const fname = tripFilename(trip.name, 'ics');
+        if (window.__ANDROID_APP__ && typeof AndroidNative !== 'undefined') {
+            AndroidNative.saveFile(cal, fname, 'text/calendar');
+        } else {
+            const blob = new Blob([cal], { type: 'text/calendar' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = fname; a.click();
+            URL.revokeObjectURL(url);
+        }
         toast('Calendar exported');
     }
 
@@ -1586,6 +1600,11 @@
     async function _doShareFile() {
         if (!_shareFileData) return;
         const { json, filename, mime, tripName } = _shareFileData;
+        if (window.__ANDROID_APP__ && typeof AndroidNative !== 'undefined') {
+            AndroidNative.shareFile(json, filename, mime);
+            closeModal();
+            return;
+        }
         const file = new File([json], filename, { type: mime });
         try {
             await navigator.share({ title: tripName, files: [file] });
@@ -1599,6 +1618,11 @@
     function _doDownloadFile() {
         if (!_shareFileData) return;
         const { json, filename, mime } = _shareFileData;
+        if (window.__ANDROID_APP__ && typeof AndroidNative !== 'undefined') {
+            AndroidNative.saveFile(json, filename, mime);
+            closeModal();
+            return;
+        }
         const blob = new Blob([json], { type: mime });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1669,7 +1693,7 @@
 
         openModal(`
             <div class="modal-header">
-                <h3>Settings</h3>
+                <h3>Settings${window.__APP_VERSION__ ? ' <span style="font-size:11px;color:var(--text-muted);font-weight:normal">v' + window.__APP_VERSION__ + '</span>' : ''}</h3>
                 <button class="btn-icon" onclick="closeModal()">\u2715</button>
             </div>
             <div class="modal-body">
@@ -1758,6 +1782,7 @@
                     </div>
                 </div>
                 ` : ''}
+
 
                 <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
 
@@ -3821,6 +3846,10 @@
         // Export GPX + category filter row
         html += `<div style="display:flex;gap:6px;align-items:center;margin-bottom:16px;flex-wrap:wrap">`;
         html += `<button class="btn btn-sm" onclick="exportGPX()">📥 Export GPX</button>`;
+        if (window.__ANDROID_APP__) {
+            html += `<button id="vectorToggleBtn" class="btn btn-sm${_offlineLayerEnabled ? ' btn-primary' : ''}" onclick="_toggleOfflineLayer(this)" title="Toggle offline vector map layer">🗺️ Vector</button>`;
+            html += `<button class="btn btn-sm" onclick="openOfflineMapsModal()">📶 Offline Maps</button>`;
+        }
         html += `<select class="select" style="min-width:0;flex:1" onchange="state.mapFilter.category=this.value||null;render()">`;
         html += `<option value="">All categories</option>`;
         Object.entries(CATEGORIES).forEach(([k, v]) => {
@@ -3971,12 +4000,500 @@
             maxZoom: 19
         }).addTo(map);
 
+        // Add offline vector tile layers (Android app only)
+        _offlineVectorLayer = null;
+        if (window.__ANDROID_APP__ && typeof protomapsL !== 'undefined') {
+            try {
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                const pmtilesTheme = isDark ? 'dark' : 'light';
+
+                // World basemap layer (zoom 0-4, always available)
+                _offlineVectorLayer = protomapsL.leafletLayer({
+                    url: 'https://bellevue.tech/tools/trip-planner/offline-pmtiles/world-overview.pmtiles',
+                    maxDataZoom: 4,
+                    maxZoom: 19,
+                    flavor: pmtilesTheme
+                });
+                if (_offlineLayerEnabled) _offlineVectorLayer.addTo(map);
+
+                // Add layers for downloaded regions (higher detail)
+                _refreshOfflineRegionLayers(pmtilesTheme);
+            } catch (e) {
+                console.warn('Failed to add offline vector layer:', e);
+            }
+        }
+
         map.on('zoomend moveend', resolveMarkerOverlaps);
 
         setTimeout(() => {
             if (map) map.invalidateSize();
         }, 200);
     }
+
+    // --- Offline Maps (Android app only) ---
+
+    // Offline vector tile layer reference + toggle state
+    let _offlineVectorLayer = null;   // world basemap layer
+    let _offlineRegionLayers = [];    // per-region detail layers
+    let _offlineLayerEnabled = false;
+    let _offlineLayerUserPref = false; // what the user manually chose
+
+    function _toggleOfflineLayer(btn) {
+        _offlineLayerUserPref = !_offlineLayerUserPref;
+        _applyOfflineLayerState();
+    }
+
+    function _applyOfflineLayerState() {
+        const shouldEnable = navigator.onLine === false || _offlineLayerUserPref;
+        if (shouldEnable === _offlineLayerEnabled) return;
+        _offlineLayerEnabled = shouldEnable;
+        if (map) {
+            const allLayers = [_offlineVectorLayer, ..._offlineRegionLayers].filter(Boolean);
+            allLayers.forEach(layer => {
+                if (_offlineLayerEnabled) layer.addTo(map);
+                else map.removeLayer(layer);
+            });
+        }
+        // Update toggle button appearance if visible
+        const btn = document.getElementById('vectorToggleBtn');
+        if (btn) {
+            btn.className = 'btn btn-sm' + (_offlineLayerEnabled ? ' btn-primary' : '');
+        }
+    }
+
+    /** Rebuild per-region protomaps-leaflet layers from downloaded regions. */
+    function _refreshOfflineRegionLayers(theme) {
+        if (!map || typeof protomapsL === 'undefined' || typeof AndroidNative === 'undefined') return;
+        if (!theme) theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+
+        // Remove existing region layers
+        _offlineRegionLayers.forEach(layer => {
+            if (map.hasLayer(layer)) map.removeLayer(layer);
+        });
+        _offlineRegionLayers = [];
+
+        // Get completed downloads and create a layer for each
+        const regions = JSON.parse(AndroidNative.getRegions() || '[]');
+        regions.filter(r => r.status === 'complete').forEach(r => {
+            try {
+                const filename = r.id + '.pmtiles';
+                const layer = protomapsL.leafletLayer({
+                    url: 'https://bellevue.tech/tools/trip-planner/offline-pmtiles/' + filename,
+                    maxDataZoom: r.maxZoom || 14,
+                    maxZoom: 19,
+                    flavor: theme
+                });
+                _offlineRegionLayers.push(layer);
+                if (_offlineLayerEnabled) layer.addTo(map);
+            } catch (e) {
+                console.warn('Failed to add layer for ' + r.id, e);
+            }
+        });
+    }
+
+    // Auto-switch on connectivity changes
+    window.addEventListener('offline', () => {
+        if (window.__ANDROID_APP__) _applyOfflineLayerState();
+    });
+    window.addEventListener('online', () => {
+        if (window.__ANDROID_APP__) _applyOfflineLayerState();
+    });
+
+    // Track download progress: { regionId: { downloaded, total } }
+    let _offlineDownloadProgress = {};
+    // Cached repo configs: { repoSlug: configJson }
+    let _repoConfigs = {};
+
+    function openOfflineMapsModal() {
+        if (!window.__ANDROID_APP__) return;
+
+        openModal(`
+            <div class="modal-header">
+                <h3>Offline Maps</h3>
+                <button class="btn-icon" onclick="closeModal()">\u2715</button>
+            </div>
+            <div class="modal-body">
+                <div class="segmented" style="margin-bottom:16px" id="offlineTabBar">
+                    <button class="segmented-btn active" data-tab="browse" onclick="_switchOfflineTab('browse',this)">Browse</button>
+                    <button class="segmented-btn" data-tab="manage" onclick="_switchOfflineTab('manage',this)">Manage</button>
+                    <button class="segmented-btn" data-tab="sources" onclick="_switchOfflineTab('sources',this)">Sources</button>
+                </div>
+                <div id="offlineTabContent"><div class="empty-state"><p>Loading...</p></div></div>
+            </div>
+        `);
+        _loadAndRenderBrowseTab();
+    }
+
+    function _switchOfflineTab(tab, btn) {
+        const bar = document.getElementById('offlineTabBar');
+        if (bar) bar.querySelectorAll('.segmented-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        if (tab === 'browse') _loadAndRenderBrowseTab();
+        else if (tab === 'manage') _renderManageTab();
+        else if (tab === 'sources') _renderSourcesTab();
+    }
+
+    // --- Browse tab: show country/region/city hierarchy from repo configs ---
+
+    function _loadAndRenderBrowseTab() {
+        const repos = JSON.parse(AndroidNative.getMapRepos() || '[]');
+        const downloaded = JSON.parse(AndroidNative.getRegions() || '[]');
+        const dlMap = {};
+        downloaded.forEach(r => { dlMap[r.id] = r; });
+
+        if (repos.length === 0) {
+            const c = document.getElementById('offlineTabContent');
+            if (c) c.innerHTML = `<div class="empty-state"><p>No map sources configured.</p><p style="font-size:13px;color:var(--text-muted)">Go to Sources tab to add a map repository.</p></div>`;
+            return;
+        }
+
+        // Load configs: use in-memory cache → persistent cache → network fetch
+        const results = {};
+        repos.forEach(repo => {
+            // 1. In-memory cache (from this session)
+            if (_repoConfigs[repo]) {
+                results[repo] = _repoConfigs[repo];
+                return;
+            }
+            // 2. Persistent cache (survives app restart, works offline)
+            const cached = AndroidNative.getCachedRepoConfig(repo);
+            if (cached) {
+                try {
+                    const config = JSON.parse(cached);
+                    if (!config.error) {
+                        _repoConfigs[repo] = config;
+                        results[repo] = config;
+                    }
+                } catch (e) {}
+            }
+            // 3. Network fetch (also updates cache)
+            if (!results[repo]) {
+                const configJson = AndroidNative.fetchRepoConfig(repo);
+                try {
+                    const config = JSON.parse(configJson);
+                    if (!config.error) {
+                        _repoConfigs[repo] = config;
+                        results[repo] = config;
+                    }
+                } catch (e) {}
+            }
+        });
+
+        _renderBrowseContent(results, dlMap);
+    }
+
+    function _renderBrowseContent(configs, dlMap) {
+        const c = document.getElementById('offlineTabContent');
+        if (!c) return;
+        let html = '';
+
+        Object.entries(configs).forEach(([repo, config]) => {
+            const maxZoom = config.maxZoom || 14;
+            const countries = config.countries || {};
+            Object.entries(countries).forEach(([ckey, country]) => {
+                const regions = country.regions || {};
+                const hasRegions = Object.keys(regions).length > 0;
+                html += `<div style="border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:10px">`;
+
+                // Country header — cascading download: downloads all regions (or country file if no regions)
+                html += `<div style="padding:12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="_toggleOfflineSection('sec-${ckey}')">`;
+                html += `<strong>${esc(country.name)}</strong>`;
+                if (hasRegions) {
+                    html += _cascadeButton(ckey, regions, dlMap, repo, maxZoom, 'region');
+                } else {
+                    html += _dlButton(ckey, country.name, ckey, repo, country.file, country.bbox, maxZoom, dlMap[ckey]);
+                }
+                html += `</div>`;
+
+                // Expandable regions
+                html += `<div id="sec-${ckey}" style="display:none">`;
+                Object.entries(regions).forEach(([rkey, region]) => {
+                    const rid = ckey + '--' + rkey;
+                    const cities = region.cities || {};
+                    const hasCities = Object.keys(cities).length > 0;
+                    html += `<div style="padding:8px 12px 8px 24px;border-top:1px solid var(--border-light)">`;
+                    html += `<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="_toggleOfflineSection('sec-${rid}')">`;
+                    html += `<span>${esc(region.name)}</span>`;
+                    // Region — cascading download: downloads all cities (or region file if no cities)
+                    if (hasCities) {
+                        html += _cascadeButton(rid, cities, dlMap, repo, maxZoom, 'city', ckey, rkey);
+                    } else {
+                        html += _dlButton(rid, region.name, ckey, repo, region.file, region.bbox, maxZoom, dlMap[rid]);
+                    }
+                    html += `</div>`;
+
+                    // Cities
+                    html += `<div id="sec-${rid}" style="display:none">`;
+                    Object.entries(cities).forEach(([citykey, city]) => {
+                        const cityid = ckey + '--' + rkey + '--' + citykey;
+                        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0 6px 16px;border-top:1px solid var(--border-light)">`;
+                        html += `<span style="font-size:13px">${esc(city.name)}</span>`;
+                        html += _dlButton(cityid, city.name, ckey, repo, city.file, city.bbox, maxZoom, dlMap[cityid]);
+                        html += `</div>`;
+                    });
+                    html += `</div>`;
+
+                    html += `</div>`;
+                });
+                html += `</div>`;
+
+                html += `</div>`;
+            });
+        });
+
+        if (!html) {
+            html = `<div class="empty-state"><p>No maps available from configured sources.</p></div>`;
+        }
+
+        c.innerHTML = html;
+    }
+
+    function _dlButton(id, name, country, repo, file, bbox, maxZoom, existing) {
+        const progress = _offlineDownloadProgress[id];
+        if (existing && existing.status === 'complete') {
+            return `<span style="color:var(--success);font-weight:600;font-size:13px">Downloaded &#10003;</span>`;
+        }
+        if ((existing && existing.status === 'downloading') || progress) {
+            const p = progress || { downloaded: existing ? existing.downloadedBytes : 0, total: existing ? existing.sizeBytes : 0 };
+            const pct = p.total > 0 ? Math.round(p.downloaded / p.total * 100) : 0;
+            return `<div style="display:flex;flex-direction:column;align-items:flex-end;min-width:120px">
+                <div style="width:100%;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+                    <div id="progress-${id}" style="width:${pct}%;height:100%;background:var(--primary);transition:width 0.3s"></div>
+                </div>
+                <span id="progress-lbl-${id}" style="color:var(--text-muted);font-size:11px;margin-top:2px">${_formatBytes(p.downloaded)} / ${_formatBytes(p.total)}</span>
+            </div>`;
+        }
+        if (existing && existing.status === 'failed') {
+            return `<button class="btn btn-sm" onclick="event.stopPropagation();_retryDownload('${esc(id)}','${esc(name)}','${esc(country)}','${esc(repo)}','${esc(file)}',${bbox.join(',')},${maxZoom})">Retry</button>`;
+        }
+        if (!file) return '';
+        return `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();_startDownload('${esc(id)}','${esc(name)}','${esc(country)}','${esc(repo)}','${esc(file)}',${bbox.join(',')},${maxZoom})">Download</button>`;
+    }
+
+    /** Cascade button for country (downloads all regions) or region (downloads all cities). */
+    function _cascadeButton(parentId, children, dlMap, repo, maxZoom, level, ckey, rkey) {
+        const childEntries = Object.entries(children);
+        const total = childEntries.length;
+        let complete = 0, downloading = 0;
+        childEntries.forEach(([key, child]) => {
+            const childId = level === 'region' ? parentId + '--' + key :
+                            (ckey + '--' + rkey + '--' + key);
+            const dl = dlMap[childId];
+            if (dl && dl.status === 'complete') complete++;
+            else if (dl && dl.status === 'downloading') downloading++;
+        });
+
+        if (complete === total) {
+            return `<span style="color:var(--success);font-weight:600;font-size:13px">All ${total} downloaded &#10003;</span>`;
+        }
+        if (downloading > 0) {
+            return `<span style="color:var(--text-muted);font-size:13px">${complete + downloading}/${total} downloading...</span>`;
+        }
+        if (complete > 0) {
+            return `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();_cascadeDownload('${esc(parentId)}','${esc(repo)}',${maxZoom})">${total - complete} remaining</button>`;
+        }
+        return `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();_cascadeDownload('${esc(parentId)}','${esc(repo)}',${maxZoom})">Download All (${total})</button>`;
+    }
+
+    /** Download all children of a country or region that aren't already downloaded. */
+    function _cascadeDownload(parentId, repo, maxZoom) {
+        // Find the config for this repo
+        const config = _repoConfigs[repo];
+        if (!config) return;
+
+        const countries = config.countries || {};
+        const downloaded = JSON.parse(AndroidNative.getRegions() || '[]');
+        const dlSet = new Set(downloaded.filter(r => r.status === 'complete' || r.status === 'downloading').map(r => r.id));
+
+        // Determine if parentId is a country or region
+        const parts = parentId.split('--');
+        if (parts.length === 1) {
+            // Country: download all regions
+            const country = countries[parts[0]];
+            if (!country || !country.regions) return;
+            Object.entries(country.regions).forEach(([rkey, region]) => {
+                const rid = parts[0] + '--' + rkey;
+                if (!dlSet.has(rid)) {
+                    _startDownload(rid, region.name, parts[0], repo, region.file, region.bbox[0], region.bbox[1], region.bbox[2], region.bbox[3], maxZoom);
+                }
+            });
+        } else if (parts.length === 2) {
+            // Region: download all cities
+            const country = countries[parts[0]];
+            if (!country || !country.regions) return;
+            const region = country.regions[parts[1]];
+            if (!region || !region.cities) return;
+            Object.entries(region.cities).forEach(([citykey, city]) => {
+                const cityid = parts[0] + '--' + parts[1] + '--' + citykey;
+                if (!dlSet.has(cityid)) {
+                    _startDownload(cityid, city.name, parts[0], repo, city.file, city.bbox[0], city.bbox[1], city.bbox[2], city.bbox[3], maxZoom);
+                }
+            });
+        }
+    }
+
+    function _toggleOfflineSection(secId) {
+        const el = document.getElementById(secId);
+        if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function _startDownload(id, name, country, repo, file, w, s, e, n, maxZoom) {
+        AndroidNative.downloadRegion(id, name, country, repo, file, w, s, e, n, maxZoom, 0);
+        _offlineDownloadProgress[id] = { downloaded: 0, total: 0 };
+        _loadAndRenderBrowseTab();
+    }
+
+    function _retryDownload(id, name, country, repo, file, w, s, e, n, maxZoom) {
+        AndroidNative.deleteRegion(id);
+        _startDownload(id, name, country, repo, file, w, s, e, n, maxZoom);
+    }
+
+    // --- Manage tab: show downloaded regions, delete ---
+
+    function _renderManageTab() {
+        const c = document.getElementById('offlineTabContent');
+        if (!c) return;
+        const regions = JSON.parse(AndroidNative.getRegions() || '[]');
+        const storageInfo = JSON.parse(AndroidNative.getStorageInfo() || '{}');
+
+        let html = `<div style="font-size:13px;color:var(--text-muted);margin-bottom:16px">`;
+        html += `Used: <strong>${_formatBytes(storageInfo.usedBytes || 0)}</strong>`;
+        html += ` / Available: <strong>${_formatBytes(storageInfo.availableBytes || 0)}</strong>`;
+        html += `</div>`;
+
+        const byCountry = {};
+        regions.forEach(r => {
+            if (!byCountry[r.country]) byCountry[r.country] = [];
+            byCountry[r.country].push(r);
+        });
+
+        if (Object.keys(byCountry).length === 0) {
+            html += `<div class="empty-state"><p>No offline maps downloaded yet.</p></div>`;
+        }
+
+        Object.entries(byCountry).sort((a, b) => a[0].localeCompare(b[0])).forEach(([country, countryRegions]) => {
+            const countryBytes = countryRegions.reduce((sum, r) => sum + (r.sizeBytes || 0), 0);
+            html += `<div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px">`;
+            html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">`;
+            html += `<div><strong>${esc(country)}</strong> <span style="color:var(--text-muted);font-size:13px">${_formatBytes(countryBytes)}</span></div>`;
+            html += `<button class="btn btn-sm btn-danger" onclick="_deleteCountryMaps('${esc(country)}')">Delete All</button>`;
+            html += `</div>`;
+            countryRegions.forEach(r => {
+                html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0 6px 16px;border-top:1px solid var(--border-light)">`;
+                html += `<div>${esc(r.name)} <span style="color:var(--text-muted);font-size:12px">${_formatBytes(r.sizeBytes)}${r.status !== 'complete' ? ' (' + r.status + ')' : ''}</span></div>`;
+                html += `<button class="btn btn-sm" style="color:var(--danger)" onclick="_deleteRegionMap('${esc(r.id)}')">Delete</button>`;
+                html += `</div>`;
+            });
+            html += `</div>`;
+        });
+
+        c.innerHTML = html;
+    }
+
+    function _deleteRegionMap(regionId) {
+        if (!confirm('Delete this offline map?')) return;
+        AndroidNative.deleteRegion(regionId);
+        _renderManageTab();
+        _refreshOfflineRegionLayers();
+    }
+
+    function _deleteCountryMaps(country) {
+        if (!confirm('Delete all offline maps for ' + country + '?')) return;
+        AndroidNative.deleteCountry(country);
+        _renderManageTab();
+        _refreshOfflineRegionLayers();
+    }
+
+    // --- Sources tab: add/remove map repos ---
+
+    function _renderSourcesTab() {
+        const c = document.getElementById('offlineTabContent');
+        if (!c) return;
+        const repos = JSON.parse(AndroidNative.getMapRepos() || '[]');
+
+        let html = '<div style="margin-bottom:16px">';
+        html += '<div style="display:flex;gap:8px;margin-bottom:12px">';
+        html += '<input class="input" id="newRepoInput" placeholder="owner/repo (e.g. jamesylgan/Spain-pmtiles)" style="flex:1;font-size:13px">';
+        html += '<button class="btn btn-primary btn-sm" onclick="_addMapRepo()">Add</button>';
+        html += '</div>';
+
+        if (repos.length === 0) {
+            html += '<div class="empty-state"><p>No map sources added yet.</p><p style="font-size:12px;color:var(--text-muted)">Add a GitHub repo that contains a config.json with PMTiles map data.</p></div>';
+        }
+
+        repos.forEach(repo => {
+            const config = _repoConfigs[repo];
+            const name = config ? (config.name || repo) : repo;
+            const countries = config ? Object.values(config.countries || {}).map(c => c.name).join(', ') : 'Loading...';
+            html += `<div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px">`;
+            html += `<div style="display:flex;justify-content:space-between;align-items:center">`;
+            html += `<div><strong>${esc(name)}</strong><div style="font-size:12px;color:var(--text-muted)">${esc(repo)}</div>`;
+            html += `<div style="font-size:12px;color:var(--text-muted)">${esc(countries)}</div></div>`;
+            html += `<button class="btn btn-sm" style="color:var(--danger)" onclick="_removeMapRepo('${esc(repo)}')">Remove</button>`;
+            html += `</div></div>`;
+        });
+
+        html += '</div>';
+        c.innerHTML = html;
+    }
+
+    function _addMapRepo() {
+        const input = document.getElementById('newRepoInput');
+        if (!input) return;
+        const repo = input.value.trim();
+        if (!repo || !repo.includes('/')) { toast('Enter a valid repo (e.g. jamesylgan/Spain-pmtiles)'); return; }
+        AndroidNative.addMapRepo(repo);
+        delete _repoConfigs[repo]; // force re-fetch
+        _renderSourcesTab();
+        toast('Added ' + repo);
+    }
+
+    function _removeMapRepo(repo) {
+        if (!confirm('Remove ' + repo + ' from map sources?')) return;
+        AndroidNative.removeMapRepo(repo);
+        delete _repoConfigs[repo];
+        _renderSourcesTab();
+    }
+
+    // Progress callback from Android
+    window.__onDownloadProgress = function(regionId, downloaded, total) {
+        _offlineDownloadProgress[regionId] = { downloaded, total };
+        // Update progress bar if visible
+        const bar = document.getElementById('progress-' + regionId);
+        if (bar && total > 0) {
+            bar.style.width = Math.round(downloaded / total * 100) + '%';
+        }
+        const lbl = document.getElementById('progress-lbl-' + regionId);
+        if (lbl) lbl.textContent = _formatBytes(downloaded) + ' / ' + _formatBytes(total);
+    };
+
+    // Completion callback from Android
+    window.__onDownloadComplete = function(regionId, success, errorMsg) {
+        delete _offlineDownloadProgress[regionId];
+        if (!success) {
+            toast(errorMsg ? 'Download failed: ' + errorMsg : 'Download failed.');
+        }
+        // Refresh whichever tab is open
+        const content = document.getElementById('offlineTabContent');
+        if (content) {
+            const activeTab = document.querySelector('#offlineTabBar .segmented-btn.active');
+            const tab = activeTab ? activeTab.dataset.tab : 'browse';
+            if (tab === 'browse') _loadAndRenderBrowseTab();
+            else if (tab === 'manage') _renderManageTab();
+        }
+        // Refresh map layers to include newly downloaded region
+        if (success) _refreshOfflineRegionLayers();
+    };
+
+    function _formatBytes(bytes) {
+        if (bytes == null || bytes === 0) return '0 B';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let i = 0;
+        let val = bytes;
+        while (val >= 1024 && i < units.length - 1) { val /= 1024; i++; }
+        return val.toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
+    }
+
 
     function updateMapMarkers() {
         if (!map) return;
@@ -4449,15 +4966,20 @@
 
         gpx += '</gpx>\n';
 
-        const blob = new Blob([gpx], { type: 'application/gpx+xml' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = tripFilename(trip.name, 'gpx');
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        const fname = tripFilename(trip.name, 'gpx');
+        if (window.__ANDROID_APP__ && typeof AndroidNative !== 'undefined') {
+            AndroidNative.saveFile(gpx, fname, 'application/gpx+xml');
+        } else {
+            const blob = new Blob([gpx], { type: 'application/gpx+xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fname;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
         toast('GPX exported');
     }
 
