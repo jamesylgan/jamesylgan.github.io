@@ -9,6 +9,7 @@
     <meta name="CCBot" content="nofollow">
     <meta name="GPTBot" content="nofollow">
     <title>Trip Planner</title>
+    <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
@@ -487,24 +488,28 @@
         return 'r' + toUrlSafeB64(s);
     }
 
+    function b64ToBytes(b64str) {
+        const bin = fromUrlSafeB64(b64str);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return bytes;
+    }
+
+    async function decompressGzip(bytes) {
+        if (typeof DecompressionStream === 'undefined') throw new Error('Browser does not support decompression');
+        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+        return new Response(stream).text();
+    }
+
     async function decodeAndDecompress(encoded) {
         const prefix = encoded[0];
-        const payload = encoded.slice(1);
-        if (prefix === 'z') {
-            if (typeof DecompressionStream === 'undefined') throw new Error('Browser does not support decompression');
-            const bin = fromUrlSafeB64(payload);
-            const bytes = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-            const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-            return new Response(stream).text();
-        }
-        if (prefix === 'r') {
-            const bin = fromUrlSafeB64(payload);
-            const bytes = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-            return new TextDecoder().decode(bytes);
-        }
-        throw new Error('Unknown encoding prefix');
+        // New format with explicit prefix
+        if (prefix === 'z') return decompressGzip(b64ToBytes(encoded.slice(1)));
+        if (prefix === 'r') return new TextDecoder().decode(b64ToBytes(encoded.slice(1)));
+        // Legacy/unknown prefix — try gzip first, then raw
+        const bytes = b64ToBytes(encoded);
+        try { return await decompressGzip(bytes); } catch {}
+        return new TextDecoder().decode(bytes);
     }
 
     function getTripTravelStatus(trip) {
@@ -1491,6 +1496,7 @@
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
                     <button class="btn btn-sm" onclick="document.getElementById('importFile').click();closeModal()">Import</button>
                     <button class="btn btn-sm" onclick="exportAll();closeModal()">Export All</button>
+                    ${canInstallPWA() ? '<button class="btn btn-sm" onclick="installPWA();closeModal()">Install App</button>' : ''}
                     <button class="btn btn-sm btn-danger" onclick="clearAllData()" style="margin-left:auto">Clear All Data</button>
                 </div>
             </div>
@@ -4268,11 +4274,12 @@
     }
 
     async function checkShareLink() {
-        const hash = window.location.hash;
+        let hash;
+        try { hash = decodeURIComponent(window.location.hash); } catch { hash = window.location.hash; }
         if (!hash.startsWith('#trip=')) return;
         try {
             const encoded = hash.slice(6);
-            if (!/^[A-Za-z0-9_-]+$/.test(encoded)) throw new Error('Invalid encoding');
+            if (!/^[A-Za-z0-9_\-+/=]+$/.test(encoded)) throw new Error('Invalid characters in share data');
             if (encoded.length > 500000) throw new Error('Payload too large');
             const json = await decodeAndDecompress(encoded);
             if (json.length > 5 * 1024 * 1024) throw new Error('Decompressed payload too large');
@@ -4296,6 +4303,58 @@
             history.replaceState(null, '', window.location.pathname + window.location.search);
             toast('Invalid or corrupted share link');
         }
+    }
+
+    // --- PWA Install ---
+    let deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredInstallPrompt = e; });
+
+    function canInstallPWA() { return !!deferredInstallPrompt; }
+
+    async function installPWA() {
+        if (!deferredInstallPrompt) { toast('Install not available — try your browser menu'); return; }
+        deferredInstallPrompt.prompt();
+        const result = await deferredInstallPrompt.userChoice;
+        if (result.outcome === 'accepted') toast('App installed!');
+        deferredInstallPrompt = null;
+    }
+
+    // --- PWA File Handler (launchQueue) ---
+    async function handleLaunchedFiles(files) {
+        for (const file of files) {
+            try {
+                const text = await file.text();
+                const imported = JSON.parse(text);
+                if (!imported.version || !imported.format) { toast('Not a Trip Planner file'); continue; }
+                if (imported.format === 'trip-planner-single' && imported.trip) {
+                    const trip = imported.trip;
+                    const existing = data.trips.find(t => t.id === trip.id);
+                    if (existing) regenerateIds(trip);
+                    data.trips.push(ensureTripArrays(trip));
+                    save(); render();
+                    openTrip(trip.id);
+                    toast(`Imported "${esc(trip.name)}"`);
+                } else if (imported.format === 'trip-planner-full') {
+                    const ok = await showConfirm('Import All Data', 'This will replace ALL trips and settings. Continue?');
+                    if (!ok) continue;
+                    data = imported.data || { trips: [] };
+                    if (imported.settings) { settings = { ...DEFAULT_SETTINGS, ...imported.settings }; saveSetting(); applyTheme(); }
+                    save(); render();
+                    toast('All data imported');
+                }
+            } catch (err) { toast('Failed to open file: ' + err.message); }
+        }
+    }
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+    if ('launchQueue' in window) {
+        window.launchQueue.setConsumer(async (params) => {
+            if (!params.files || !params.files.length) return;
+            const files = await Promise.all(params.files.map(h => h.getFile()));
+            handleLaunchedFiles(files);
+        });
     }
 
     loadSettings();
