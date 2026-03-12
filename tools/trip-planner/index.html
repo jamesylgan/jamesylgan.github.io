@@ -10,9 +10,9 @@
     <meta name="GPTBot" content="nofollow">
     <title>Trip Planner</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/protomaps-leaflet@5.1.0/dist/protomaps-leaflet.js"></script>
+    <link rel="stylesheet" href="lib/leaflet.css" />
+    <script src="lib/leaflet.js"></script>
+    <script src="lib/protomaps-leaflet.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
@@ -4007,21 +4007,18 @@
             try {
                 const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
                 const pmtilesTheme = isDark ? 'dark' : 'light';
-                // Build transparent paint rules: strip earth layer so raster shows through
-                const _flavorObj = protomapsL.namedFlavor(pmtilesTheme);
-                const _noFill = new Set(['earth', 'landcover', 'landuse']);
-                const _paintRules = protomapsL.paintRules(_flavorObj).filter(r => !_noFill.has(r.dataLayer));
-                const _labelRules = protomapsL.labelRules(_flavorObj);
 
                 // World basemap layer (zoom 0-4, always available)
                 _offlineVectorLayer = protomapsL.leafletLayer({
                     url: 'https://bellevue.tech/tools/trip-planner/offline-pmtiles/world-overview.pmtiles',
                     maxDataZoom: 4,
                     maxZoom: 19,
-                    paintRules: _paintRules,
-                    labelRules: _labelRules
+                    flavor: pmtilesTheme
                 });
-                _offlineVectorLayer.backgroundColor = null; // transparent canvas
+                // Make transparent: null background + strip opaque polygon layers
+                _offlineVectorLayer.backgroundColor = null;
+                const _worldNoFill = new Set(['earth', 'landcover', 'landuse']);
+                _offlineVectorLayer.paintRules = _offlineVectorLayer.paintRules.filter(r => !_worldNoFill.has(r.dataLayer));
                 if (_offlineLayerEnabled) _offlineVectorLayer.addTo(map);
 
                 // Add layers for downloaded regions (higher detail)
@@ -4073,10 +4070,6 @@
     function _refreshOfflineRegionLayers(theme) {
         if (!map || typeof protomapsL === 'undefined' || typeof AndroidNative === 'undefined') return;
         if (!theme) theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-        const flavorObj = protomapsL.namedFlavor(theme);
-        const pRules = protomapsL.paintRules(flavorObj).filter(r => r.dataLayer !== 'earth');
-        const lRules = protomapsL.labelRules(flavorObj);
-
         // Remove existing region layers
         _offlineRegionLayers.forEach(layer => {
             if (map.hasLayer(layer)) map.removeLayer(layer);
@@ -4092,10 +4085,11 @@
                     url: 'https://bellevue.tech/tools/trip-planner/offline-pmtiles/' + filename,
                     maxDataZoom: r.maxZoom || 14,
                     maxZoom: 19,
-                    paintRules: pRules,
-                    labelRules: lRules
+                    flavor: theme
                 });
-                layer.backgroundColor = null; // transparent canvas
+                // Transparent: null background + strip earth (keep landcover/landuse for detail)
+                layer.backgroundColor = null;
+                layer.paintRules = layer.paintRules.filter(r => r.dataLayer !== 'earth');
                 _offlineRegionLayers.push(layer);
                 if (_offlineLayerEnabled) layer.addTo(map);
             } catch (e) {
