@@ -440,6 +440,43 @@
         .task-col-cell { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; min-width: 40px; }
         .task-col-cell a { font-size: 12px; }
 
+        /* Task highlight animation (scroll-to from Next TODOs) */
+        @keyframes taskHighlight {
+            0%, 40% { box-shadow: 0 0 0 3px var(--accent); }
+            100% { box-shadow: 0 0 0 0 transparent; }
+        }
+        .task-highlight { animation: taskHighlight 3s ease-out; }
+
+        /* Next TODOs scroll button */
+        .btn-scroll-to { font-size: 11px !important; }
+
+        /* Group drag-and-drop reorder */
+        .group.group-dragging { opacity: 0.4; }
+        .group.group-drag-over { border-top: 3px solid var(--accent); }
+        .group-reorder-toggle { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-muted); cursor: pointer; margin-left: auto; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-card); white-space: nowrap; }
+        .group-reorder-toggle:hover { background: var(--border-light); }
+        .group-reorder-toggle.active { background: var(--accent); color: white; border-color: var(--accent); }
+        .group-reorder-toggle.active:hover { background: var(--accent-hover); }
+
+        /* Task image thumbnail */
+        .task-image-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 1px solid var(--border); flex-shrink: 0; }
+        .task-image-thumbs { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+
+        /* Image upload area in edit modal */
+        .image-upload-area { border: 2px dashed var(--border); border-radius: 8px; padding: 12px; text-align: center; cursor: pointer; color: var(--text-muted); font-size: 13px; transition: border-color 0.2s, background 0.2s; }
+        .image-upload-area:hover { border-color: var(--accent); background: rgba(37,99,235,0.04); }
+        .image-upload-area.drag-over { border-color: var(--accent); background: rgba(37,99,235,0.08); }
+        .image-preview-list { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+        .image-preview-item { position: relative; width: 80px; height: 80px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+        .image-preview-item img { width: 100%; height: 100%; object-fit: cover; }
+        .image-preview-item .img-remove { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,0.6); color: white; border: none; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; line-height: 1; }
+        .image-preview-item .img-remove:hover { background: #dc2626; }
+
+        /* Image lightbox */
+        .image-lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 300; align-items: center; justify-content: center; cursor: pointer; }
+        .image-lightbox.open { display: flex; }
+        .image-lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+
         /* Priority background colors */
         .task.priority-high { background: rgba(220,53,69,0.06); }
         .task.priority-medium { background: rgba(255,193,7,0.08); }
@@ -478,10 +515,11 @@
     <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
 </div>
 
-<div class="tabs">
+<div class="tabs" style="align-items:center;">
     <div class="tab active" data-tab="active" onclick="switchTab('active')">Active <span class="badge" id="activeCount">0</span></div>
     <div class="tab" data-tab="archived" onclick="switchTab('archived')">Archived <span class="badge" id="archivedCount">0</span></div>
     <div class="tab" data-tab="trash" id="trashTab" onclick="switchTab('trash')">Trash <span class="badge" id="trashCount">0</span></div>
+    <button class="group-reorder-toggle" id="groupReorderBtn" onclick="toggleGroupReorder()" style="display:none;" title="Reorder groups via drag-and-drop">&#8693; Reorder</button>
 </div>
 
 <div id="activeView">
@@ -640,6 +678,14 @@
             <select id="editSize"></select>
         </div>
         <div id="editCustomFieldsWrap"></div>
+        <div id="editImagesWrap" style="display:none;">
+            <label>Images</label>
+            <div class="image-upload-area" id="imageUploadArea" onclick="document.getElementById('imageFileInput').click()">
+                Click or drag images here
+            </div>
+            <input type="file" id="imageFileInput" accept="image/*" multiple style="display:none;" onchange="handleImageUpload(this.files)">
+            <div class="image-preview-list" id="imagePreviewList"></div>
+        </div>
         <input type="hidden" id="editTaskId">
         <input type="hidden" id="editGroupId">
         <div class="modal-actions">
@@ -765,6 +811,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="image-lightbox" id="imageLightbox" onclick="this.classList.remove('open')"><img id="lightboxImg" src="" alt=""></div>
 
 <script>
 // Use different localStorage keys for hosted vs local file access
@@ -851,6 +898,11 @@ const DEFAULT_SETTINGS = {
     categoryTracker: false,
     customColumns: false,
     nextTasks: true,
+    nextTasksScroll: false,
+    nextTasksScrollMode: 'click',
+    groupReorder: false,
+    groupReorderCollapse: true,
+    images: false,
     inlineDate: true,
     inlinePriority: true,
     inlineSize: true,
@@ -873,7 +925,7 @@ const DEFAULT_SETTINGS = {
     visualMode: 'fullpage',
     advancedSettings: ['buttonReorder', 'encryption', 'visualMode', 'clearAllData', 'yamlEditor', 'colorScheme'],
     hiddenSettings: ['resetSettings'],
-    settingsOrder: ['dueDates','inlineDate','resetInlineDate','priority','inlinePriority','resetInlinePriority','priorityColors','sizing','inlineSize','resetInlineSize','notes','inlineNotes','links','categories','categoryTracker','repeat','inlineRepeat','resetInlineRepeat','progress','groupStatus','nextTasks','customColumns','buttonReorder','darkMode','colorScheme','visualMode','archive','trash','skipTrash','sessionTrash','dismissAction','dateFormat','encryption','yamlEditor','dataSection','advancedMenu','clearAllData','resetSettings'],
+    settingsOrder: ['dueDates','inlineDate','resetInlineDate','priority','inlinePriority','resetInlinePriority','priorityColors','sizing','inlineSize','resetInlineSize','notes','inlineNotes','links','categories','categoryTracker','repeat','inlineRepeat','resetInlineRepeat','progress','groupStatus','nextTasks','nextTasksScroll','nextTasksScrollMode','images','customColumns','groupReorder','groupReorderCollapse','buttonReorder','darkMode','colorScheme','visualMode','archive','trash','skipTrash','sessionTrash','dismissAction','dateFormat','encryption','yamlEditor','dataSection','advancedMenu','clearAllData','resetSettings'],
     priorityLevels: JSON.parse(JSON.stringify(DEFAULT_PRIORITY_LEVELS)),
     sizeLevels: JSON.parse(JSON.stringify(DEFAULT_SIZE_LEVELS)),
     labels: { ...DEFAULT_LABELS },
@@ -1049,7 +1101,12 @@ const ALL_SETTINGS_ROWS = [
     { key: 'sessionTrash', label: 'Session undo for deletions', desc: 'Keep deleted items in memory for Ctrl+Z undo (cleared on page close)', type: 'toggle', id: 'settingSessionTrash', parent: 'trash' }, // intentionally no showIf — always visible regardless of trash toggle
     { key: 'groupStatus', label: 'Group Status', desc: 'Status badges on groups (Unstarted/In Progress/Completed)', type: 'toggle', id: 'settingGroupStatus' },
     { key: 'nextTasks', label: 'Next TODOs', desc: 'Pin tasks into a Next TODOs section', type: 'toggle', id: 'settingNextTasks' },
+    { key: 'nextTasksScroll', label: 'Click to scroll', desc: 'Click a Next TODO item to scroll to it in its group', type: 'toggle', id: 'settingNextTasksScroll', parent: 'nextTasks', showIf: () => settings.nextTasks },
+    { key: 'nextTasksScrollMode', label: 'Scroll trigger', desc: 'Click the item directly or use a dedicated button', type: 'slider', options: 'click,button', optionLabels: ['Click item','Button'], parent: 'nextTasksScroll', showIf: () => settings.nextTasks && settings.nextTasksScroll },
+    { key: 'images', label: 'Images', desc: 'Attach images to tasks (stored locally)', type: 'toggle', id: 'settingImages' },
     { key: 'customColumns', label: 'Custom Columns', desc: 'Define custom data columns per group', type: 'toggle', id: 'settingCustomColumns' },
+    { key: 'groupReorder', label: 'Group Reordering', desc: 'Drag-and-drop to reorder groups', type: 'toggle', id: 'settingGroupReorder' },
+    { key: 'groupReorderCollapse', label: 'Collapse tasks while reordering', desc: 'Hide tasks within groups during reorder mode', type: 'toggle', id: 'settingGroupReorderCollapse', parent: 'groupReorder', showIf: () => settings.groupReorder },
     // Appearance
     { key: 'buttonReorder', label: 'Button Reordering', desc: 'Use arrow buttons instead of drag-and-drop in organize mode', type: 'toggle', id: 'settingButtonReorder' },
     { key: 'darkMode', label: 'Dark Mode', desc: 'Switch to dark theme', type: 'toggle', id: 'settingDarkMode' },
@@ -1158,16 +1215,73 @@ function renderSettingRow(row) {
 
 function getOrderedRows() {
     const order = settings.settingsOrder || [];
-    const sorted = [...ALL_SETTINGS_ROWS];
-    if (order.length > 0) {
-        sorted.sort((a, b) => {
-            const ai = order.indexOf(a.key), bi = order.indexOf(b.key);
-            if (ai === -1 && bi === -1) return 0;
-            if (ai === -1) return 1;
-            if (bi === -1) return 1;
-            return ai - bi;
-        });
+    if (order.length === 0) return [...ALL_SETTINGS_ROWS];
+    // Inject any missing keys into the order at their natural position
+    let dirty = false;
+    ALL_SETTINGS_ROWS.forEach(r => {
+        if (order.includes(r.key)) return;
+        dirty = true;
+        if (r.parent) {
+            // Walk up the parent chain to find the nearest ancestor in the order
+            let ancKey = r.parent;
+            while (ancKey && !order.includes(ancKey)) {
+                const ancRow = ALL_SETTINGS_ROWS.find(p => p.key === ancKey);
+                ancKey = ancRow ? ancRow.parent : null;
+            }
+            if (ancKey) {
+                // Insert after the last sibling/descendant already under that ancestor
+                let insertAt = order.indexOf(ancKey) + 1;
+                while (insertAt < order.length) {
+                    const nextRow = ALL_SETTINGS_ROWS.find(p => p.key === order[insertAt]);
+                    if (nextRow && nextRow.parent) {
+                        const topKey = getTopParent(nextRow);
+                        if (topKey === getTopParent(r)) { insertAt++; continue; }
+                    }
+                    break;
+                }
+                order.splice(insertAt, 0, r.key);
+            } else {
+                order.push(r.key);
+            }
+        } else {
+            // Top-level: insert after the previous ALL_SETTINGS_ROWS entry that IS in the order
+            const myIdx = ALL_SETTINGS_ROWS.indexOf(r);
+            let insertAfterKey = null;
+            for (let i = myIdx - 1; i >= 0; i--) {
+                if (!ALL_SETTINGS_ROWS[i].parent && order.includes(ALL_SETTINGS_ROWS[i].key)) {
+                    insertAfterKey = ALL_SETTINGS_ROWS[i].key;
+                    break;
+                }
+            }
+            if (insertAfterKey) {
+                // Insert after that key and all its descendants
+                let insertAt = order.indexOf(insertAfterKey) + 1;
+                while (insertAt < order.length) {
+                    const nextRow = ALL_SETTINGS_ROWS.find(p => p.key === order[insertAt]);
+                    if (nextRow && nextRow.parent) {
+                        const topKey = getTopParent(nextRow);
+                        if (topKey === insertAfterKey) { insertAt++; continue; }
+                    }
+                    break;
+                }
+                order.splice(insertAt, 0, r.key);
+            } else {
+                order.push(r.key);
+            }
+        }
+    });
+    if (dirty) {
+        settings.settingsOrder = order;
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     }
+    const sorted = [...ALL_SETTINGS_ROWS];
+    sorted.sort((a, b) => {
+        const ai = order.indexOf(a.key), bi = order.indexOf(b.key);
+        if (ai === -1 && bi === -1) return 0;
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+    });
     return sorted;
 }
 function getSettingDepth(row) {
@@ -1184,13 +1298,25 @@ function getTopParent(row) {
     }
     return cur.key;
 }
+function isEffectivelyHidden(key, hidden) {
+    if (hidden.includes(key)) return true;
+    const row = ALL_SETTINGS_ROWS.find(r => r.key === key);
+    if (row && row.parent) return hidden.includes(getTopParent(row));
+    return false;
+}
+function isEffectivelyAdvanced(key, adv) {
+    if (adv.includes(key)) return true;
+    const row = ALL_SETTINGS_ROWS.find(r => r.key === key);
+    if (row && row.parent) return adv.includes(getTopParent(row));
+    return false;
+}
 function renderSettingsMenu() {
     const adv = settings.advancedSettings || [];
     const hidden = settings.hiddenSettings || [];
     const ordered = getOrderedRows();
     // Include sections in the ordered flow (except advancedMenu which is the container itself)
-    const mainRows = ordered.filter(r => r.key !== 'advancedMenu' && !adv.includes(r.key) && !hidden.includes(r.key));
-    const advRows = ordered.filter(r => r.key !== 'advancedMenu' && adv.includes(r.key) && !hidden.includes(r.key));
+    const mainRows = ordered.filter(r => r.key !== 'advancedMenu' && !isEffectivelyAdvanced(r.key, adv) && !isEffectivelyHidden(r.key, hidden));
+    const advRows = ordered.filter(r => r.key !== 'advancedMenu' && isEffectivelyAdvanced(r.key, adv) && !isEffectivelyHidden(r.key, hidden));
     const mainContainer = document.getElementById('mainSettingsContainer');
     const as = document.getElementById('advancedSection');
     const asc = document.getElementById('advancedSettingsContainer');
@@ -1248,6 +1374,9 @@ function applySettings() {
     });
     const daRow = document.getElementById('dismissActionRow');
     if (daRow) daRow.style.display = settings.archive ? '' : 'none';
+    // Group reorder button visibility
+    const grBtn = document.getElementById('groupReorderBtn');
+    if (grBtn) grBtn.style.display = settings.groupReorder ? '' : 'none';
     applySliders();
     applyDarkMode();
 }
@@ -1289,8 +1418,19 @@ function toggleOrganizeMode() {
         const colors = { main: { bg: 'var(--bg-card)', border: 'var(--border)', text: 'var(--text-muted)' }, advanced: { bg: 'var(--accent)', border: 'var(--accent)', text: 'white' }, hidden: { bg: '#fee2e2', border: '#fca5a5', text: '#dc2626' } };
         const useButtons = settings.buttonReorder;
         const btnStyle = 'padding:2px 5px;border:1px solid var(--border);border-radius:3px;background:var(--bg-card);color:var(--text-muted);cursor:pointer;font-size:12px;line-height:1;';
+        function getEffectiveState(r) {
+            if (hid.includes(r.key)) return 'hidden';
+            if (adv.includes(r.key)) return 'advanced';
+            // Inherit parent's placement if child has no explicit placement
+            if (r.parent) {
+                const topKey = getTopParent(r);
+                if (hid.includes(topKey)) return 'hidden';
+                if (adv.includes(topKey)) return 'advanced';
+            }
+            return 'main';
+        }
         function renderOrgRow(r, handleType, isAdvFamily) {
-            const state = hid.includes(r.key) ? 'hidden' : adv.includes(r.key) ? 'advanced' : 'main';
+            const state = getEffectiveState(r);
             const c = colors[state];
             const label = state.charAt(0).toUpperCase() + state.slice(1);
             const depth = getSettingDepth(r) + (isAdvFamily ? 1 : 0);
@@ -1744,6 +1884,7 @@ function renderGroups() {
         const doneTasks = activeTasks.filter(t => t.done);
         const el = document.createElement('div');
         el.className = 'group';
+        if (groupReorderMode) { el.draggable = true; el.style.cursor = 'grab'; }
 
         // Group name with optional link
         let groupNameHtml = esc(group.name);
@@ -1928,6 +2069,7 @@ function renderTask(task, groupId) {
                     ${settings.notes && task.notes ? `<span>${esc(settings.labels.notesIcon)} ${esc(task.notes.substring(0, 40))}${task.notes.length > 40 ? '...' : ''}</span>` : ''}
                     ${customHtml}
                 </div>
+                ${settings.images && task.images && task.images.length > 0 ? `<div class="task-image-thumbs">${task.images.map(src => `<img class="task-image-thumb" src="${src}" onclick="openImageLightbox(this.src)" alt="task image">`).join('')}</div>` : ''}
             </div>
             <div class="task-actions" id="actions-${task.id}">
                 ${settings.nextTasks ? `<button class="btn-pin" onclick="addToNextTasks('${groupId}','${task.id}')" title="Pin to Next TODOs">\uD83D\uDCCC</button>` : ''}
@@ -2001,6 +2143,7 @@ function renderTaskColumned(task, groupId, group) {
             <div class="task-body" style="width:${titlePct}%;flex:0 1 auto;min-width:50px;">
                 <div class="task-title">${titleHtml}</div>
                 ${metaHtml}
+                ${settings.images && task.images && task.images.length > 0 ? `<div class="task-image-thumbs">${task.images.map(src => `<img class="task-image-thumb" src="${src}" onclick="openImageLightbox(this.src)" alt="task image">`).join('')}</div>` : ''}
             </div>
             ${settings.notes && group.showNotesInColumns ? `<div class="task-col-cell" data-col-id="__notes__" style="width:${group.notesColumnWidth || 15}%;" title="${esc(task.notes || '')}">${esc((task.notes || '').substring(0, 30))}${(task.notes || '').length > 30 ? '...' : ''}</div>` : ''}
             ${colCells}
@@ -2560,6 +2703,11 @@ function openEditModal(gid, tid) {
         cfWrap.style.display = 'none';
     }
 
+    // Images
+    document.getElementById('editImagesWrap').style.display = settings.images ? '' : 'none';
+    _editImages = task.images ? [...task.images] : [];
+    renderEditImagePreviews();
+
     document.getElementById('editModal').classList.add('open');
     document.getElementById('editTitle').focus();
 }
@@ -2605,12 +2753,17 @@ function saveEdit() {
             }
         });
     }
+    // Images
+    if (settings.images) {
+        task.images = _editImages.length > 0 ? [..._editImages] : undefined;
+    }
     closeEditModal();
     save();
     toast('Task updated');
 }
 
 function closeEditModal() {
+    _editImages = [];
     document.getElementById('editModal').classList.remove('open');
 }
 
@@ -3408,15 +3561,19 @@ function renderNextTasks() {
             const t = r.task;
             const pLevel = settings.priority ? settings.priorityLevels.find(p => p.value === t.priority) : null;
             const priorityHtml = pLevel ? `<span style="font-size:11px;">${pLevel.icon} ${esc(pLevel.label)}</span>` : '';
-            return `<div class="next-task-item" draggable="true" data-tid="${t.id}" data-gid="${r.groupId}">
-                <input type="checkbox" ${t.done?'checked':''} onchange="toggleNextTask('${r.groupId}','${t.id}')" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;margin-top:2px;accent-color:var(--accent);">
+            const clickScroll = settings.nextTasksScroll && settings.nextTasksScrollMode === 'click';
+            const btnScroll = settings.nextTasksScroll && settings.nextTasksScrollMode === 'button';
+            const itemClick = clickScroll ? ` onclick="scrollToTask('${r.groupId}','${t.id}')" style="cursor:pointer;"` : '';
+            return `<div class="next-task-item" draggable="true" data-tid="${t.id}" data-gid="${r.groupId}"${itemClick}>
+                <input type="checkbox" ${t.done?'checked':''} onchange="event.stopPropagation();toggleNextTask('${r.groupId}','${t.id}')" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;margin-top:2px;accent-color:var(--accent);">
                 <div style="flex:1;min-width:0;">
                     <div style="font-weight:500;${t.done?'text-decoration:line-through;color:var(--text-muted);':''}">${esc(t.title)}</div>
                     <div class="next-task-from">${priorityHtml}${priorityHtml ? ' · ' : ''}from: ${esc(r.group.name)}</div>
                 </div>
                 <div class="next-task-actions">
-                    <button onclick="removeFromNextTasks('${t.id}')" title="Unpin">\uD83D\uDCCC</button>
-                    <button onclick="openEditModal('${r.groupId}','${t.id}')" title="Edit">${esc(settings.labels.editIcon)}</button>
+                    <button onclick="event.stopPropagation();removeFromNextTasks('${t.id}')" title="Unpin">\uD83D\uDCCC</button>
+                    ${btnScroll ? `<button class="btn-scroll-to" onclick="event.stopPropagation();scrollToTask('${r.groupId}','${t.id}')" title="Scroll to task">\uD83D\uDD0D</button>` : ''}
+                    <button onclick="event.stopPropagation();openEditModal('${r.groupId}','${t.id}')" title="Edit">${esc(settings.labels.editIcon)}</button>
                 </div>
             </div>`;
         }).join('')}</div>
@@ -3493,6 +3650,200 @@ function initNextTasksDragDrop() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     });
 }
+
+// ---------- Scroll to Task (from Next TODOs) ----------
+function scrollToTask(gid, tid) {
+    // Find the task element in the groups container
+    const container = document.getElementById('tasks-' + gid);
+    if (!container) return;
+    const taskEl = container.querySelector(`input[onchange*="'${tid}'"]`);
+    const taskRow = taskEl ? taskEl.closest('.task') : null;
+    if (!taskRow) return;
+    taskRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    taskRow.classList.remove('task-highlight');
+    void taskRow.offsetWidth; // force reflow to restart animation
+    taskRow.classList.add('task-highlight');
+    setTimeout(() => taskRow.classList.remove('task-highlight'), 3000);
+}
+
+// ---------- Group Reorder (drag-and-drop) ----------
+let groupReorderMode = false;
+
+function toggleGroupReorder() {
+    groupReorderMode = !groupReorderMode;
+    const btn = document.getElementById('groupReorderBtn');
+    btn.classList.toggle('active', groupReorderMode);
+    const container = document.getElementById('groupsContainer');
+    const collapse = settings.groupReorderCollapse;
+    container.querySelectorAll('.group').forEach(g => {
+        g.draggable = groupReorderMode;
+        g.style.cursor = groupReorderMode ? 'grab' : '';
+        if (collapse) {
+            // Hide everything except the group header
+            [...g.children].forEach(child => {
+                if (!child.classList.contains('group-header')) {
+                    child.style.display = groupReorderMode ? 'none' : '';
+                }
+            });
+        }
+    });
+}
+
+function initGroupDragDrop() {
+    const container = document.getElementById('groupsContainer');
+    if (!container) return;
+    let dragEl = null;
+    container.addEventListener('dragstart', e => {
+        if (!groupReorderMode) return;
+        dragEl = e.target.closest('.group');
+        if (!dragEl) return;
+        dragEl.classList.add('group-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+    });
+    container.addEventListener('dragend', e => {
+        if (dragEl) dragEl.classList.remove('group-dragging');
+        dragEl = null;
+        container.querySelectorAll('.group').forEach(g => g.classList.remove('group-drag-over'));
+    });
+    container.addEventListener('dragover', e => {
+        if (!groupReorderMode || !dragEl) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const target = e.target.closest('.group');
+        container.querySelectorAll('.group').forEach(g => g.classList.remove('group-drag-over'));
+        if (target && target !== dragEl) target.classList.add('group-drag-over');
+    });
+    container.addEventListener('drop', e => {
+        if (!groupReorderMode || !dragEl) return;
+        e.preventDefault();
+        const target = e.target.closest('.group');
+        if (!target || target === dragEl) return;
+        container.insertBefore(dragEl, target);
+        // Update data.groups order to match DOM
+        const groupEls = [...container.querySelectorAll('.group')];
+        const visibleIds = groupEls.map(el => {
+            // Extract group id from the tasks container inside each group
+            const tasksEl = el.querySelector('[id^="tasks-"]');
+            return tasksEl ? tasksEl.id.replace('tasks-', '') : null;
+        }).filter(Boolean);
+        const reordered = [];
+        visibleIds.forEach(gid => {
+            const g = data.groups.find(gr => gr.id === gid);
+            if (g) reordered.push(g);
+        });
+        // Add back archived groups that weren't visible
+        data.groups.forEach(g => {
+            if (!reordered.includes(g)) reordered.push(g);
+        });
+        data.groups = reordered;
+        save();
+        // Reapply reorder mode after render rebuilt the DOM
+        if (groupReorderMode) {
+            const collapse = settings.groupReorderCollapse;
+            container.querySelectorAll('.group').forEach(g => {
+                g.draggable = true;
+                g.style.cursor = 'grab';
+                if (collapse) {
+                    [...g.children].forEach(child => {
+                        if (!child.classList.contains('group-header')) child.style.display = 'none';
+                    });
+                }
+            });
+        }
+        toast('Groups reordered');
+    });
+}
+initGroupDragDrop();
+
+// ---------- Image Handling ----------
+let _editImages = []; // temporary images for current edit session
+
+function handleImageUpload(files) {
+    [...files].forEach(file => {
+        if (!file.type.startsWith('image/')) return;
+        compressImage(file, 500 * 1024).then(dataUrl => {
+            _editImages.push(dataUrl);
+            renderEditImagePreviews();
+        });
+    });
+    document.getElementById('imageFileInput').value = '';
+}
+
+function compressImage(file, maxBytes) {
+    return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let { width, height } = img;
+                // Scale down if large
+                const maxDim = 1200;
+                if (width > maxDim || height > maxDim) {
+                    const ratio = Math.min(maxDim / width, maxDim / height);
+                    width = Math.round(width * ratio);
+                    height = Math.round(height * ratio);
+                }
+                canvas.width = width;
+                canvas.height = height;
+                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                // Try progressively lower quality until under maxBytes
+                let quality = 0.8;
+                let result = canvas.toDataURL('image/jpeg', quality);
+                while (result.length > maxBytes * 1.37 && quality > 0.1) { // 1.37 ≈ base64 overhead
+                    quality -= 0.1;
+                    result = canvas.toDataURL('image/jpeg', quality);
+                }
+                // If still too large, scale down further
+                if (result.length > maxBytes * 1.37) {
+                    const scale = Math.sqrt((maxBytes * 1.37) / result.length);
+                    canvas.width = Math.round(width * scale);
+                    canvas.height = Math.round(height * scale);
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    result = canvas.toDataURL('image/jpeg', 0.7);
+                }
+                resolve(result);
+            };
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function renderEditImagePreviews() {
+    const list = document.getElementById('imagePreviewList');
+    if (!list) return;
+    list.innerHTML = _editImages.map((src, i) =>
+        `<div class="image-preview-item">
+            <img src="${src}" alt="Image ${i + 1}">
+            <button class="img-remove" onclick="removeEditImage(${i})">&times;</button>
+        </div>`
+    ).join('');
+}
+
+function removeEditImage(index) {
+    _editImages.splice(index, 1);
+    renderEditImagePreviews();
+}
+
+function openImageLightbox(src) {
+    const lb = document.getElementById('imageLightbox');
+    document.getElementById('lightboxImg').src = src;
+    lb.classList.add('open');
+}
+
+// Drag-and-drop on upload area
+document.addEventListener('DOMContentLoaded', () => {
+    const area = document.getElementById('imageUploadArea');
+    if (!area) return;
+    area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('drag-over'); });
+    area.addEventListener('dragleave', () => area.classList.remove('drag-over'));
+    area.addEventListener('drop', e => {
+        e.preventDefault();
+        area.classList.remove('drag-over');
+        if (e.dataTransfer.files.length) handleImageUpload(e.dataTransfer.files);
+    });
+});
 
 // ---------- Column Resize ----------
 function initColumnResize() {
