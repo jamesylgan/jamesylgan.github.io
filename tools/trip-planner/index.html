@@ -4610,10 +4610,41 @@
         });
     }
 
+    // Check for files shared via share_target (Android share sheet → PWA)
+    async function checkSharedFile() {
+        const params = new URLSearchParams(window.location.search);
+        if (!params.has('shared')) return;
+        history.replaceState(null, '', window.location.pathname);
+        try {
+            const cache = await caches.open('share-target');
+            const res = await cache.match('shared-file');
+            if (!res) return;
+            const text = await res.text();
+            await cache.delete('shared-file');
+            const imported = JSON.parse(text);
+            if (imported.format === 'trip-planner-single' && imported.trip) {
+                const trip = imported.trip;
+                const existing = data.trips.find(t => t.id === trip.id);
+                if (existing) regenerateIds(trip);
+                data.trips.push(ensureTripArrays(trip));
+                save(); render();
+                openTrip(trip.id);
+                toast(`Imported "${esc(trip.name)}"`);
+            } else if (imported.format === 'trip-planner-full') {
+                toast('Use Import for full backup files');
+            } else {
+                toast('Not a Trip Planner file');
+            }
+        } catch (err) {
+            toast('Failed to import shared file: ' + err.message);
+        }
+    }
+
     loadSettings();
     loadData().then(async () => {
         restoreNavState();
         await checkShareLink();
+        await checkSharedFile();
         render();
         const cache = getFormCache();
         if (cache && cache.editingType) {
