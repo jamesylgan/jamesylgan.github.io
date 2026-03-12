@@ -4015,10 +4015,6 @@
                     maxZoom: 19,
                     flavor: pmtilesTheme
                 });
-                // Make transparent: null background + strip opaque polygon layers
-                _offlineVectorLayer.backgroundColor = null;
-                const _worldNoFill = new Set(['earth', 'landcover', 'landuse']);
-                _offlineVectorLayer.paintRules = _offlineVectorLayer.paintRules.filter(r => !_worldNoFill.has(r.dataLayer));
                 if (_offlineLayerEnabled) _offlineVectorLayer.addTo(map);
 
                 // Add layers for downloaded regions (higher detail)
@@ -4087,9 +4083,6 @@
                     maxZoom: 19,
                     flavor: theme
                 });
-                // Transparent: null background + strip earth (keep landcover/landuse for detail)
-                layer.backgroundColor = null;
-                layer.paintRules = layer.paintRules.filter(r => r.dataLayer !== 'earth');
                 _offlineRegionLayers.push(layer);
                 if (_offlineLayerEnabled) layer.addTo(map);
             } catch (e) {
