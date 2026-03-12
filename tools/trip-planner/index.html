@@ -4273,35 +4273,82 @@
         return walkAndCheck(sanitized);
     }
 
+    // Shared trip pending import (set by checkShareLink, consumed by confirmShareImport)
+    let _pendingShareTrip = null;
+
+    function confirmShareImport() {
+        const trip = _pendingShareTrip;
+        if (!trip) return;
+        _pendingShareTrip = null;
+        const existing = data.trips.find(t => t.id === trip.id);
+        if (existing) regenerateIds(trip);
+        data.trips.push(ensureTripArrays(trip));
+        save();
+        closeModal();
+        openTrip(trip.id);
+        toast(`Imported "${esc(trip.name)}"`);
+    }
+
+    function showShareModal(status, detail, trip) {
+        const isError = status === 'error';
+        const isReady = status === 'ready';
+        let html = `<div class="modal-header"><h3>Shared Trip</h3><button class="btn-icon" onclick="closeModal()">✕</button></div><div class="modal-body">`;
+        if (isError) {
+            html += `<p style="color:var(--danger);margin-bottom:8px">Failed to load shared trip</p>`;
+            html += `<pre style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;font-size:12px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow:auto">${esc(detail)}</pre>`;
+        } else if (isReady) {
+            const t = trip;
+            const legs = (t.legs || []).length;
+            const acts = (t.activities || []).length;
+            const dates = t.startDate ? `${t.startDate}${t.endDate ? ' — ' + t.endDate : ''}` : 'No dates set';
+            html += `<p style="margin-bottom:12px">A trip was shared with you:</p>`;
+            html += `<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">`;
+            html += `<div style="font-weight:600;font-size:15px;margin-bottom:4px">${esc(t.name)}</div>`;
+            html += `<div style="font-size:13px;color:var(--text-muted)">${esc(dates)}</div>`;
+            html += `<div style="font-size:12px;color:var(--text-muted);margin-top:4px">${legs} leg${legs !== 1 ? 's' : ''}, ${acts} activit${acts !== 1 ? 'ies' : 'y'}</div>`;
+            html += `</div>`;
+            const existing = data.trips.find(x => x.id === t.id);
+            if (existing) html += `<p style="font-size:13px;color:var(--warning);margin-bottom:8px">A trip with this ID already exists — it will be imported as a copy.</p>`;
+        }
+        html += `</div><div class="modal-footer">`;
+        html += `<button class="btn" onclick="closeModal()">Cancel</button>`;
+        if (isReady) html += ` <button class="btn btn-primary" onclick="confirmShareImport()">Import Trip</button>`;
+        html += `</div>`;
+        openModal(html);
+    }
+
     async function checkShareLink() {
         let hash;
         try { hash = decodeURIComponent(window.location.hash); } catch { hash = window.location.hash; }
         if (!hash.startsWith('#trip=')) return;
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+        const encoded = hash.slice(6);
+        const steps = [];
         try {
-            const encoded = hash.slice(6);
+            steps.push('Validating link format');
+            if (!encoded || encoded.length === 0) throw new Error('Empty share data');
+            if (encoded.length > 500000) throw new Error('Share data too large (' + encoded.length + ' chars)');
             if (!/^[A-Za-z0-9_\-+/=]+$/.test(encoded)) throw new Error('Invalid characters in share data');
-            if (encoded.length > 500000) throw new Error('Payload too large');
+
+            steps.push('Decoding data (' + encoded.length + ' chars, prefix=' + encoded[0] + ')');
             const json = await decodeAndDecompress(encoded);
-            if (json.length > 5 * 1024 * 1024) throw new Error('Decompressed payload too large');
+
+            steps.push('Parsing JSON (' + json.length + ' chars)');
+            if (json.length > 5 * 1024 * 1024) throw new Error('Decompressed data too large');
             const payload = JSON.parse(json);
-            if (payload.format !== 'trip-planner-single' || payload.version !== 1) throw new Error('Invalid format');
+
+            steps.push('Validating format (v=' + payload.version + ', fmt=' + payload.format + ')');
+            if (payload.format !== 'trip-planner-single' || payload.version !== 1) throw new Error('Expected format=trip-planner-single v=1, got format=' + payload.format + ' v=' + payload.version);
+
+            steps.push('Sanitizing trip data');
             const sanitized = sanitizeSharePayload(payload.trip);
-            history.replaceState(null, '', window.location.pathname + window.location.search);
-            const clean = ensureTripArrays(sanitized);
-            const existing = data.trips.find(t => t.id === clean.id);
-            if (existing) {
-                const ok = await showConfirm('Import Shared Trip', `A trip with this ID already exists ("${existing.name}"). Import as copy?`);
-                if (!ok) return;
-                regenerateIds(clean);
-            }
-            data.trips.push(clean);
-            save();
-            openTrip(clean.id);
-            toast(`Imported "${esc(clean.name)}"`);
+
+            _pendingShareTrip = sanitized;
+            showShareModal('ready', null, sanitized);
         } catch (err) {
-            console.error('Share link import failed:', err);
-            history.replaceState(null, '', window.location.pathname + window.location.search);
-            toast('Invalid or corrupted share link');
+            console.error('Share link import failed at step: ' + steps[steps.length - 1], err);
+            const detail = 'Step: ' + (steps[steps.length - 1] || 'init') + '\nError: ' + err.message + '\n\nDebug: encoded.length=' + encoded.length + ', prefix=' + (encoded[0] || '?') + ', first40=' + encoded.slice(0, 40);
+            showShareModal('error', detail);
         }
     }
 
