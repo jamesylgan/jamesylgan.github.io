@@ -116,6 +116,15 @@
         .badge-ready { background: var(--success-light); color: #166534; }
         .badge-in-progress { background: var(--purple-light); color: var(--purple); }
         .badge-completed { background: var(--border-light); color: var(--text-muted); }
+        .view-mode-toggle { display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--bg-card);color:var(--text-muted);cursor:pointer;transition:all .2s ease;white-space:nowrap; }
+        .view-mode-toggle:hover { border-color:var(--text-light); }
+        .view-mode-toggle.travel { background:var(--purple);color:white;border-color:var(--purple); }
+        .view-mode-toggle.travel:hover { background:var(--purple);filter:brightness(1.1); }
+
+        .countdown-card { text-align:center;padding:16px;margin-bottom:16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);font-size:14px;color:var(--text); }
+        .countdown-card .countdown-number { font-size:28px;font-weight:700;color:var(--purple);margin-bottom:4px; }
+        .countdown-card .countdown-label { font-size:13px;color:var(--text-muted); }
+
         .unbooked { border-left: 3px solid var(--warning); }
         .visited { opacity: 0.6; }
         .dimmed { opacity: 0.35; filter: grayscale(0.5); }
@@ -314,6 +323,8 @@
         showPhotos: false,
         photoSize: 'medium',
         photoCustomPx: 100,
+        viewMode: 'plan',
+        travelDefaultTab: 'map',
     };
 
     let data = { trips: [] };
@@ -437,6 +448,32 @@
 
     function isSensitiveAllowed() {
         return settings.sensitiveDataMode !== 'restricted';
+    }
+
+    function isTravelMode() { return settings.viewMode === 'travel'; }
+
+    function getTripTravelStatus(trip) {
+        if (!trip || !trip.startDate) return 'pre';
+        const today = new Date().toISOString().split('T')[0];
+        if (today < trip.startDate) return 'pre';
+        if (trip.endDate && today > trip.endDate) return 'post';
+        return 'during';
+    }
+
+    function getCurrentTravelLeg(trip) {
+        if (!trip) return null;
+        const today = new Date().toISOString().split('T')[0];
+        const legs = (trip.legs || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+        for (const leg of legs) {
+            if (leg.startDate && leg.endDate && today >= leg.startDate && today <= leg.endDate) return leg;
+        }
+        return null;
+    }
+
+    function toggleViewMode() {
+        settings.viewMode = settings.viewMode === 'plan' ? 'travel' : 'plan';
+        saveSetting();
+        render();
     }
 
     function sensitiveFieldHTML(label, value, inputId, placeholder) {
@@ -750,7 +787,13 @@
     function openTrip(tripId) {
         state.view = 'trip';
         state.tripId = tripId;
-        state.tripTab = 'dashboard';
+        if (isTravelMode()) {
+            const trip = data.trips.find(t => t.id === tripId);
+            const status = getTripTravelStatus(trip);
+            state.tripTab = status === 'pre' ? 'actions' : (settings.travelDefaultTab || 'map');
+        } else {
+            state.tripTab = 'dashboard';
+        }
         state.dismissedActivities = new Set();
         persistNavState();
         render();
@@ -792,11 +835,14 @@
             `;
         } else {
             const trip = getTrip();
+            const _travel = isTravelMode();
+            const _toggleCls = 'view-mode-toggle' + (_travel ? ' travel' : '');
+            const _toggleLabel = _travel ? '\u2708\uFE0F Travel' : '\u{1F4CB} Plan';
             h.innerHTML = `
                 <div style="display:flex;align-items:center;gap:8px">
                     <button class="btn-icon" onclick="showTripsView()" title="Back">\u2190</button>
                     <h1 onclick="openTripModal('${state.tripId}')" style="font-size:1rem">${esc(trip?.name || 'Trip')}</h1>
-                    <span class="badge badge-${trip?.status || 'planning'}">${TRIP_STATUSES[trip?.status] || 'Planning'}</span>
+                    <button class="${_toggleCls}" onclick="toggleViewMode()">${_toggleLabel}</button>
                 </div>
                 <div class="header-actions">
                     <button class="btn-icon" onclick="openSettingsModal()" title="Settings">\u2699\uFE0F</button>
@@ -805,13 +851,7 @@
         }
         // Desktop tabs for trip view
         if (state.view === 'trip') {
-            const tabs = [
-                { id:'dashboard', label:'Dashboard', icon:'\u{1F4CA}' },
-                { id:'itinerary', label:'Itinerary', icon:'\u{1F4C5}' },
-                { id:'reservations', label:'Reservations', icon:'\u{1F3E8}' },
-                { id:'map', label:'Map', icon:'\u{1F5FA}\uFE0F' },
-                { id:'actions', label:'Actions', icon:'\u2705' },
-            ];
+            const tabs = _getVisibleTabs();
             const tabHTML = tabs.map(t =>
                 `<button class="tab-btn${state.tripTab === t.id ? ' active' : ''}" onclick="switchTripTab('${t.id}')">${t.icon} ${t.label}</button>`
             ).join('');
@@ -819,15 +859,25 @@
         }
     }
 
+    function _getVisibleTabs() {
+        const allTabs = [
+            { id:'dashboard', label:'Dashboard', icon:'\u{1F4CA}' },
+            { id:'itinerary', label:'Itinerary', icon:'\u{1F4C5}' },
+            { id:'reservations', label:'Reservations', icon:'\u{1F3E8}' },
+            { id:'map', label:'Map', icon:'\u{1F5FA}\uFE0F' },
+            { id:'actions', label:'Actions', icon:'\u2705' },
+        ];
+        if (isTravelMode()) {
+            const trip = getTrip();
+            const status = getTripTravelStatus(trip);
+            if (status !== 'pre') return allTabs.filter(t => t.id !== 'actions');
+        }
+        return allTabs;
+    }
+
     function renderBottomNav() {
         const nav = document.getElementById('bottomNav');
-        const tabs = [
-            { id:'dashboard', icon:'\u{1F4CA}', label:'Dashboard' },
-            { id:'itinerary', icon:'\u{1F4C5}', label:'Itinerary' },
-            { id:'reservations', icon:'\u{1F3E8}', label:'Reservations' },
-            { id:'map', icon:'\u{1F5FA}\uFE0F', label:'Map' },
-            { id:'actions', icon:'\u2705', label:'Actions' },
-        ];
+        const tabs = _getVisibleTabs();
         nav.style.display = '';
         nav.innerHTML = `<div class="bottom-nav-inner">${tabs.map(t =>
             `<button class="nav-item${state.tripTab === t.id ? ' active' : ''}" onclick="switchTripTab('${t.id}')"><span class="nav-icon">${t.icon}</span>${t.label}</button>`
@@ -1353,6 +1403,17 @@
                     </div>
                 </div>
 
+                ${state.view === 'trip' ? `
+                <div class="form-group" style="margin-top:12px">
+                    <label>Travel Mode Default Tab</label>
+                    <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Which tab opens first when entering a trip in Travel Mode during the trip.</p>
+                    <div class="segmented" style="margin-top:4px">
+                        <button class="segmented-btn${settings.travelDefaultTab === 'map' ? ' active' : ''}" onclick="setTravelDefaultTab('map',this)">Map</button>
+                        <button class="segmented-btn${settings.travelDefaultTab === 'itinerary' ? ' active' : ''}" onclick="setTravelDefaultTab('itinerary',this)">Itinerary</button>
+                    </div>
+                </div>
+                ` : ''}
+
                 <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
 
                 ${state.view === 'trip' ? `
@@ -1381,6 +1442,12 @@
     function setSegmentActive(btn) {
         btn.parentElement.querySelectorAll('.segmented-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
+    }
+
+    function setTravelDefaultTab(tab, btn) {
+        settings.travelDefaultTab = tab;
+        saveSetting();
+        setSegmentActive(btn);
     }
 
     async function setSensitiveMode(mode, btn) {
@@ -1760,14 +1827,25 @@
         if (topActions.length > 0) {
             actionsHTML = `<div class="card" style="margin-bottom:12px"><div class="card-header"><strong>Action Items</strong><button class="btn btn-ghost btn-sm" onclick="switchTripTab('actions')">View All</button></div><div class="card-body" style="padding:8px 0">${topActions.map(a => `<div class="item-row" style="cursor:pointer;margin:0 8px 4px" onclick="${esc(a.action)}"><div class="item-body"><div class="item-title" style="font-size:13px">${esc(a.text)}</div></div><span style="color:var(--text-light);font-size:14px">\u203A</span></div>`).join('')}</div></div>`;
         }
-        const quickActionsHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px"><button class="btn btn-sm" onclick="openLegModal()">+ City</button><button class="btn btn-sm" onclick="openLodgingModal()">+ Lodging</button><button class="btn btn-sm" onclick="openTransportModal()">+ Transport</button><button class="btn btn-sm" onclick="openActivityModal()">+ Activity</button></div>`;
+        const _travelActive = isTravelMode();
+        const _tripStatus = getTripTravelStatus(trip);
+        const quickActionsHTML = _travelActive ? '' : `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px"><button class="btn btn-sm" onclick="openLegModal()">+ City</button><button class="btn btn-sm" onclick="openLodgingModal()">+ Lodging</button><button class="btn btn-sm" onclick="openTransportModal()">+ Transport</button><button class="btn btn-sm" onclick="openActivityModal()">+ Activity</button></div>`;
+        let countdownHTML = '';
+        if (trip.startDate && _tripStatus === 'pre') {
+            const _now = new Date(); const _start = new Date(trip.startDate + 'T00:00:00');
+            const _diffMs = _start - _now; const _diffDays = Math.ceil(_diffMs / (1000*60*60*24));
+            if (_diffDays > 0) {
+                countdownHTML = `<div class="countdown-card"><div class="countdown-number">${_diffDays}</div><div class="countdown-label">day${_diffDays !== 1 ? 's' : ''} until your trip</div></div>`;
+            }
+        }
         const dateRange = trip.startDate ? formatDateRange(trip.startDate, trip.endDate) : 'No dates set';
         const durationText = totalDays > 0 ? `${totalDays} day${totalDays !== 1 ? 's' : ''}` : '';
+        const _fabHTML = _travelActive ? '' : `<button class="fab" onclick="openDashboardFAB()" title="Quick Add">+</button>`;
         mc.innerHTML = `<div class="view-content">
             ${renderLegTimeline(trip)}
             <div style="text-align:center;margin:8px 0 16px;font-size:13px;color:var(--text-muted)">${dateRange}${durationText ? ' &middot; ' + durationText : ''}</div>
-            ${statsHTML}${budgetHTML}${progressHTML}${actionsHTML}${quickActionsHTML}
-        </div><button class="fab" onclick="openDashboardFAB()" title="Quick Add">+</button>`;
+            ${countdownHTML}${statsHTML}${budgetHTML}${progressHTML}${actionsHTML}${quickActionsHTML}
+        </div>${_fabHTML}`;
     }
 
     function openDashboardFAB() {
@@ -2147,7 +2225,14 @@
     function renderReservations() {
         const trip = getTrip(); const mc = document.getElementById('mainContent');
         if (!trip) { mc.innerHTML = '<div class="view-content"><div class="empty-state"><p>No trip selected.</p></div></div>'; return; }
-        const transport = trip.transport || []; const lodging = trip.lodging || []; const activities = trip.activities || [];
+        const _travelActive = isTravelMode();
+        const _today = new Date().toISOString().split('T')[0];
+        let transport = trip.transport || []; let lodging = trip.lodging || []; let activities = trip.activities || [];
+        if (_travelActive) {
+            transport = transport.filter(t => !t.departure || t.departure.split('T')[0] >= _today);
+            lodging = lodging.filter(l => !l.checkOut || l.checkOut >= _today);
+            activities = activities.filter(a => !a.date || a.date >= _today);
+        }
         const flights = transport.filter(t => t.type === 'flight').sort((a, b) => (a.departure || '').localeCompare(b.departure || ''));
         const trains = transport.filter(t => t.type === 'train').sort((a, b) => (a.departure || '').localeCompare(b.departure || ''));
         const otherTransport = transport.filter(t => !['flight', 'train'].includes(t.type)).sort((a, b) => (a.departure || '').localeCompare(b.departure || ''));
@@ -2196,9 +2281,11 @@
             return `<div class="card" style="margin-bottom:8px"><div class="card-body" style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span>\u{1F3E8}</span><strong>${esc(ho.name)}</strong><span class="badge" style="font-size:10px;background:var(--bg-secondary)">${esc(ho.city)}</span></div>${costHTML}${linkHTML}${notesHTML}</div><div class="item-actions"><button class="btn btn-sm" onclick="openQuickBookModal('${esc(ho.id)}')" title="Book this hotel" style="font-size:11px">Book</button><button class="btn-icon" onclick="openHotelOptionModal('${esc(ho.id)}')" title="Edit">\u270F\uFE0F</button></div></div></div>`;
         }
 
-        const hotelOptions = (trip.hotelOptions || []).slice().sort((a, b) => (a.city || '').localeCompare(b.city || '') || (a.name || '').localeCompare(b.name || ''));
+        const hotelOptions = _travelActive ? [] : (trip.hotelOptions || []).slice().sort((a, b) => (a.city || '').localeCompare(b.city || '') || (a.name || '').localeCompare(b.name || ''));
+        const _hotelOptsSection = _travelActive ? '' : renderSection('Hotel Options','\u{1F50D}',hotelOptions,renderHotelOptionCard,'No hotel options yet');
+        const _resFab = _travelActive ? '' : `<button class="fab" onclick="openReservationQuickAdd()" title="Add reservation">+</button>`;
 
-        mc.innerHTML = `<div class="view-content"><div class="view-header"><h2>Reservations</h2></div>${renderSection('Flights','\u2708\uFE0F',flights,renderTransportCard,'No flights booked yet')}${renderSection('Trains','\u{1F686}',trains,renderTransportCard,'No trains booked yet')}${renderSection('Other Transport','\u{1F690}',otherTransport,renderTransportCard,'No other transport booked yet')}${renderSection('Hotels','\u{1F3E8}',hotels,renderLodgingCard,'No hotels booked yet')}${renderSection('Hotel Options','\u{1F50D}',hotelOptions,renderHotelOptionCard,'No hotel options yet')}${renderSection('Activity Reservations','\u{1F3AF}',reservedActivities,renderActivityResCard,'No activity reservations yet')}</div><button class="fab" onclick="openReservationQuickAdd()" title="Add reservation">+</button>`;
+        mc.innerHTML = `<div class="view-content"><div class="view-header"><h2>Reservations</h2></div>${renderSection('Flights','\u2708\uFE0F',flights,renderTransportCard,'No flights booked yet')}${renderSection('Trains','\u{1F686}',trains,renderTransportCard,'No trains booked yet')}${renderSection('Other Transport','\u{1F690}',otherTransport,renderTransportCard,'No other transport booked yet')}${renderSection('Hotels','\u{1F3E8}',hotels,renderLodgingCard,'No hotels booked yet')}${_hotelOptsSection}${renderSection('Activity Reservations','\u{1F3AF}',reservedActivities,renderActivityResCard,'No activity reservations yet')}</div>${_resFab}`;
     }
 
     function openReservationQuickAdd() {
@@ -2835,10 +2922,11 @@
         const trip = getTrip(); const mc = document.getElementById('mainContent');
         if (!trip) { mc.innerHTML = '<div class="view-content"><div class="empty-state"><div class="empty-icon">\u{1F4C5}</div><p>No trip selected.</p></div></div>'; return; }
         const days = getDayRange(trip); const today = new Date().toISOString().split('T')[0];
-        const filter = state.itineraryFilter; const mode = state.itineraryMode;
+        const _travelActive = isTravelMode();
+        const filter = state.itineraryFilter; const mode = _travelActive ? 'ordered' : state.itineraryMode;
         const statusOpts = [{value:'',label:'All status'},{value:'booked',label:'Booked'},{value:'unbooked',label:'Unbooked'},{value:'visited',label:'Visited'}];
         const catOpts = [{value:'',label:'All categories'}].concat(Object.entries(CATEGORIES).map(([k,v]) => ({value:k,label:v+' '+k.charAt(0).toUpperCase()+k.slice(1)})));
-        let filterBarHTML = `<div class="filter-bar">
+        let filterBarHTML = _travelActive ? '' : `<div class="filter-bar">
             <select class="select" onchange="state.itineraryFilter.legId=this.value||null;render()">${legOptions(trip, filter.legId)}</select>
             <select class="select" onchange="state.itineraryFilter.category=this.value||null;render()">${catOpts.map(o => `<option value="${o.value}"${o.value === (filter.category || '') ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select>
             <select class="select" onchange="state.itineraryFilter.status=this.value||null;render()">${statusOpts.map(o => `<option value="${o.value}"${o.value === (filter.status || '') ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select>
@@ -2848,7 +2936,33 @@
                 <button class="segmented-btn${mode === 'dayplans' ? ' active' : ''}" onclick="state.itineraryMode='dayplans';render()">Day Plans</button>
             </div>
         </div>`;
-        let smartPasteBtn = `<div style="margin-bottom:12px;display:flex;gap:8px"><button class="btn btn-sm" onclick="openSmartPaste()">\u{1F4CB} Smart Paste</button></div>`;
+        let smartPasteBtn = _travelActive ? '' : `<div style="margin-bottom:12px;display:flex;gap:8px"><button class="btn btn-sm" onclick="openSmartPaste()">\u{1F4CB} Smart Paste</button></div>`;
+
+        // In travel mode during/after trip, filter days to current leg + first day of next leg
+        let travelFilteredDays = null;
+        if (_travelActive && getTripTravelStatus(trip) !== 'pre' && days.length > 0) {
+            const legs = (trip.legs || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+            const curLeg = getCurrentTravelLeg(trip);
+            if (curLeg) {
+                const curIdx = legs.findIndex(l => l.id === curLeg.id);
+                const nextLeg = curIdx >= 0 && curIdx < legs.length - 1 ? legs[curIdx + 1] : null;
+                const allowedDays = new Set();
+                for (const d of days) { if (d >= curLeg.startDate && d <= curLeg.endDate) allowedDays.add(d); }
+                if (nextLeg && nextLeg.startDate) allowedDays.add(nextLeg.startDate);
+                travelFilteredDays = days.filter(d => allowedDays.has(d));
+            } else {
+                // Between legs (travel day): find prev leg (endDate < today) and next leg (startDate > today)
+                let prevLeg = null, nextLeg = null;
+                for (const leg of legs) {
+                    if (leg.endDate && leg.endDate < today) prevLeg = leg;
+                    if (!nextLeg && leg.startDate && leg.startDate > today) nextLeg = leg;
+                }
+                const allowedDays = new Set();
+                if (prevLeg && prevLeg.endDate) allowedDays.add(prevLeg.endDate);
+                if (nextLeg) { for (const d of days) { if (d >= nextLeg.startDate && d <= nextLeg.endDate) allowedDays.add(d); } }
+                travelFilteredDays = days.filter(d => allowedDays.has(d));
+            }
+        }
 
         if (mode === 'unordered') {
             let html = `<div class="view-content">${filterBarHTML}${smartPasteBtn}`;
@@ -2930,16 +3044,18 @@
         }
 
         let dayCardsHTML = '';
-        if (days.length === 0) { dayCardsHTML = `<div class="empty-state" style="padding:24px 0"><p>Set trip dates to see your day-by-day itinerary.</p></div>`; }
+        const _renderDays = travelFilteredDays || days;
+        if (_renderDays.length === 0) { dayCardsHTML = `<div class="empty-state" style="padding:24px 0"><p>Set trip dates to see your day-by-day itinerary.</p></div>`; }
         else {
             let prevCity = null;
             let shownStartBanner = false;
-            for (let i = 0; i < days.length; i++) {
-                const dateStr = days[i]; const leg = getLegForDate(trip, dateStr);
-                if (filter.legId && (!leg || leg.id !== filter.legId)) continue;
+            for (let i = 0; i < _renderDays.length; i++) {
+                const dateStr = _renderDays[i]; const leg = getLegForDate(trip, dateStr);
+                if (!_travelActive && filter.legId && (!leg || leg.id !== filter.legId)) continue;
+                const _dayNum = days.indexOf(dateStr);
                 const curCity = leg ? leg.city : null;
                 if (!shownStartBanner && curCity && trip.startLocation && trip.startLocation.toLowerCase() !== curCity.toLowerCase()) {
-                    dayCardsHTML += renderTravelBanner(trip, trip.startLocation, curCity, days[0]);
+                    dayCardsHTML += renderTravelBanner(trip, trip.startLocation, curCity, _renderDays[0]);
                     shownStartBanner = true;
                 } else if (!shownStartBanner) { shownStartBanner = true; }
                 if (prevCity && curCity && prevCity.toLowerCase() !== curCity.toLowerCase()) {
@@ -2957,7 +3073,7 @@
                 const planBadge = usedPlan ? ` <span style="font-size:11px;color:var(--purple)">&middot; ${esc(usedPlan.name)}</span>` : '';
                 dayCardsHTML += `<div class="card day-card" ${isToday ? 'style="border-left:3px solid var(--purple)"' : ''} ondragover="event.preventDefault()" ondrop="var aid=event.dataTransfer.getData('application/x-activity-id');if(aid){event.stopPropagation();moveActivityToDate(aid,'${dateStr}')}">
                     <div class="day-card-header" onclick="toggleDayCollapsed('${dateStr}')">
-                        <div><div class="day-title">Day ${i+1} &mdash; ${formatDate(dateStr)}${todayBadge}</div><div class="day-subtitle">${dayOfWeek}${legLabel ? ' &middot; '+legLabel : ''}${planBadge}</div></div>
+                        <div><div class="day-title">Day ${_dayNum+1} &mdash; ${formatDate(dateStr)}${todayBadge}</div><div class="day-subtitle">${dayOfWeek}${legLabel ? ' &middot; '+legLabel : ''}${planBadge}</div></div>
                         <span style="font-size:18px;transition:transform .2s;${collapsed ? '' : 'transform:rotate(180deg)'}">\u25BC</span>
                     </div>`;
                 if (!collapsed) {
@@ -2978,7 +3094,7 @@
                     } else if (events.transport.length === 0 && events.lodging.length === 0) {
                         dayCardsHTML += `<p style="color:var(--text-muted);font-size:13px;padding:4px 0">No events for this day.</p>`;
                     }
-                    if (leg && !hasBookedLodgingForNight(trip, dateStr)) {
+                    if (!_travelActive && leg && !hasBookedLodgingForNight(trip, dateStr)) {
                         const dayHotelOpts = (trip.hotelOptions || []).filter(ho => ho.city === leg.city);
                         if (dayHotelOpts.length > 0) {
                             dayCardsHTML += `<details style="margin-top:8px;margin-bottom:4px"><summary style="font-size:12px;color:var(--text-muted);cursor:pointer">Hotel options for ${esc(leg.city)} (${dayHotelOpts.length})</summary><div style="margin-top:6px">`;
@@ -2990,7 +3106,7 @@
                             dayCardsHTML += `</div></details>`;
                         }
                     }
-                    if (leg) {
+                    if (!_travelActive && leg) {
                         const availablePlans = (trip.dayPlans || []).filter(dp => dp.legId === leg.id && !dp.usedDate && !dp.assignedDate);
                         if (availablePlans.length > 0) {
                             dayCardsHTML += `<details style="margin-top:8px;margin-bottom:4px"><summary style="font-size:12px;color:var(--purple);cursor:pointer;font-weight:600">Day plans for ${esc(leg.city)} (${availablePlans.length})</summary><div style="margin-top:6px">`;
@@ -3001,57 +3117,62 @@
                             dayCardsHTML += `</div></details>`;
                         }
                     }
-                    const addLegId = leg ? leg.id : '';
-                    dayCardsHTML += `<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap"><button class="btn btn-sm btn-ghost" style="font-size:12px" onclick="openActivityModalForDate('${dateStr}','${addLegId}')">+ Activity</button><button class="btn btn-sm btn-ghost" style="font-size:12px" onclick="openLodgingModalForDate('${dateStr}','${addLegId}')">+ Lodging</button><button class="btn btn-sm btn-ghost" style="font-size:12px" onclick="openTransportModalForDate('${dateStr}')">+ Transport</button><button class="btn btn-sm btn-ghost" style="font-size:12px" onclick="openHotelOptionModalForCity('${addLegId}')">+ Hotel Option</button></div>`;
+                    if (!_travelActive) {
+                        const addLegId = leg ? leg.id : '';
+                        dayCardsHTML += `<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap"><button class="btn btn-sm btn-ghost" style="font-size:12px" onclick="openActivityModalForDate('${dateStr}','${addLegId}')">+ Activity</button><button class="btn btn-sm btn-ghost" style="font-size:12px" onclick="openLodgingModalForDate('${dateStr}','${addLegId}')">+ Lodging</button><button class="btn btn-sm btn-ghost" style="font-size:12px" onclick="openTransportModalForDate('${dateStr}')">+ Transport</button><button class="btn btn-sm btn-ghost" style="font-size:12px" onclick="openHotelOptionModalForCity('${addLegId}')">+ Hotel Option</button></div>`;
+                    }
                     dayCardsHTML += `</div>`;
                 }
                 dayCardsHTML += `</div>`;
             }
             if (prevCity && trip.endLocation && trip.endLocation.toLowerCase() !== prevCity.toLowerCase()) {
-                dayCardsHTML += renderTravelBanner(trip, prevCity, trip.endLocation, days[days.length - 1]);
+                dayCardsHTML += renderTravelBanner(trip, prevCity, trip.endLocation, _renderDays[_renderDays.length - 1]);
             }
         }
 
-        const floatingPlans = (trip.dayPlans || []).filter(dp => !dp.assignedDate && !dp.usedDate);
-        const usedPlans = (trip.dayPlans || []).filter(dp => dp.usedDate);
         let floatingHTML = '';
-        if (floatingPlans.length > 0) {
-            floatingHTML += `<div style="margin-top:16px"><h3 style="font-size:14px;color:var(--text-muted);margin-bottom:8px">Floating Day Plans</h3>`;
-            for (const dp of floatingPlans) {
-                const actNames = (dp.activityIds || []).map(aid => { const a = (trip.activities || []).find(x => x.id === aid); return a ? esc(a.name) : '?'; }).join(', ');
-                const legName = (trip.legs || []).find(l => l.id === dp.legId)?.city || '';
-                floatingHTML += `<div class="card" style="margin-bottom:8px"><div class="card-body" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><strong style="font-size:14px">${esc(dp.name || 'Unnamed Plan')}</strong>${legName ? `<span class="badge" style="font-size:10px;margin-left:6px;background:var(--bg-secondary)">${esc(legName)}</span>` : ''}<div style="font-size:12px;color:var(--text-muted)">${actNames || 'No activities'}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm btn-ghost" onclick="openDayPlanModal('${dp.id}')">Edit</button>${days.length > 0 ? `<select class="select" style="width:auto;height:30px;font-size:12px" onchange="if(this.value)useDayPlanForDate('${dp.id}',this.value)"><option value="">Use on...</option>${days.map(d => `<option value="${d}">${formatDate(d)}</option>`).join('')}</select>` : ''}</div></div></div>`;
-            }
-            floatingHTML += `</div>`;
-        }
-        if (usedPlans.length > 0) {
-            floatingHTML += `<details style="margin-top:16px"><summary style="font-size:14px;color:var(--text-muted);cursor:pointer">Archived Day Plans (${usedPlans.length})</summary><div style="margin-top:8px">`;
-            for (const dp of usedPlans) {
-                const actNames = (dp.activityIds || []).map(aid => { const a = (trip.activities || []).find(x => x.id === aid); return a ? esc(a.name) : '?'; }).join(', ');
-                floatingHTML += `<div class="card" style="margin-bottom:8px;opacity:0.7"><div class="card-body" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><strong style="font-size:14px">${esc(dp.name || 'Unnamed Plan')}</strong><span style="font-size:11px;color:var(--text-muted);margin-left:6px">used ${formatDate(dp.usedDate)}</span><div style="font-size:12px;color:var(--text-muted)">${actNames || 'No activities'}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm btn-ghost" style="font-size:11px" onclick="unarchiveDayPlan('${dp.id}')">Restore</button><button class="btn btn-sm btn-ghost" style="font-size:11px" onclick="openDayPlanModal('${dp.id}')">Edit</button></div></div></div>`;
-            }
-            floatingHTML += `</div></details>`;
-        }
-
-        let pooledActs = (trip.activities || []).filter(a => a.isPooled);
-        const assignedPooledIds = new Set();
-        for (const dp of trip.dayPlans || []) { if (dp.assignedDate) for (const aid of dp.activityIds || []) assignedPooledIds.add(aid); }
-        pooledActs = pooledActs.filter(a => !a.date && !assignedPooledIds.has(a.id));
-        const usedOptionGroupIds = new Set();
-        for (const a of trip.activities || []) { if (a.optionGroupId && a.visited) usedOptionGroupIds.add(a.optionGroupId); }
-        pooledActs = pooledActs.filter(a => {
-            if (!a.optionGroupId || !usedOptionGroupIds.has(a.optionGroupId)) return true;
-            return a.visited;
-        });
-        pooledActs = _applyActivityFilters(pooledActs, filter);
         let poolHTML = '';
-        if (pooledActs.length > 0) {
-            poolHTML += `<div style="margin-top:16px"><h3 style="font-size:14px;color:var(--text-muted);margin-bottom:8px">Pool (use any day)</h3><div class="card"><div class="card-body"><ul class="item-list">`;
-            for (const act of pooledActs) poolHTML += _renderActivityRow(act, trip, null, null);
-            poolHTML += `</ul></div></div></div>`;
+        if (!_travelActive) {
+            const floatingPlans = (trip.dayPlans || []).filter(dp => !dp.assignedDate && !dp.usedDate);
+            const usedPlans = (trip.dayPlans || []).filter(dp => dp.usedDate);
+            if (floatingPlans.length > 0) {
+                floatingHTML += `<div style="margin-top:16px"><h3 style="font-size:14px;color:var(--text-muted);margin-bottom:8px">Floating Day Plans</h3>`;
+                for (const dp of floatingPlans) {
+                    const actNames = (dp.activityIds || []).map(aid => { const a = (trip.activities || []).find(x => x.id === aid); return a ? esc(a.name) : '?'; }).join(', ');
+                    const legName = (trip.legs || []).find(l => l.id === dp.legId)?.city || '';
+                    floatingHTML += `<div class="card" style="margin-bottom:8px"><div class="card-body" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><strong style="font-size:14px">${esc(dp.name || 'Unnamed Plan')}</strong>${legName ? `<span class="badge" style="font-size:10px;margin-left:6px;background:var(--bg-secondary)">${esc(legName)}</span>` : ''}<div style="font-size:12px;color:var(--text-muted)">${actNames || 'No activities'}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm btn-ghost" onclick="openDayPlanModal('${dp.id}')">Edit</button>${days.length > 0 ? `<select class="select" style="width:auto;height:30px;font-size:12px" onchange="if(this.value)useDayPlanForDate('${dp.id}',this.value)"><option value="">Use on...</option>${days.map(d => `<option value="${d}">${formatDate(d)}</option>`).join('')}</select>` : ''}</div></div></div>`;
+                }
+                floatingHTML += `</div>`;
+            }
+            if (usedPlans.length > 0) {
+                floatingHTML += `<details style="margin-top:16px"><summary style="font-size:14px;color:var(--text-muted);cursor:pointer">Archived Day Plans (${usedPlans.length})</summary><div style="margin-top:8px">`;
+                for (const dp of usedPlans) {
+                    const actNames = (dp.activityIds || []).map(aid => { const a = (trip.activities || []).find(x => x.id === aid); return a ? esc(a.name) : '?'; }).join(', ');
+                    floatingHTML += `<div class="card" style="margin-bottom:8px;opacity:0.7"><div class="card-body" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><strong style="font-size:14px">${esc(dp.name || 'Unnamed Plan')}</strong><span style="font-size:11px;color:var(--text-muted);margin-left:6px">used ${formatDate(dp.usedDate)}</span><div style="font-size:12px;color:var(--text-muted)">${actNames || 'No activities'}</div></div><div style="display:flex;gap:4px"><button class="btn btn-sm btn-ghost" style="font-size:11px" onclick="unarchiveDayPlan('${dp.id}')">Restore</button><button class="btn btn-sm btn-ghost" style="font-size:11px" onclick="openDayPlanModal('${dp.id}')">Edit</button></div></div></div>`;
+                }
+                floatingHTML += `</div></details>`;
+            }
+
+            let pooledActs = (trip.activities || []).filter(a => a.isPooled);
+            const assignedPooledIds = new Set();
+            for (const dp of trip.dayPlans || []) { if (dp.assignedDate) for (const aid of dp.activityIds || []) assignedPooledIds.add(aid); }
+            pooledActs = pooledActs.filter(a => !a.date && !assignedPooledIds.has(a.id));
+            const usedOptionGroupIds = new Set();
+            for (const a of trip.activities || []) { if (a.optionGroupId && a.visited) usedOptionGroupIds.add(a.optionGroupId); }
+            pooledActs = pooledActs.filter(a => {
+                if (!a.optionGroupId || !usedOptionGroupIds.has(a.optionGroupId)) return true;
+                return a.visited;
+            });
+            pooledActs = _applyActivityFilters(pooledActs, filter);
+            if (pooledActs.length > 0) {
+                poolHTML += `<div style="margin-top:16px"><h3 style="font-size:14px;color:var(--text-muted);margin-bottom:8px">Pool (use any day)</h3><div class="card"><div class="card-body"><ul class="item-list">`;
+                for (const act of pooledActs) poolHTML += _renderActivityRow(act, trip, null, null);
+                poolHTML += `</ul></div></div></div>`;
+            }
         }
 
-        mc.innerHTML = `<div class="view-content">${filterBarHTML}${smartPasteBtn}${dayCardsHTML}${floatingHTML}${poolHTML}</div><button class="fab" onclick="openActivityModal()" title="Add Activity">+</button>`;
+        const _itinFab = _travelActive ? '' : `<button class="fab" onclick="openActivityModal()" title="Add Activity">+</button>`;
+        mc.innerHTML = `<div class="view-content">${filterBarHTML}${smartPasteBtn}${dayCardsHTML}${floatingHTML}${poolHTML}</div>${_itinFab}`;
     }
 
     function _applyActivityFilters(activities, filter) {
