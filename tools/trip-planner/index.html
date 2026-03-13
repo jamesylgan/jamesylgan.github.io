@@ -296,7 +296,7 @@
 
     <div class="toast" id="toast"></div>
 
-    <input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImport(event)">
+    <input type="file" id="importFile" accept=".json,.trip" style="display:none" onchange="handleImport(event)">
 
     <script>
     // === CORE: Constants, State, Utilities ===
@@ -1492,35 +1492,30 @@
         window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
     }
 
-    async function shareTripLink(tripId) {
+    async function shareTripFile(tripId) {
         const trip = getTrip(tripId);
         if (!trip) { toast('No trip to share'); return; }
         const payload = { version: 1, format: 'trip-planner-single', exportedAt: new Date().toISOString(), trip };
-        const json = JSON.stringify(payload);
-        try {
-            const encoded = encodeShareData(json);
-            // Verify roundtrip before sharing
-            const verify = LZ.decompress(encoded);
-            if (!verify || verify !== json) {
-                toast('LZ roundtrip failed — cannot share');
-                console.error('LZ verify failed', { encodedLen: encoded.length, verifyLen: verify?.length, match: verify === json });
-                return;
-            }
-            const url = window.location.origin + window.location.pathname + '#trip=' + encoded;
-            if (url.length > 200000) {
-                toast('Trip too large for link — use Export instead');
-                return;
-            }
+        const json = JSON.stringify(payload, null, 2);
+        const filename = tripFilename(trip.name, 'trip');
+        const file = new File([json], filename, { type: 'application/json' });
+        // Try native share sheet (works great on mobile for WhatsApp, Telegram, etc.)
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
             try {
-                await navigator.clipboard.writeText(url);
-                toast('Share link copied to clipboard! (' + (encoded.length/1024).toFixed(0) + 'KB)');
-            } catch {
-                // Clipboard API not available — show in a prompt
-                prompt('Copy this share link:', url);
+                await navigator.share({ title: trip.name, files: [file] });
+                toast('Shared!');
+                return;
+            } catch (err) {
+                if (err.name === 'AbortError') return; // User cancelled
             }
-        } catch (err) {
-            toast('Failed to create share link: ' + err.message);
         }
+        // Fallback: download the file
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename; a.click();
+        URL.revokeObjectURL(url);
+        toast('Trip file downloaded');
     }
 
     // --- Settings Modal ---
@@ -1629,12 +1624,13 @@
                         <button class="btn btn-sm" onclick="exportTrip('${state.tripId}');closeModal()">Export This Trip</button>
                         <button class="btn btn-sm" onclick="exportICS('${state.tripId}');closeModal()">Export Calendar (.ics)</button>
                         <button class="btn btn-sm" onclick="exportWhatsApp('${state.tripId}');closeModal()">Share Itinerary</button>
-                        <button class="btn btn-sm" onclick="shareTripLink('${state.tripId}');closeModal()">Share Link</button>
+                        <button class="btn btn-sm" onclick="shareTripFile('${state.tripId}');closeModal()">Share Trip File</button>
                     </div>
                 ` : ''}
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
                     <button class="btn btn-sm" onclick="document.getElementById('importFile').click();closeModal()">Import</button>
                     <button class="btn btn-sm" onclick="exportAll();closeModal()">Export All</button>
+                    ${canInstallPWA() ? '<button class="btn btn-sm" onclick="installPWA();closeModal()">Install App</button>' : ''}
                     <button class="btn btn-sm" onclick="clearAppCache();closeModal()">Clear Cache</button>
                     <button class="btn btn-sm btn-danger" onclick="clearAllData()" style="margin-left:auto">Clear All Data</button>
                 </div>
@@ -4523,6 +4519,18 @@
                 }
             } catch (err) { toast('Failed to open file: ' + err.message); }
         }
+    }
+
+    // --- PWA Install ---
+    let _deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); _deferredInstallPrompt = e; });
+    function canInstallPWA() { return !!_deferredInstallPrompt; }
+    async function installPWA() {
+        if (!_deferredInstallPrompt) { toast('Install not available — try adding to home screen from browser menu'); return; }
+        _deferredInstallPrompt.prompt();
+        const { outcome } = await _deferredInstallPrompt.userChoice;
+        if (outcome === 'accepted') toast('Installing…');
+        _deferredInstallPrompt = null;
     }
 
     if ('serviceWorker' in navigator) {
