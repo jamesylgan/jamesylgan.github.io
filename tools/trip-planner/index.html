@@ -328,7 +328,7 @@
         photoCustomPx: 100,
         viewMode: 'plan',
         travelDefaultTab: 'map',
-        showVectorButton: false,
+        showOfflineMaps: false,
     };
 
     let data = { trips: [] };
@@ -1753,8 +1753,8 @@
                     <button class="toggle ${settings.showPackingList ? 'on' : ''}" onclick="settings.showPackingList=!settings.showPackingList;saveSetting();this.classList.toggle('on')"></button>
                 </div>
                 <div class="toggle-wrap">
-                    <label>Show Vector Map Button</label>
-                    <button class="toggle ${settings.showVectorButton ? 'on' : ''}" onclick="settings.showVectorButton=!settings.showVectorButton;saveSetting();this.classList.toggle('on')"></button>
+                    <label>Offline Maps (broken)</label>
+                    <button class="toggle ${settings.showOfflineMaps ? 'on' : ''}" onclick="settings.showOfflineMaps=!settings.showOfflineMaps;saveSetting();this.classList.toggle('on')"></button>
                 </div>
                 <div class="toggle-wrap">
                     <label>Show Photos</label>
@@ -3851,10 +3851,7 @@
         // Export GPX + category filter row
         html += `<div style="display:flex;gap:6px;align-items:center;margin-bottom:16px;flex-wrap:wrap">`;
         html += `<button class="btn btn-sm" onclick="exportGPX()">📥 Export GPX</button>`;
-        if (settings.showVectorButton) {
-            html += `<button id="vectorToggleBtn" class="btn btn-sm${_offlineLayerEnabled ? ' btn-primary' : ''}" onclick="_toggleVectorLayer()" title="Toggle vector map">🗺️ Vector</button>`;
-        }
-        if (window.__ANDROID_APP__) {
+        if (window.__ANDROID_APP__ && settings.showOfflineMaps) {
             html += `<button class="btn btn-sm" onclick="openOfflineMapsModal()">📶 Offline Maps</button>`;
         }
         html += `<select class="select" style="min-width:0;flex:1" onchange="state.mapFilter.category=this.value||null;render()">`;
@@ -4008,30 +4005,6 @@
         });
         _rasterTileLayer.addTo(map);
 
-        // Add offline vector tile layers (Android app only)
-        _offlineVectorLayer = null;
-        if (window.__ANDROID_APP__ && typeof protomapsL !== 'undefined') {
-            try {
-                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-                const pmtilesTheme = isDark ? 'dark' : 'light';
-
-                // World basemap layer (zoom 0-4 data, crisp vector up to z14, CSS-scaled beyond)
-                _offlineVectorLayer = protomapsL.leafletLayer({
-                    url: 'https://bellevue.tech/tools/trip-planner/offline-pmtiles/world-overview.pmtiles',
-                    maxDataZoom: 4,
-                    maxNativeZoom: 14,
-                    maxZoom: 19,
-                    flavor: pmtilesTheme
-                });
-                if (_offlineLayerEnabled) _offlineVectorLayer.addTo(map);
-
-                // Add layers for downloaded regions (higher detail)
-                _refreshOfflineRegionLayers(pmtilesTheme);
-            } catch (e) {
-                console.warn('Failed to add offline vector layer:', e);
-            }
-        }
-
         map.on('zoomend moveend', resolveMarkerOverlaps);
 
         setTimeout(() => {
@@ -4041,37 +4014,11 @@
 
     // --- Offline Maps (Android app only) ---
 
-    // Offline vector tile layer reference + toggle state
-    let _rasterTileLayer = null;      // OSM raster tile layer
-    let _offlineVectorLayer = null;   // world basemap layer
-    let _offlineRegionLayers = [];    // per-region detail layers
+    // Offline vector tile layer reference (inactive — see vector-debug.md for status)
+    let _rasterTileLayer = null;
+    let _offlineVectorLayer = null;
+    let _offlineRegionLayers = [];
     let _offlineLayerEnabled = false;
-    let _vectorUserPref = false;      // user manually toggled vector on
-
-    function _toggleVectorLayer() {
-        _vectorUserPref = !_vectorUserPref;
-        _applyOfflineLayerState();
-        const btn = document.getElementById('vectorToggleBtn');
-        if (btn) btn.className = 'btn btn-sm' + (_offlineLayerEnabled ? ' btn-primary' : '');
-    }
-
-    function _applyOfflineLayerState() {
-        const shouldEnable = navigator.onLine === false || _vectorUserPref;
-        if (shouldEnable === _offlineLayerEnabled) return;
-        _offlineLayerEnabled = shouldEnable;
-        if (map) {
-            const allLayers = [_offlineVectorLayer, ..._offlineRegionLayers].filter(Boolean);
-            allLayers.forEach(layer => {
-                if (_offlineLayerEnabled) layer.addTo(map);
-                else map.removeLayer(layer);
-            });
-            // Swap: hide raster when vector is on, show when off
-            if (_rasterTileLayer) {
-                if (_offlineLayerEnabled) map.removeLayer(_rasterTileLayer);
-                else _rasterTileLayer.addTo(map);
-            }
-        }
-    }
 
     /** Rebuild per-region protomaps-leaflet layers from downloaded regions. */
     function _refreshOfflineRegionLayers(theme) {
@@ -4106,14 +4053,6 @@
             }
         });
     }
-
-    // Auto-switch on connectivity changes
-    window.addEventListener('offline', () => {
-        if (window.__ANDROID_APP__) _applyOfflineLayerState();
-    });
-    window.addEventListener('online', () => {
-        if (window.__ANDROID_APP__) _applyOfflineLayerState();
-    });
 
     // Track download progress: { regionId: { downloaded, total } }
     let _offlineDownloadProgress = {};
