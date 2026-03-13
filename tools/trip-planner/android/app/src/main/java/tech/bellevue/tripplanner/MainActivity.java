@@ -118,6 +118,16 @@ public class MainActivity extends AppCompatActivity {
                 });
 
         webView = findViewById(R.id.webview);
+
+        // Clear WebView cache on version upgrade to ensure latest bundled assets
+        SharedPreferences prefs = getSharedPreferences("trip_planner", MODE_PRIVATE);
+        int lastVersion = prefs.getInt("last_version_code", 0);
+        int currentVersion = 4; // must match versionCode in build.gradle.kts
+        if (lastVersion < currentVersion) {
+            webView.clearCache(true);
+            prefs.edit().putInt("last_version_code", currentVersion).apply();
+        }
+
         tileCache = new TileCache(this);
         offlineMapStore = new OfflineMapStore(this);
         downloader = new PMTilesDownloader(offlineMapStore, webView);
@@ -208,7 +218,7 @@ public class MainActivity extends AppCompatActivity {
                 pageLoaded = true;
                 // Inject Android app flag and re-render so Android-only UI appears
                 view.evaluateJavascript(
-                    "window.__ANDROID_APP__ = true; window.__APP_VERSION__ = '1.2';"
+                    "window.__ANDROID_APP__ = true; window.__APP_VERSION__ = '1.2.1';"
                     + "if(typeof render==='function')render();", null);
                 injectPendingTrip();
             }
