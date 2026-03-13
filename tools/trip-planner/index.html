@@ -4009,7 +4009,8 @@
                 const pmtilesTheme = isDark ? 'dark' : 'light';
                 // Build transparent paint rules: strip earth layer so raster shows through
                 const _flavorObj = protomapsL.namedFlavor(pmtilesTheme);
-                const _paintRules = protomapsL.paintRules(_flavorObj).filter(r => r.dataLayer !== 'earth');
+                const _noFill = new Set(['earth', 'landcover', 'landuse']);
+                const _paintRules = protomapsL.paintRules(_flavorObj).filter(r => !_noFill.has(r.dataLayer));
                 const _labelRules = protomapsL.labelRules(_flavorObj);
 
                 // World basemap layer (zoom 0-4, always available)
@@ -4408,8 +4409,9 @@
         if (complete === total) {
             return `<span style="color:var(--success);font-weight:600;font-size:13px">All ${total} downloaded &#10003;</span>`;
         }
-        if (downloading > 0) {
-            return `<span style="color:var(--text-muted);font-size:13px">${complete + downloading}/${total} downloading...</span>`;
+        if (downloading > 0 || complete > 0) {
+            const inProgress = downloading > 0;
+            return `<span style="color:var(--text-muted);font-size:13px">${complete}/${total} downloaded${inProgress ? '...' : ''}</span>`;
         }
 
         // Use cascade strategy to determine label
@@ -4417,13 +4419,7 @@
         const strategy = config ? _resolveCascadeStrategy(parentId, repo, config) : null;
 
         if (strategy && strategy.type === 'parent') {
-            const remaining = total - complete;
-            const label = complete > 0 ? `Download ${esc(strategy.name)} file` : `Download ${esc(strategy.name)} file`;
-            return `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();_cascadeDownload('${esc(parentId)}','${esc(repo)}',${maxZoom})">${label}</button>`;
-        }
-
-        if (complete > 0) {
-            return `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();_cascadeDownload('${esc(parentId)}','${esc(repo)}',${maxZoom})">${total - complete} remaining</button>`;
+            return `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();_cascadeDownload('${esc(parentId)}','${esc(repo)}',${maxZoom})">Download ${esc(strategy.name)} file</button>`;
         }
 
         const count = strategy && strategy.type === 'children' ? strategy.items.length : total;
