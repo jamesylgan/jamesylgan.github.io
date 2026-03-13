@@ -205,8 +205,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 pageLoaded = true;
-                // Inject Android app flag so the web app can show Android-only UI
-                view.evaluateJavascript("window.__ANDROID_APP__ = true;", null);
+                // Inject Android app flag and re-render so Android-only UI appears
+                view.evaluateJavascript(
+                    "window.__ANDROID_APP__ = true; window.__APP_VERSION__ = '1.2';"
+                    + "if(typeof render==='function')render();", null);
                 injectPendingTrip();
             }
         });

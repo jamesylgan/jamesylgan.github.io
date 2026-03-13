@@ -1693,7 +1693,7 @@
 
         openModal(`
             <div class="modal-header">
-                <h3>Settings</h3>
+                <h3>Settings${window.__APP_VERSION__ ? ' <span style="font-size:11px;color:var(--text-muted);font-weight:normal">v' + window.__APP_VERSION__ + '</span>' : ''}</h3>
                 <button class="btn-icon" onclick="closeModal()">\u2715</button>
             </div>
             <div class="modal-body">
