@@ -278,6 +278,7 @@
             #appHeader, #bottomNav, .fab, .modal-overlay, .toast { display: none !important; }
             body { padding: 0; max-width: 100%; }
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -4014,6 +4015,7 @@
                     maxZoom: 19,
                     flavor: pmtilesTheme
                 });
+                _offlineVectorLayer.backgroundColor = null; // transparent → raster shows through
                 if (_offlineLayerEnabled) _offlineVectorLayer.addTo(map);
 
                 // Add layers for downloaded regions (higher detail)
@@ -4083,6 +4085,7 @@
                     maxZoom: 19,
                     flavor: theme
                 });
+                layer.backgroundColor = null; // transparent → raster shows through
                 _offlineRegionLayers.push(layer);
                 if (_offlineLayerEnabled) layer.addTo(map);
             } catch (e) {
@@ -4103,6 +4106,8 @@
     let _offlineDownloadProgress = {};
     // Cached repo configs: { repoSlug: configJson }
     let _repoConfigs = {};
+    // Cached release asset filenames: { repoSlug: Set of filenames }
+    let _repoAssets = {};
 
     function openOfflineMapsModal() {
         if (!window.__ANDROID_APP__) return;
@@ -4179,6 +4184,21 @@
             }
         });
 
+        // Load release assets per repo (same 3-tier caching pattern)
+        repos.forEach(repo => {
+            if (_repoAssets[repo]) return;
+            const cached = AndroidNative.getCachedReleaseAssets(repo);
+            if (cached) {
+                try { _repoAssets[repo] = new Set(JSON.parse(cached)); return; } catch (e) {}
+            }
+            try {
+                const json = AndroidNative.fetchReleaseAssets(repo);
+                _repoAssets[repo] = new Set(JSON.parse(json));
+            } catch (e) {
+                _repoAssets[repo] = new Set();
+            }
+        });
+
         _renderBrowseContent(results, dlMap);
     }
 
@@ -4201,7 +4221,7 @@
                 if (hasRegions) {
                     html += _cascadeButton(ckey, regions, dlMap, repo, maxZoom, 'region');
                 } else {
-                    html += _dlButton(ckey, country.name, ckey, repo, country.file, country.bbox, maxZoom, dlMap[ckey]);
+                    html += _dlButton(ckey, country.name, ckey, repo, country.file, country.bbox, maxZoom, dlMap[ckey], dlMap);
                 }
                 html += `</div>`;
 
@@ -4218,7 +4238,7 @@
                     if (hasCities) {
                         html += _cascadeButton(rid, cities, dlMap, repo, maxZoom, 'city', ckey, rkey);
                     } else {
-                        html += _dlButton(rid, region.name, ckey, repo, region.file, region.bbox, maxZoom, dlMap[rid]);
+                        html += _dlButton(rid, region.name, ckey, repo, region.file, region.bbox, maxZoom, dlMap[rid], dlMap);
                     }
                     html += `</div>`;
 
@@ -4228,7 +4248,7 @@
                         const cityid = ckey + '--' + rkey + '--' + citykey;
                         html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0 6px 16px;border-top:1px solid var(--border-light)">`;
                         html += `<span style="font-size:13px">${esc(city.name)}</span>`;
-                        html += _dlButton(cityid, city.name, ckey, repo, city.file, city.bbox, maxZoom, dlMap[cityid]);
+                        html += _dlButton(cityid, city.name, ckey, repo, city.file, city.bbox, maxZoom, dlMap[cityid], dlMap);
                         html += `</div>`;
                     });
                     html += `</div>`;
@@ -4248,10 +4268,17 @@
         c.innerHTML = html;
     }
 
-    function _dlButton(id, name, country, repo, file, bbox, maxZoom, existing) {
+    function _dlButton(id, name, country, repo, file, bbox, maxZoom, existing, dlMap) {
         const progress = _offlineDownloadProgress[id];
         if (existing && existing.status === 'complete') {
             return `<span style="color:var(--success);font-weight:600;font-size:13px">Downloaded &#10003;</span>`;
+        }
+        // Check if covered by a downloaded parent
+        if (dlMap) {
+            const parent = _findCoveringParent(id, dlMap);
+            if (parent) {
+                return `<span style="color:var(--success);font-size:12px">Covered by ${esc(parent.name)}</span>`;
+            }
         }
         if ((existing && existing.status === 'downloading') || progress) {
             const p = progress || { downloaded: existing ? existing.downloadedBytes : 0, total: existing ? existing.sizeBytes : 0 };
@@ -4270,8 +4297,88 @@
         return `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();_startDownload('${esc(id)}','${esc(name)}','${esc(country)}','${esc(repo)}','${esc(file)}',${bbox.join(',')},${maxZoom})">Download</button>`;
     }
 
+    /**
+     * Determine download strategy for a parent node.
+     * Returns { type: 'children', items: [...available entries] }
+     *      or { type: 'parent', file: parentFile, name: parentName }
+     */
+    function _resolveCascadeStrategy(parentId, repo, config) {
+        const assets = _repoAssets[repo] || new Set();
+        const countries = config.countries || {};
+        const parts = parentId.split('--');
+
+        if (parts.length === 1) {
+            // Country level → children are regions
+            const country = countries[parts[0]];
+            if (!country || !country.regions) return null;
+            const regions = country.regions;
+            const entries = Object.entries(regions);
+            const available = entries.filter(([, r]) => r.file && assets.has(r.file));
+            if (available.length === entries.length) {
+                return { type: 'children', items: available.map(([k, r]) => ({ key: k, ...r })) };
+            }
+            // Not all children available — try parent file
+            if (country.file && assets.has(country.file)) {
+                return { type: 'parent', file: country.file, name: country.name, bbox: country.bbox, id: parts[0] };
+            }
+            // Fall back to whatever children are available
+            if (available.length > 0) {
+                return { type: 'children', items: available.map(([k, r]) => ({ key: k, ...r })) };
+            }
+            return null;
+        } else if (parts.length === 2) {
+            // Region level → children are cities
+            const country = countries[parts[0]];
+            if (!country || !country.regions) return null;
+            const region = country.regions[parts[1]];
+            if (!region || !region.cities) return null;
+            const cities = region.cities;
+            const entries = Object.entries(cities);
+            const available = entries.filter(([, c]) => c.file && assets.has(c.file));
+            if (available.length === entries.length) {
+                return { type: 'children', items: available.map(([k, c]) => ({ key: k, ...c })) };
+            }
+            // Not all children available — try parent (region) file
+            if (region.file && assets.has(region.file)) {
+                return { type: 'parent', file: region.file, name: region.name, bbox: region.bbox, id: parentId };
+            }
+            if (available.length > 0) {
+                return { type: 'children', items: available.map(([k, c]) => ({ key: k, ...c })) };
+            }
+            return null;
+        }
+        return null;
+    }
+
+    /**
+     * Check if a child region/city is covered by a downloaded parent file.
+     * Returns the parent region object { id, name } or null.
+     */
+    function _findCoveringParent(childId, dlMap) {
+        const parts = childId.split('--');
+        // Check if parent region covers this city
+        if (parts.length === 3) {
+            const regionId = parts[0] + '--' + parts[1];
+            const dl = dlMap[regionId];
+            if (dl && dl.status === 'complete') return { id: regionId, name: dl.name };
+        }
+        // Check if country covers this region or city
+        if (parts.length >= 2) {
+            const countryId = parts[0];
+            const dl = dlMap[countryId];
+            if (dl && dl.status === 'complete') return { id: countryId, name: dl.name };
+        }
+        return null;
+    }
+
     /** Cascade button for country (downloads all regions) or region (downloads all cities). */
     function _cascadeButton(parentId, children, dlMap, repo, maxZoom, level, ckey, rkey) {
+        // Check if the parent itself is downloaded (covers all children)
+        const parentDl = dlMap[parentId];
+        if (parentDl && parentDl.status === 'complete') {
+            return `<span style="color:var(--success);font-weight:600;font-size:13px">Downloaded &#10003;</span>`;
+        }
+
         const childEntries = Object.entries(children);
         const total = childEntries.length;
         let complete = 0, downloading = 0;
@@ -4289,44 +4396,54 @@
         if (downloading > 0) {
             return `<span style="color:var(--text-muted);font-size:13px">${complete + downloading}/${total} downloading...</span>`;
         }
+
+        // Use cascade strategy to determine label
+        const config = _repoConfigs[repo];
+        const strategy = config ? _resolveCascadeStrategy(parentId, repo, config) : null;
+
+        if (strategy && strategy.type === 'parent') {
+            const remaining = total - complete;
+            const label = complete > 0 ? `Download ${esc(strategy.name)} file` : `Download ${esc(strategy.name)} file`;
+            return `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();_cascadeDownload('${esc(parentId)}','${esc(repo)}',${maxZoom})">${label}</button>`;
+        }
+
         if (complete > 0) {
             return `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();_cascadeDownload('${esc(parentId)}','${esc(repo)}',${maxZoom})">${total - complete} remaining</button>`;
         }
-        return `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();_cascadeDownload('${esc(parentId)}','${esc(repo)}',${maxZoom})">Download All (${total})</button>`;
+
+        const count = strategy && strategy.type === 'children' ? strategy.items.length : total;
+        return `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();_cascadeDownload('${esc(parentId)}','${esc(repo)}',${maxZoom})">Download All (${count})</button>`;
     }
 
-    /** Download all children of a country or region that aren't already downloaded. */
+    /** Download all children of a country or region that aren't already downloaded. Uses cascade strategy. */
     function _cascadeDownload(parentId, repo, maxZoom) {
-        // Find the config for this repo
         const config = _repoConfigs[repo];
         if (!config) return;
+
+        const strategy = _resolveCascadeStrategy(parentId, repo, config);
+        if (!strategy) return;
 
         const countries = config.countries || {};
         const downloaded = JSON.parse(AndroidNative.getRegions() || '[]');
         const dlSet = new Set(downloaded.filter(r => r.status === 'complete' || r.status === 'downloading').map(r => r.id));
-
-        // Determine if parentId is a country or region
         const parts = parentId.split('--');
-        if (parts.length === 1) {
-            // Country: download all regions
-            const country = countries[parts[0]];
-            if (!country || !country.regions) return;
-            Object.entries(country.regions).forEach(([rkey, region]) => {
-                const rid = parts[0] + '--' + rkey;
-                if (!dlSet.has(rid)) {
-                    _startDownload(rid, region.name, parts[0], repo, region.file, region.bbox[0], region.bbox[1], region.bbox[2], region.bbox[3], maxZoom);
+
+        if (strategy.type === 'parent') {
+            // Download the single parent file
+            if (!dlSet.has(strategy.id)) {
+                _startDownload(strategy.id, strategy.name, parts[0], repo, strategy.file, strategy.bbox[0], strategy.bbox[1], strategy.bbox[2], strategy.bbox[3], maxZoom);
+            }
+        } else {
+            // Download each available child
+            strategy.items.forEach(item => {
+                let childId;
+                if (parts.length === 1) {
+                    childId = parts[0] + '--' + item.key;
+                } else {
+                    childId = parts[0] + '--' + parts[1] + '--' + item.key;
                 }
-            });
-        } else if (parts.length === 2) {
-            // Region: download all cities
-            const country = countries[parts[0]];
-            if (!country || !country.regions) return;
-            const region = country.regions[parts[1]];
-            if (!region || !region.cities) return;
-            Object.entries(region.cities).forEach(([citykey, city]) => {
-                const cityid = parts[0] + '--' + parts[1] + '--' + citykey;
-                if (!dlSet.has(cityid)) {
-                    _startDownload(cityid, city.name, parts[0], repo, city.file, city.bbox[0], city.bbox[1], city.bbox[2], city.bbox[3], maxZoom);
+                if (!dlSet.has(childId)) {
+                    _startDownload(childId, item.name, parts[0], repo, item.file, item.bbox[0], item.bbox[1], item.bbox[2], item.bbox[3], maxZoom);
                 }
             });
         }
@@ -4340,7 +4457,16 @@
     function _startDownload(id, name, country, repo, file, w, s, e, n, maxZoom) {
         AndroidNative.downloadRegion(id, name, country, repo, file, w, s, e, n, maxZoom, 0);
         _offlineDownloadProgress[id] = { downloaded: 0, total: 0 };
-        _loadAndRenderBrowseTab();
+        // Immediately replace the button with a progress bar (avoids full re-render flicker)
+        const btn = event && event.target ? event.target.closest('button') : null;
+        if (btn) {
+            const wrapper = document.createElement('div');
+            wrapper.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;min-width:120px';
+            wrapper.innerHTML = `<div style="width:100%;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div id="progress-${id}" style="width:0%;height:100%;background:var(--primary);transition:width 0.3s"></div></div><span id="progress-lbl-${id}" style="color:var(--text-muted);font-size:11px;margin-top:2px">Starting...</span>`;
+            btn.replaceWith(wrapper);
+        } else {
+            _loadAndRenderBrowseTab();
+        }
     }
 
     function _retryDownload(id, name, country, repo, file, w, s, e, n, maxZoom) {
@@ -4380,7 +4506,10 @@
             html += `</div>`;
             countryRegions.forEach(r => {
                 html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0 6px 16px;border-top:1px solid var(--border-light)">`;
-                html += `<div>${esc(r.name)} <span style="color:var(--text-muted);font-size:12px">${_formatBytes(r.sizeBytes)}${r.status !== 'complete' ? ' (' + r.status + ')' : ''}</span></div>`;
+                const statusHtml = r.status === 'downloading'
+                    ? ` <span style="font-size:12px;color:var(--primary)"><span style="display:inline-block;animation:spin 1s linear infinite;width:12px;height:12px;border:2px solid var(--primary);border-top-color:transparent;border-radius:50%;vertical-align:middle"></span> downloading</span>`
+                    : r.status !== 'complete' ? ` <span style="color:var(--text-muted);font-size:12px">(${r.status})</span>` : '';
+                html += `<div>${esc(r.name)} <span style="color:var(--text-muted);font-size:12px">${_formatBytes(r.sizeBytes)}</span>${statusHtml}</div>`;
                 html += `<button class="btn btn-sm" style="color:var(--danger)" onclick="_deleteRegionMap('${esc(r.id)}')">Delete</button>`;
                 html += `</div>`;
             });
@@ -4470,7 +4599,9 @@
     // Completion callback from Android
     window.__onDownloadComplete = function(regionId, success, errorMsg) {
         delete _offlineDownloadProgress[regionId];
-        if (!success) {
+        if (success) {
+            toast('Downloaded ' + regionId.split('--').pop());
+        } else {
             toast(errorMsg ? 'Download failed: ' + errorMsg : 'Download failed.');
         }
         // Refresh whichever tab is open
