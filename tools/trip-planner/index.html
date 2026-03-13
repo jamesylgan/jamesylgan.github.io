@@ -1514,32 +1514,78 @@
         window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
     }
 
-    async function shareTripFile(tripId) {
+    // Stash file data so modal buttons can use it
+    let _shareFileData = null;
+
+    function shareTripFile(tripId) {
         const trip = getTrip(tripId);
         if (!trip) { toast('No trip to share'); return; }
         const payload = { version: 1, format: 'trip-planner-single', exportedAt: new Date().toISOString(), trip };
         const json = JSON.stringify(payload, null, 2);
         const filename = tripFilename(trip.name, 'trip');
-        // Use octet-stream so browsers don't append .json to our .trip extension
         const mime = 'application/octet-stream';
-        const file = new File([json], filename, { type: mime });
-        // Try native share sheet (works great on mobile for WhatsApp, Telegram, etc.)
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            try {
-                await navigator.share({ title: trip.name, files: [file] });
-                toast('Shared!');
-                return;
-            } catch (err) {
-                if (err.name === 'AbortError') return; // User cancelled
-            }
+        _shareFileData = { json, filename, mime, tripName: trip.name };
+
+        const canShare = navigator.canShare && navigator.canShare({ files: [new File([''], 'test.trip', { type: mime })] });
+        const siteUrl = window.location.origin + window.location.pathname;
+        const instructions = `To open this trip file:\n1. Go to ${siteUrl}\n2. Tap the gear icon (top right) → Import\n3. Select the .trip file\n\nOr if you have the Trip Planner app installed, share the file directly to it.`;
+
+        let html = `<div class="modal-header"><h3>Share Trip</h3><button class="btn-icon" onclick="closeModal()">✕</button></div>`;
+        html += `<div class="modal-body">`;
+        html += `<p style="font-weight:600;margin-bottom:4px">${esc(trip.name)}</p>`;
+        html += `<p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">${esc(filename)} · ${(json.length/1024).toFixed(0)} KB</p>`;
+
+        html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">`;
+        if (canShare) {
+            html += `<button class="btn btn-primary" onclick="_doShareFile()">Send File</button>`;
         }
-        // Fallback: download the file
+        html += `<button class="btn" onclick="_doDownloadFile()">Download File</button>`;
+        html += `</div>`;
+
+        html += `<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px">`;
+        html += `<p style="font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-muted)">Instructions for recipient</p>`;
+        html += `<pre style="font-size:12px;white-space:pre-wrap;word-break:break-word;margin:0;color:var(--text)">${esc(instructions)}</pre>`;
+        html += `</div>`;
+        html += `<button class="btn btn-sm" onclick="_copyShareInstructions()">Copy Instructions</button>`;
+
+        html += `</div>`;
+        openModal(html);
+    }
+
+    async function _doShareFile() {
+        if (!_shareFileData) return;
+        const { json, filename, mime, tripName } = _shareFileData;
+        const file = new File([json], filename, { type: mime });
+        try {
+            await navigator.share({ title: tripName, files: [file] });
+            toast('Shared!');
+            closeModal();
+        } catch (err) {
+            if (err.name !== 'AbortError') toast('Share failed: ' + err.message);
+        }
+    }
+
+    function _doDownloadFile() {
+        if (!_shareFileData) return;
+        const { json, filename, mime } = _shareFileData;
         const blob = new Blob([json], { type: mime });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url; a.download = filename; a.click();
         URL.revokeObjectURL(url);
-        toast('Trip file downloaded');
+        toast('Downloaded ' + filename);
+        closeModal();
+    }
+
+    async function _copyShareInstructions() {
+        const siteUrl = window.location.origin + window.location.pathname;
+        const text = `To open this trip file:\n1. Go to ${siteUrl}\n2. Tap the gear icon (top right) → Import\n3. Select the .trip file\n\nOr if you have the Trip Planner app installed, share the file directly to it.`;
+        try {
+            await navigator.clipboard.writeText(text);
+            toast('Instructions copied!');
+        } catch {
+            prompt('Copy these instructions:', text);
+        }
     }
 
     const SHARE_LINK_MAX_URL = 8000; // Max URL length for reliable sharing
@@ -1689,7 +1735,7 @@
                         <button class="btn btn-sm" onclick="exportTrip('${state.tripId}');closeModal()">Export This Trip</button>
                         <button class="btn btn-sm" onclick="exportICS('${state.tripId}');closeModal()">Export Calendar (.ics)</button>
                         <button class="btn btn-sm" onclick="exportWhatsApp('${state.tripId}');closeModal()">Share Itinerary</button>
-                        <button class="btn btn-sm" onclick="shareTripFile('${state.tripId}');closeModal()">Share Trip File</button>
+                        <button class="btn btn-sm" onclick="closeModal();setTimeout(()=>shareTripFile('${state.tripId}'),100)">Share Trip File</button>
                         ${canShareAsLink(state.tripId) ? `<button class="btn btn-sm" onclick="shareTripLink('${state.tripId}');closeModal()">Share Link</button>` : ''}
                     </div>
                 ` : ''}
