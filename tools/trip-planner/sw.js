@@ -1,7 +1,5 @@
-const CACHE_NAME = 'trip-planner-v2';
+const CACHE_NAME = 'trip-planner-v3';
 const PRECACHE_URLS = [
-    './',
-    './index.html',
     './manifest.json',
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
@@ -24,10 +22,10 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-    // Network-first for HTML (always get latest), cache-first for assets
+    // HTML navigation: always bypass HTTP cache to get latest from server
     if (e.request.mode === 'navigate') {
         e.respondWith(
-            fetch(e.request).then(res => {
+            fetch(e.request.url, { cache: 'no-cache' }).then(res => {
                 const clone = res.clone();
                 caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
                 return res;
@@ -35,11 +33,11 @@ self.addEventListener('fetch', (e) => {
         );
         return;
     }
+    // Other resources: cache-first
     e.respondWith(
         caches.match(e.request).then(cached => {
             if (cached) return cached;
             return fetch(e.request).then(res => {
-                // Cache successful GET responses for CDN resources
                 if (res.ok && e.request.method === 'GET') {
                     const clone = res.clone();
                     caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
