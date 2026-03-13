@@ -12,16 +12,23 @@ A lightweight Android wrapper that runs the Trip Planner PWA in a WebView with n
 │  ┌────────────────────────────────┐  │
 │  │ MainActivity (WebView)         │  │
 │  │                                │  │
-│  │  1. Always loads from bundled  │  │
-│  │     assets/ (no network needed)│  │
+│  │  1. Loads from bundled assets/ │  │
+│  │     (no network needed)        │  │
 │  │                                │  │
 │  │  2. WebViewAssetLoader serves  │  │
 │  │     under https://bellevue.    │  │
 │  │     tech origin (same-origin   │  │
 │  │     localStorage)              │  │
 │  │                                │  │
-│  │  3. Intercepts OSM tile        │  │
-│  │     requests → SQLite cache    │  │
+│  │  3. Intercepts OSM raster tile │  │
+│  │     requests → TileCache       │  │
+│  │                                │  │
+│  │  4. Intercepts /offline-tiles/ │  │
+│  │     MVT requests →             │  │
+│  │     OfflineMapStore            │  │
+│  │                                │  │
+│  │  5. AndroidNative JS interface │  │
+│  │     for offline map downloads  │  │
 │  └────────────────────────────────┘  │
 │                                      │
 │  Intent Filters:                     │
@@ -31,7 +38,10 @@ A lightweight Android wrapper that runs the Trip Planner PWA in a WebView with n
 │                                      │
 │  JS Bridge:                          │
 │  • importTripFromAndroid(json)       │
-│    reads file → injects into PWA     │
+│  • AndroidNative.downloadRegion()    │
+│  • AndroidNative.getRegions()        │
+│  • AndroidNative.deleteRegion()      │
+│  • window.__onDownloadProgress()     │
 └──────────────────────────────────────┘
 ```
 
@@ -58,15 +68,36 @@ When a user taps a `.trip` file in WhatsApp, Gmail, or a file manager:
 
 ### Offline Map Tiles
 
+There are two layers of offline map support:
+
+#### Raster tile cache (progressive, automatic)
+
 OSM tile requests (`tile.openstreetmap.org`) are intercepted in `shouldInterceptRequest()`:
 
 1. **Cache hit**: Return tile from SQLite database (`tile_cache.db`)
 2. **Cache miss**: Fetch from network, store in cache, return to WebView
 3. **Network failure**: Fall back to any cached version (even if expired)
 
-Tiles are cached for 30 days. As the user browses the map, tiles are progressively cached. On subsequent offline sessions, previously viewed map areas load from the local cache.
+Tiles are cached for 30 days. As the user browses the map, tiles are progressively cached.
 
-**Note on other offline map apps**: Organic Maps (`.mwm`) and OsmAnd (`.obf`) use proprietary vector formats that are incompatible with Leaflet's raster tile approach. There is no way to use their downloaded maps in this app. Our tile cache works exclusively with standard OSM raster PNG tiles.
+#### Vector tile downloads (on-demand, per-leg)
+
+Users can proactively download vector map tiles for trip legs via the "Offline Maps" modal (Android app only). This uses PMTiles archives as the source:
+
+1. User taps "Offline Maps" button on the map view
+2. Modal shows each leg with estimated tile count and size
+3. User taps "Download" → Android reads tiles from a remote PMTiles archive via HTTP range requests
+4. Tiles are decompressed (gzip) and stored in `offline_maps.db` SQLite database
+5. `protomaps-leaflet` renders the vector tiles in a layer above the raster tiles
+6. Requests to `/offline-tiles/{z}/{x}/{y}.mvt` are intercepted and served from SQLite
+
+**Key components:**
+- `PMTilesReader.java` — Custom PMTiles v3 reader (Hilbert curve, directory parsing, HTTP range requests)
+- `PMTilesDownloader.java` — Background downloader on `ExecutorService`, reports progress to WebView
+- `OfflineMapStore.java` — SQLite database with `regions` and `offline_tiles` tables
+- `AndroidNative` JS interface — Bridge for download/delete/query operations
+
+**Configurable source URL:** The PMTiles source URL is stored in SharedPreferences and configurable in Settings. Default is a Protomaps daily build. Any PMTiles v3 archive with HTTP range request support works.
 
 ## Environment Setup
 
@@ -149,8 +180,12 @@ android/
 │       │   ├── manifest.json
 │       │   └── icon-*.png
 │       ├── java/tech/bellevue/tripplanner/
-│       │   ├── MainActivity.java     # WebView + intent handling + tile cache
-│       │   └── TileCache.java        # SQLite tile cache for offline maps
+│       │   ├── MainActivity.java     # WebView + intent handling + JS interface
+│       │   ├── TileCache.java        # SQLite raster tile cache (progressive)
+│       │   ├── OfflineMapStore.java  # SQLite vector tile store (on-demand downloads)
+│       │   ├── OfflineRegion.java    # Data class for downloaded map regions
+│       │   ├── PMTilesReader.java    # PMTiles v3 archive reader (HTTP range requests)
+│       │   └── PMTilesDownloader.java # Background tile downloader
 │       └── res/
 │           ├── layout/activity_main.xml
 │           ├── mipmap-*/ic_launcher.png
@@ -174,17 +209,58 @@ android/
 - [ ] Share a `.trip` file via share sheet → Trip Planner receives and imports it
 - [ ] Map tiles load; after viewing, same area loads offline from cache
 - [ ] Back button navigates within the web app before exiting
+- [ ] "Offline Maps" button appears on map view in Android app, NOT in browser
+- [ ] Tapping "Download" for a leg downloads tiles with progress bar
+- [ ] After download, map area shows vector tiles (crisp, styled)
+- [ ] Airplane mode: downloaded areas render offline, non-downloaded areas fall back to cached raster
+- [ ] Manage tab shows correct sizes, delete works at city and country level
+- [ ] Changing PMTiles source URL in settings works for subsequent downloads
+- [ ] "Download entire trip" queues and downloads all legs
 
-## Future: Signed Release APK
+## Signed Release APK
 
-For distribution outside of debug mode:
+Release builds are signed with `trip-planner.keystore` (gitignored). The signing config is in `app/build.gradle.kts`.
+
+### Building a signed release
 
 ```bash
-# Generate a signing key (one time)
-keytool -genkey -v -keystore trip-planner.keystore \
-    -alias tripplanner -keyalg RSA -keysize 2048 -validity 10000
+cd tools/trip-planner/android
+./copy-assets.sh              # Bundle latest web assets
+./gradlew assembleRelease     # Build signed APK
+# Output: app/build/outputs/apk/release/app-release.apk
+```
 
-# Build signed APK
-./gradlew assembleRelease
-# (Configure signing in app/build.gradle.kts first)
+### Keystore details
+
+| Field | Value |
+|---|---|
+| File | `android/trip-planner.keystore` |
+| Alias | `tripplanner` |
+| Algorithm | RSA 2048-bit |
+| Validity | 10,000 days (~27 years) |
+| Store password | `tripplanner2026` |
+| Key password | `tripplanner2026` |
+
+**Keep this keystore safe.** If lost, you cannot push updates to devices that installed the app — Android requires the same signing key for upgrades.
+
+### Recreating the keystore (if lost)
+
+```bash
+keytool -genkey -v -keystore trip-planner.keystore \
+    -alias tripplanner -keyalg RSA -keysize 2048 -validity 10000 \
+    -storepass <password> -keypass <password> \
+    -dname "CN=Trip Planner, O=Bellevue Tech, L=Bellevue, ST=WA, C=US"
+```
+
+> **Warning:** A new keystore means a new signing identity. Users with the old APK must uninstall before installing the new one (app data is lost).
+
+### Creating a GitHub release
+
+```bash
+cp app/build/outputs/apk/release/app-release.apk /tmp/trip-planner-v<VERSION>.apk
+cd ../../..  # repo root
+gh release create v<VERSION>-android \
+    --title "Trip Planner Android v<VERSION>" \
+    --notes "Release notes here" \
+    /tmp/trip-planner-v<VERSION>.apk
 ```
