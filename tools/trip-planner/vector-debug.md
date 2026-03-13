@@ -50,7 +50,7 @@ This confirmed: `protomapsL=object` (library loaded), `map=undefined` (map not y
 ### Problem 3: WebView asset caching
 - After rebuilding and uploading APK, the device continued running old code
 - `webView.clearCache(true)` and version code bump eventually resolved this
-- Added version-upgrade cache clearing: checks `last_version_code` in SharedPreferences
+- Tried version-upgrade cache clearing (check `last_version_code` in SharedPreferences, call `webView.clearCache(true)` on mismatch) but removed it since offline maps is disabled — re-add if the feature is revived
 
 ## Key Technical Details
 
