@@ -2,6 +2,7 @@ package tech.bellevue.tripplanner;
 
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -11,6 +12,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.webkit.WebViewAssetLoader;
 
@@ -117,6 +119,18 @@ public class MainActivity extends AppCompatActivity {
 
         webView.setWebChromeClient(new WebChromeClient());
 
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (webView.canGoBack()) {
+                    webView.goBack();
+                } else {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                }
+            }
+        });
+
         handleIntent(getIntent());
 
         // Load from bundled assets (served under https:// by WebViewAssetLoader).
@@ -137,7 +151,11 @@ public class MainActivity extends AppCompatActivity {
 
         // Handle ACTION_SEND (share sheet sends URI via EXTRA_STREAM)
         if (Intent.ACTION_SEND.equals(intent.getAction())) {
-            uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+            if (Build.VERSION.SDK_INT >= 33) {
+                uri = intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri.class);
+            } else {
+                uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+            }
         }
 
         if (uri == null) return;
@@ -249,12 +267,4 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    public void onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack();
-        } else {
-            super.onBackPressed();
-        }
-    }
 }
