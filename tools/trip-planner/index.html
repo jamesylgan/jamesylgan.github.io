@@ -348,6 +348,7 @@
         collapsedDays: {},
         dismissedActivities: new Set(),
         expandedDayPlans: new Set(),
+        expandedLodgingActions: new Set(),
     };
 
     // --- Utilities ---
@@ -2276,10 +2277,11 @@
             const lt2 = leg.legType || 'default';
             if (lt2 !== 'home' && lt2 !== 'stayingWithFriend') {
                 const ll = (trip.lodging || []).filter(l => l.legId === leg.id);
-                const hoCount = (trip.hotelOptions || []).filter(ho => ho.city === leg.city).length;
+                const _hoOpts = (trip.hotelOptions || []).filter(ho => ho.city === leg.city);
+                const hoCount = _hoOpts.length;
                 const optSuffix = hoCount > 0 ? ` (${hoCount} option${hoCount !== 1 ? 's' : ''})` : '';
-                if (ll.length === 0) items.push({ text:`Add lodging for ${leg.city}${optSuffix}`, type:'lodging', action:`openLodgingModalForDate('${leg.startDate || ''}','${leg.id}','${leg.endDate || ''}')`, priority:1 });
-                else if (!ll.some(l => l.booked)) items.push({ text:`Book lodging for ${leg.city}${optSuffix}`, type:'lodging', action:`openLodgingModalForDate('${leg.startDate || ''}','${leg.id}','${leg.endDate || ''}')`, priority:1 });
+                if (ll.length === 0) items.push({ text:`Add lodging for ${leg.city}${optSuffix}`, type:'lodging', action:`openLodgingModalForDate('${leg.startDate || ''}','${leg.id}','${leg.endDate || ''}')`, priority:1, hotelOptions: _hoOpts, legId: leg.id, startDate: leg.startDate || '', endDate: leg.endDate || '' });
+                else if (!ll.some(l => l.booked)) items.push({ text:`Book lodging for ${leg.city}${optSuffix}`, type:'lodging', action:`openLodgingModalForDate('${leg.startDate || ''}','${leg.id}','${leg.endDate || ''}')`, priority:1, hotelOptions: _hoOpts, legId: leg.id, startDate: leg.startDate || '', endDate: leg.endDate || '' });
             }
         }
         // Transport to first leg (from home/origin)
@@ -2287,19 +2289,19 @@
             const firstLeg = legs[0];
             const lt0 = (trip.transport || []).filter(t => t.toLegId === firstLeg.id && (!t.fromLegId || !legs.some(l => l.id === t.fromLegId)));
             if (lt0.length === 0) items.push({ text:`Add transport to ${firstLeg.city}`, type:'transport', action:`openTransportModalByLeg('','${firstLeg.id}','${firstLeg.startDate || ''}')`, priority:2 });
-            else if (!lt0.some(t => t.booked)) items.push({ text:`Book transport to ${firstLeg.city}`, type:'transport', action:`openTransportModalByLeg('','${firstLeg.id}','${firstLeg.startDate || ''}')`, priority:2 });
+            else if (!lt0.some(t => t.booked)) { const _t0 = lt0[0]; const _c0 = _t0.carrier || ''; const _n0 = (_t0.notes || '').trim(); items.push({ text:`Book ${_c0 ? _c0 + ' ' : ''}transport to ${firstLeg.city}`, type:'transport', action:`openTransportModal('${_t0.id}')`, priority:2, subtitle: _n0 ? (_n0.length > 120 ? _n0.slice(0, 120) + '...' : _n0) : '' }); }
         }
         for (let i = 1; i < legs.length; i++) {
             const lt = (trip.transport || []).filter(t => t.toLegId === legs[i].id || t.fromLegId === legs[i-1].id);
             if (lt.length === 0) items.push({ text:`Add transport to ${legs[i].city}`, type:'transport', action:`openTransportModalByLeg('${legs[i-1].id}','${legs[i].id}','${legs[i].startDate || ''}')`, priority:2 });
-            else if (!lt.some(t => t.booked)) items.push({ text:`Book transport to ${legs[i].city}`, type:'transport', action:`openTransportModalByLeg('${legs[i-1].id}','${legs[i].id}','${legs[i].startDate || ''}')`, priority:2 });
+            else if (!lt.some(t => t.booked)) { const _ti = lt[0]; const _ci = _ti.carrier || ''; const _ni = (_ti.notes || '').trim(); items.push({ text:`Book ${_ci ? _ci + ' ' : ''}transport to ${legs[i].city}`, type:'transport', action:`openTransportModal('${_ti.id}')`, priority:2, subtitle: _ni ? (_ni.length > 120 ? _ni.slice(0, 120) + '...' : _ni) : '' }); }
         }
         // Transport from last leg (back home/onward)
         if (legs.length > 0) {
             const lastLeg = legs[legs.length - 1];
             const ltN = (trip.transport || []).filter(t => t.fromLegId === lastLeg.id && (!t.toLegId || !legs.some(l => l.id === t.toLegId)));
             if (ltN.length === 0) items.push({ text:`Add transport from ${lastLeg.city}`, type:'transport', action:`openTransportModalByLeg('${lastLeg.id}','','${lastLeg.endDate || ''}')`, priority:2 });
-            else if (!ltN.some(t => t.booked)) items.push({ text:`Book transport from ${lastLeg.city}`, type:'transport', action:`openTransportModalByLeg('${lastLeg.id}','','${lastLeg.endDate || ''}')`, priority:2 });
+            else if (!ltN.some(t => t.booked)) { const _tN = ltN[0]; const _cN = _tN.carrier || ''; const _nN = (_tN.notes || '').trim(); items.push({ text:`Book ${_cN ? _cN + ' ' : ''}transport from ${lastLeg.city}`, type:'transport', action:`openTransportModal('${_tN.id}')`, priority:2, subtitle: _nN ? (_nN.length > 120 ? _nN.slice(0, 120) + '...' : _nN) : '' }); }
         }
         if (trip._transportNeedsReview) {
             for (const t of trip.transport || []) {
@@ -2312,6 +2314,35 @@
         for (const leg of legs) { const lt3 = leg.legType || 'default'; if (lt3 !== 'home' && lt3 !== 'chill' && !(trip.activities || []).some(a => a.legId === leg.id)) items.push({ text:`Add activities for ${leg.city}`, type:'activity', action:`openActivityModal(null,'${leg.startDate || ''}','${leg.id}')`, priority:3 }); }
         items.sort((a, b) => a.priority - b.priority);
         return items;
+    }
+
+    function renderActionItem(item) {
+        if (item.type === 'transport' && item.subtitle) {
+            return `<div class="item-row" style="cursor:pointer;margin:0 8px 4px" ${item.action ? `onclick="${esc(item.action)}"` : ''}><div class="item-body"><div class="item-title" style="font-size:13px">${esc(item.text)}</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(item.subtitle)}</div></div>${item.action ? '<span style="color:var(--text-light);font-size:14px">\u203A</span>' : ''}</div>`;
+        }
+        if (item.type === 'lodging' && item.hotelOptions && item.hotelOptions.length > 0) {
+            const key = item.legId || item.text;
+            const isExp = state.expandedLodgingActions.has(key);
+            let inner = '';
+            if (isExp) {
+                inner += '<div style="padding:4px 12px 8px">';
+                for (const ho of item.hotelOptions) {
+                    const costStr = ho.cost != null ? formatCurrency(ho.cost, ho.currency) + '/night' : '';
+                    inner += `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-color)">`;
+                    inner += `<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">${esc(ho.name)}</div>`;
+                    if (costStr) inner += `<span style="font-size:11px;color:var(--text-muted)">${esc(costStr)}</span>`;
+                    if (ho.notes) inner += `<div style="font-size:11px;color:var(--text-muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(ho.notes)}</div>`;
+                    inner += `</div>`;
+                    if (ho.link) inner += `<a href="${esc(ho.link)}" target="_blank" rel="noopener" class="btn btn-sm" style="font-size:11px;white-space:nowrap" onclick="event.stopPropagation()">Link</a>`;
+                    inner += `<button class="btn btn-sm btn-primary" style="font-size:11px;white-space:nowrap" onclick="event.stopPropagation();openQuickBookModal('${esc(ho.id)}','${esc(item.startDate)}')">Book</button>`;
+                    inner += `</div>`;
+                }
+                inner += `<div style="margin-top:6px"><a href="#" style="font-size:12px;color:var(--primary)" onclick="event.preventDefault();event.stopPropagation();openLodgingModalForDate('${esc(item.startDate)}','${esc(item.legId)}','${esc(item.endDate)}')">+ Add lodging manually</a></div>`;
+                inner += '</div>';
+            }
+            return `<div class="item-row" style="cursor:pointer;margin:0 8px 4px;flex-wrap:wrap" onclick="state.expandedLodgingActions.has('${esc(key)}') ? state.expandedLodgingActions.delete('${esc(key)}') : state.expandedLodgingActions.add('${esc(key)}');renderActionItems()"><div class="item-body"><div class="item-title" style="font-size:13px">${esc(item.text)}</div></div><span style="color:var(--text-light);font-size:14px;transition:transform 0.2s;transform:rotate(${isExp ? '90deg' : '0deg'})">\u203A</span>${inner}</div>`;
+        }
+        return `<div class="item-row" style="cursor:pointer;margin:0 8px 4px" ${item.action ? `onclick="${esc(item.action)}"` : ''}><div class="item-body"><div class="item-title" style="font-size:13px">${esc(item.text)}</div></div>${item.action ? '<span style="color:var(--text-light);font-size:14px">\u203A</span>' : ''}</div>`;
     }
 
     function renderActionItems() {
@@ -2340,7 +2371,7 @@
         const overallPct = phases.length > 0 ? Math.round((completedCount / phases.length) * 100) : 0;
         let phasesHTML = phases.map(phase => {
             const check = phase.done ? '<span style="color:var(--success);font-weight:600">\u2713</span>' : '<span style="color:var(--text-light)">\u25CB</span>';
-            return `<div class="card" style="margin-bottom:12px"><div class="card-header"><div style="display:flex;align-items:center;gap:8px">${check}<span>${phase.icon}</span><strong>${phase.title}</strong></div>${phase.done ? '<span class="badge badge-ready" style="font-size:10px">Done</span>' : ''}</div>${phase.items.length > 0 ? `<div class="card-body" style="padding:4px 0">${phase.items.map(item => `<div class="item-row" style="cursor:pointer;margin:0 8px 4px" ${item.action ? `onclick="${esc(item.action)}"` : ''}><div class="item-body"><div class="item-title" style="font-size:13px">${esc(item.text)}</div></div>${item.action ? '<span style="color:var(--text-light);font-size:14px">\u203A</span>' : ''}</div>`).join('')}</div>` : (phase.done ? '' : '<div class="card-body"><span style="font-size:13px;color:var(--text-muted)">No action items</span></div>')}</div>`;
+            return `<div class="card" style="margin-bottom:12px"><div class="card-header"><div style="display:flex;align-items:center;gap:8px">${check}<span>${phase.icon}</span><strong>${phase.title}</strong></div>${phase.done ? '<span class="badge badge-ready" style="font-size:10px">Done</span>' : ''}</div>${phase.items.length > 0 ? `<div class="card-body" style="padding:4px 0">${phase.items.map(item => renderActionItem(item)).join('')}</div>` : (phase.done ? '' : '<div class="card-body"><span style="font-size:13px;color:var(--text-muted)">No action items</span></div>')}</div>`;
         }).join('');
         let packingHTML = '';
         if (settings.showPackingList) {
