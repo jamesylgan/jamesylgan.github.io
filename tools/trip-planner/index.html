@@ -4083,6 +4083,9 @@
                     maxZoom: 19,
                     flavor: theme
                 });
+                // Transparent background so tiles outside this file's bbox
+                // don't cover the world basemap with solid gray
+                layer.backgroundColor = null;
                 _offlineRegionLayers.push(layer);
                 if (_offlineLayerEnabled) layer.addTo(map);
             } catch (e) {
