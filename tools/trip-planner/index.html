@@ -2325,7 +2325,7 @@
             const isExp = state.expandedLodgingActions.has(key);
             let inner = '';
             if (isExp) {
-                inner += '<div style="padding:4px 12px 8px">';
+                inner += '<div style="padding:4px 12px 8px;width:100%">';
                 for (const ho of item.hotelOptions) {
                     const costStr = ho.cost != null ? formatCurrency(ho.cost, ho.currency) + '/night' : '';
                     inner += `<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 0;border-bottom:1px solid var(--border-color)">`;
@@ -3195,7 +3195,7 @@
         const result = { transport: [], lodging: [], activities: [], dayPlans: [] };
         if (!trip || !dateStr) return result;
         for (const t of trip.transport || []) { if (t.departure && t.departure.split('T')[0] === dateStr) result.transport.push(t); }
-        for (const l of trip.lodging || []) { if (l.checkIn === dateStr || l.checkOut === dateStr) result.lodging.push(l); }
+        for (const l of trip.lodging || []) { if (l.checkIn && l.checkOut && l.checkIn <= dateStr && dateStr < l.checkOut) result.lodging.push(l); }
         for (const dp of trip.dayPlans || []) { if (dp.assignedDate === dateStr) result.dayPlans.push(dp); }
         const dpActIds = new Set();
         for (const dp of result.dayPlans) { for (const aid of dp.activityIds || []) dpActIds.add(aid); }
@@ -4879,7 +4879,7 @@
         }
 
         if (state.mapFilter.showTripRoute && !dayPlanId) {
-            drawTripRoute(trip);
+            drawTripRoute(trip, state.mapFilter.legId || null);
         }
     }
 
@@ -4942,19 +4942,34 @@
         });
     }
 
-    function drawTripRoute(trip) {
+    function drawTripRoute(trip, filterLegId) {
         const legs = (trip.legs || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
         const orderedCoords = [];
-        if (trip.startLocationCoords?.lat != null && trip.startLocationCoords?.lng != null) {
-            orderedCoords.push({ lat: trip.startLocationCoords.lat, lng: trip.startLocationCoords.lng, name: trip.startLocation || 'Start' });
-        }
-        legs.forEach(leg => {
-            if (leg.coordinates && leg.coordinates.lat != null && leg.coordinates.lng != null) {
-                orderedCoords.push({ lat: leg.coordinates.lat, lng: leg.coordinates.lng, name: leg.city || 'City' });
+
+        if (filterLegId) {
+            const idx = legs.findIndex(l => l.id === filterLegId);
+            if (idx >= 0) {
+                if (idx > 0) {
+                    const prev = legs[idx - 1];
+                    if (prev.coordinates?.lat != null) orderedCoords.push({ lat: prev.coordinates.lat, lng: prev.coordinates.lng, name: prev.city || 'City' });
+                } else if (trip.startLocationCoords?.lat != null) {
+                    orderedCoords.push({ lat: trip.startLocationCoords.lat, lng: trip.startLocationCoords.lng, name: trip.startLocation || 'Start' });
+                }
+                const sel = legs[idx];
+                if (sel.coordinates?.lat != null) orderedCoords.push({ lat: sel.coordinates.lat, lng: sel.coordinates.lng, name: sel.city || 'City' });
             }
-        });
-        if (trip.endLocationCoords?.lat != null && trip.endLocationCoords?.lng != null) {
-            orderedCoords.push({ lat: trip.endLocationCoords.lat, lng: trip.endLocationCoords.lng, name: trip.endLocation || 'End' });
+        } else {
+            if (trip.startLocationCoords?.lat != null && trip.startLocationCoords?.lng != null) {
+                orderedCoords.push({ lat: trip.startLocationCoords.lat, lng: trip.startLocationCoords.lng, name: trip.startLocation || 'Start' });
+            }
+            legs.forEach(leg => {
+                if (leg.coordinates && leg.coordinates.lat != null && leg.coordinates.lng != null) {
+                    orderedCoords.push({ lat: leg.coordinates.lat, lng: leg.coordinates.lng, name: leg.city || 'City' });
+                }
+            });
+            if (trip.endLocationCoords?.lat != null && trip.endLocationCoords?.lng != null) {
+                orderedCoords.push({ lat: trip.endLocationCoords.lat, lng: trip.endLocationCoords.lng, name: trip.endLocation || 'End' });
+            }
         }
 
         if (orderedCoords.length < 2) return;
