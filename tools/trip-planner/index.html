@@ -2606,7 +2606,7 @@
                 <div class="form-group"><label>Address</label><input class="input" id="lodgingAddress" value="${esc(l?.address || '')}" placeholder="Street address"></div>
                 <div class="form-row">
                     <div class="form-group"><label>Check-in</label><input class="input" id="lodgingCheckIn" type="date" value="${l?.checkIn || ''}" onchange="onCheckinDateChange(this.value)"></div>
-                    <div class="form-group"><label>Check-out</label><input class="input" id="lodgingCheckOut" type="date" value="${l?.checkOut || ''}"${l?.checkIn ? ` min="${(() => { const d = new Date(l.checkIn + 'T00:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })()"` : ''}></div>
+                    <div class="form-group"><label>Check-out</label><input class="input" id="lodgingCheckOut" type="date" value="${l?.checkOut || ''}"${l?.checkIn ? ` min="${nextDayStr(l.checkIn)}"` : ''}></div>
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label>Cost</label><input class="input" id="lodgingCost" type="number" step="0.01" min="0" value="${l?.cost != null ? l.cost : ''}" placeholder="0.00"></div>
@@ -2629,6 +2629,12 @@
         const _lodgingDraft = getDraft('lodging', lodgingId || null);
         if (_lodgingDraft) setTimeout(() => { restoreModalForm(_lodgingDraft); const ci = document.getElementById('lodgingCheckIn'); if (ci?.value) onCheckinDateChange(ci.value); }, 50);
         else if (l?.checkIn) setTimeout(() => onCheckinDateChange(l.checkIn), 50);
+    }
+
+    function nextDayStr(dateStr) {
+        const d = new Date(dateStr + 'T00:00:00');
+        d.setDate(d.getDate() + 1);
+        return localDateStr(d);
     }
 
     function onCheckinDateChange(checkinValue, checkoutId) {
@@ -2749,7 +2755,7 @@
                 <input type="hidden" id="qbHotelOptionId" value="${esc(ho.id)}">
                 <div class="form-row">
                     <div class="form-group"><label>Check-in</label><input class="input" id="qbCheckIn" type="date" value="${prefillCheckIn || ''}" onchange="onCheckinDateChange(this.value, 'qbCheckOut')"></div>
-                    <div class="form-group"><label>Check-out</label><input class="input" id="qbCheckOut" type="date" value=""${prefillCheckIn ? ` min="${(() => { const d = new Date(prefillCheckIn + 'T00:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })()"` : ''}></div>
+                    <div class="form-group"><label>Check-out</label><input class="input" id="qbCheckOut" type="date" value=""${prefillCheckIn ? ` min="${nextDayStr(prefillCheckIn)}"` : ''}></div>
                 </div>
             </div>
             <div class="modal-footer">
