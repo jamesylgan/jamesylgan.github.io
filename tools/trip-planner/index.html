@@ -2282,10 +2282,24 @@
                 else if (!ll.some(l => l.booked)) items.push({ text:`Book lodging for ${leg.city}${optSuffix}`, type:'lodging', action:`openLodgingModalForDate('${leg.startDate || ''}','${leg.id}','${leg.endDate || ''}')`, priority:1 });
             }
         }
+        // Transport to first leg (from home/origin)
+        if (legs.length > 0) {
+            const firstLeg = legs[0];
+            const lt0 = (trip.transport || []).filter(t => t.toLegId === firstLeg.id && (!t.fromLegId || !legs.some(l => l.id === t.fromLegId)));
+            if (lt0.length === 0) items.push({ text:`Add transport to ${firstLeg.city}`, type:'transport', action:`openTransportModalByLeg('','${firstLeg.id}','${firstLeg.startDate || ''}')`, priority:2 });
+            else if (!lt0.some(t => t.booked)) items.push({ text:`Book transport to ${firstLeg.city}`, type:'transport', action:`openTransportModalByLeg('','${firstLeg.id}','${firstLeg.startDate || ''}')`, priority:2 });
+        }
         for (let i = 1; i < legs.length; i++) {
             const lt = (trip.transport || []).filter(t => t.toLegId === legs[i].id || t.fromLegId === legs[i-1].id);
             if (lt.length === 0) items.push({ text:`Add transport to ${legs[i].city}`, type:'transport', action:`openTransportModalByLeg('${legs[i-1].id}','${legs[i].id}','${legs[i].startDate || ''}')`, priority:2 });
             else if (!lt.some(t => t.booked)) items.push({ text:`Book transport to ${legs[i].city}`, type:'transport', action:`openTransportModalByLeg('${legs[i-1].id}','${legs[i].id}','${legs[i].startDate || ''}')`, priority:2 });
+        }
+        // Transport from last leg (back home/onward)
+        if (legs.length > 0) {
+            const lastLeg = legs[legs.length - 1];
+            const ltN = (trip.transport || []).filter(t => t.fromLegId === lastLeg.id && (!t.toLegId || !legs.some(l => l.id === t.toLegId)));
+            if (ltN.length === 0) items.push({ text:`Add transport from ${lastLeg.city}`, type:'transport', action:`openTransportModalByLeg('${lastLeg.id}','','${lastLeg.endDate || ''}')`, priority:2 });
+            else if (!ltN.some(t => t.booked)) items.push({ text:`Book transport from ${lastLeg.city}`, type:'transport', action:`openTransportModalByLeg('${lastLeg.id}','','${lastLeg.endDate || ''}')`, priority:2 });
         }
         if (trip._transportNeedsReview) {
             for (const t of trip.transport || []) {
@@ -2313,7 +2327,7 @@
         const lodgingActions = allActions.filter(a => a.type === 'lodging');
         phases.push({ title:'Book Lodging', icon:'\u{1F3E8}', done:hasLegs && progress.totalLodging > 0 && progress.bookedLodging === progress.totalLodging, items:lodgingActions });
         const transportActions = allActions.filter(a => a.type === 'transport');
-        phases.push({ title:'Book Transport', icon:'\u2708\uFE0F', done:hasLegs && (legs.length <= 1 || (progress.totalTransport > 0 && progress.bookedTransport === progress.totalTransport)), items:transportActions });
+        phases.push({ title:'Book Transport', icon:'\u2708\uFE0F', done:hasLegs && transportActions.length === 0 && progress.totalTransport > 0 && progress.bookedTransport === progress.totalTransport, items:transportActions });
         const activityActions = allActions.filter(a => a.type === 'activity');
         const hasActs = (trip.activities || []).length > 0;
         phases.push({ title:'Book Activities', icon:'\u{1F3AF}', done:hasLegs && hasActs && (progress.totalReservations === 0 || progress.bookedActivities === progress.totalReservations), items:activityActions });
