@@ -10,8 +10,8 @@ android {
         applicationId = "tech.bellevue.tripplanner"
         minSdk = 24
         targetSdk = 34
-        versionCode = 8
-        versionName = "1.3.2"
+        versionCode = 9
+        versionName = "1.4.0"
     }
 
     signingConfigs {
