@@ -351,6 +351,86 @@
         expandedLodgingActions: new Set(),
     };
 
+    // --- Exchange Rates ---
+
+    const EXCHANGE_RATE_KEY = 'trip-planner-exchange-rates';
+    let exchangeRates = {}; // { USD: 1.08, GBP: 0.86, ... } relative to base currency
+
+    function loadExchangeRates() {
+        try {
+            const raw = localStorage.getItem(EXCHANGE_RATE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                exchangeRates = parsed.rates || {};
+            }
+        } catch (e) {}
+    }
+
+    function saveExchangeRates() {
+        try {
+            localStorage.setItem(EXCHANGE_RATE_KEY, JSON.stringify({ rates: exchangeRates, updated: new Date().toISOString() }));
+        } catch (e) {}
+    }
+
+    function getExchangeRateTimestamp() {
+        try {
+            const raw = localStorage.getItem(EXCHANGE_RATE_KEY);
+            if (raw) return JSON.parse(raw).updated || null;
+        } catch (e) {}
+        return null;
+    }
+
+    function convertCurrency(amount, fromCurrency, toCurrency) {
+        if (!amount || fromCurrency === toCurrency) return amount;
+        const fromRate = exchangeRates[fromCurrency];
+        const toRate = exchangeRates[toCurrency];
+        if (!fromRate || !toRate) return amount;
+        return amount / fromRate * toRate;
+    }
+
+    async function fetchExchangeRates() {
+        const baseCurrency = 'EUR';
+        const symbols = CURRENCIES.join(',');
+        try {
+            const res = await fetch(`https://api.exchangerate.host/latest?base=${baseCurrency}&symbols=${symbols}`);
+            const data = await res.json();
+            if (data.success && data.rates) {
+                exchangeRates = data.rates;
+                exchangeRates[baseCurrency] = 1;
+                saveExchangeRates();
+                return true;
+            }
+        } catch (e) {}
+        try {
+            const res = await fetch(`https://api.frankfurter.app/latest?from=${baseCurrency}`);
+            const data = await res.json();
+            if (data.rates) {
+                exchangeRates = data.rates;
+                exchangeRates[baseCurrency] = 1;
+                saveExchangeRates();
+                return true;
+            }
+        } catch (e) {}
+        return false;
+    }
+
+    async function refreshExchangeRates() {
+        const btn = document.getElementById('refreshRatesBtn');
+        const status = document.getElementById('rateStatus');
+        if (btn) btn.disabled = true;
+        if (status) { status.textContent = 'Fetching...'; status.style.color = 'var(--text-muted)'; }
+        const ok = await fetchExchangeRates();
+        if (ok) {
+            if (status) { status.textContent = 'Updated ' + new Date().toLocaleDateString(); status.style.color = 'var(--success)'; }
+            toast('Exchange rates updated');
+            render();
+        } else {
+            if (status) { status.textContent = 'Failed to fetch'; status.style.color = 'var(--danger)'; }
+            toast('Failed to fetch exchange rates');
+        }
+        if (btn) btn.disabled = false;
+    }
+
     // --- Utilities ---
 
     function uid() {
@@ -1977,8 +2057,10 @@
             if (i > 0) html += '<span class="leg-connector">&rarr;</span>';
             const dates = leg.startDate ? formatDateRange(leg.startDate, leg.endDate) : '';
             const typeIcon = LEG_TYPE_ICONS[leg.legType] || '';
+            const _lc = legLodgingCoverage(trip, leg);
+            const lodgingIcon = (_lc.total > 0 && _lc.covered === _lc.total) ? '\u{1F3E8}' : '';
             html += `<div class="leg-chip" onclick="openLegModal('${leg.id}')" title="${esc(leg.city)}${leg.country ? ', ' + esc(leg.country) : ''}">
-                ${typeIcon ? `<span style="font-size:11px">${typeIcon}</span>` : ''}<span>${esc(leg.city)}</span>
+                ${typeIcon ? `<span style="font-size:11px">${typeIcon}</span>` : ''}${lodgingIcon ? `<span style="font-size:11px">${lodgingIcon}</span>` : ''}<span>${esc(leg.city)}</span>
                 ${dates ? `<span style="font-size:11px;opacity:0.7">${dates}</span>` : ''}
             </div>`;
         });
@@ -2246,33 +2328,40 @@
         </div>`;
         let budgetHTML = '';
         if (settings.showBudget) {
+            const tripCur = trip.currency || settings.defaultCurrency;
+            const displayTotal = budget.hasRates ? budget.convertedTotal : budget.total;
             const catItems = [{ label:'Lodging', amount:budget.byCategory.lodging||0 },{ label:'Transport', amount:budget.byCategory.transport||0 },{ label:'Activities', amount:budget.byCategory.activities||0 }];
             const hasBudget = budget.total > 0;
             const hasBudgetTarget = trip.budget > 0;
-            const budgetPct = hasBudgetTarget ? Math.round((budget.total / trip.budget) * 100) : 0;
+            const budgetPct = hasBudgetTarget ? Math.round((displayTotal / trip.budget) * 100) : 0;
             const budgetBarClass = budgetPct > 100 ? 'danger' : (budgetPct >= 75 ? 'warning' : 'success');
             const budgetHeaderRight = hasBudgetTarget
-                ? `<span style="font-weight:600">${formatCurrency(budget.total, trip.currency)} / ${formatCurrency(trip.budget, trip.currency)}</span>`
-                : `<span style="font-weight:600">${hasBudget ? formatCurrency(budget.total, trip.currency) : '\u2014'}</span>`;
+                ? `<span style="font-weight:600">${formatCurrency(displayTotal, tripCur)} / ${formatCurrency(trip.budget, tripCur)}</span>`
+                : `<span style="font-weight:600">${hasBudget ? formatCurrency(displayTotal, tripCur) : '\u2014'}</span>`;
+            const multiCur = Object.keys(budget.byCurrency).length > 1;
+            const rateTs = getExchangeRateTimestamp();
+            const rateLabel = rateTs ? 'Updated ' + new Date(rateTs).toLocaleDateString() : '';
+            const rateRow = multiCur ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border-light);display:flex;align-items:center;flex-wrap:wrap;gap:4px;font-size:12px;color:var(--text-muted)">${Object.entries(budget.byCurrency).map(([cur, amt]) => `<span style="margin-right:8px">${formatCurrency(amt, cur)}${budget.hasRates && cur !== tripCur ? ' (\u2248' + formatCurrency(convertCurrency(amt, cur, tripCur), tripCur) + ')' : ''}</span>`).join('')}<button id="refreshRatesBtn" class="btn btn-sm btn-ghost" style="font-size:11px;padding:2px 6px;margin-left:auto" onclick="refreshExchangeRates()" title="Fetch latest exchange rates">\u21BB Rates</button><span id="rateStatus" style="font-size:10px">${rateLabel}</span></div>` : '';
             budgetHTML = `<div class="card" style="margin-bottom:12px">
                 <div class="card-header"><strong>Budget</strong>${budgetHeaderRight}</div>
                 ${hasBudgetTarget ? `<div class="card-body" style="padding-top:8px">
                     <div class="progress-bar" style="margin-bottom:8px"><div class="progress-fill ${budgetBarClass}" style="width:${Math.min(budgetPct, 100)}%"></div></div>
-                    ${catItems.map(c => { const pct = budget.total > 0 ? Math.round((c.amount / budget.total) * 100) : 0; return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13px"><span>${c.label}</span><span style="color:var(--text-muted)">${formatCurrency(c.amount, trip.currency)} (${pct}%)</span></div>`; }).join('')}
-                    ${Object.keys(budget.byCurrency).length > 1 ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border-light);font-size:12px;color:var(--text-muted)">${Object.entries(budget.byCurrency).map(([cur, amt]) => `<span style="margin-right:12px">${formatCurrency(amt, cur)}</span>`).join('')}</div>` : ''}
+                    ${catItems.map(c => { const pct = displayTotal > 0 ? Math.round((c.amount / displayTotal) * 100) : 0; return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13px"><span>${c.label}</span><span style="color:var(--text-muted)">${formatCurrency(c.amount, tripCur)} (${pct}%)</span></div>`; }).join('')}
+                    ${rateRow}
                 </div>` : (hasBudget ? `<div class="card-body" style="padding-top:8px">
-                    ${catItems.map(c => { const pct = budget.total > 0 ? Math.round((c.amount / budget.total) * 100) : 0; return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13px"><span>${c.label}</span><span style="color:var(--text-muted)">${formatCurrency(c.amount, trip.currency)} (${pct}%)</span></div>`; }).join('')}
-                    ${Object.keys(budget.byCurrency).length > 1 ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border-light);font-size:12px;color:var(--text-muted)">${Object.entries(budget.byCurrency).map(([cur, amt]) => `<span style="margin-right:12px">${formatCurrency(amt, cur)}</span>`).join('')}</div>` : ''}
+                    ${catItems.map(c => { const pct = displayTotal > 0 ? Math.round((c.amount / displayTotal) * 100) : 0; return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13px"><span>${c.label}</span><span style="color:var(--text-muted)">${formatCurrency(c.amount, tripCur)} (${pct}%)</span></div>`; }).join('')}
+                    ${rateRow}
                 </div>` : '<div class="card-body"><span style="font-size:13px;color:var(--text-muted)">No expenses recorded yet</span></div>')}
             </div>`;
         }
-        function progressBarHTML(label, booked, total) {
+        function progressBarHTML(label, booked, total, unit) {
             if (total === 0 || booked === total) return '';
             const pct = Math.round((booked / total) * 100);
             const cls = pct >= 50 ? '' : 'warning';
-            return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>${label}</span><span style="color:var(--text-muted)">${booked}/${total} booked</span></div><div class="progress-bar"><div class="progress-fill ${cls}" style="width:${pct}%"></div></div></div>`;
+            const u = unit || 'booked';
+            return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>${label}</span><span style="color:var(--text-muted)">${booked}/${total} ${u}</span></div><div class="progress-bar"><div class="progress-fill ${cls}" style="width:${pct}%"></div></div></div>`;
         }
-        const _progressBody = progressBarHTML('Lodging', progress.bookedLodging, progress.totalLodging) + progressBarHTML('Transport', progress.bookedTransport, progress.totalTransport) + progressBarHTML('Activities', progress.bookedActivities, progress.totalReservations);
+        const _progressBody = progressBarHTML('Lodging', progress.bookedNights, progress.totalNights, 'nights booked') + progressBarHTML('Transport', progress.bookedTransport, progress.totalTransport) + progressBarHTML('Activities', progress.bookedActivities, progress.totalReservations) + progressBarHTML('Choose Lodging', progress.legsWithHotelOptions, progress.legsNeedingLodging, 'cities researched');
         const progressHTML = _progressBody ? `<div class="card" style="margin-bottom:12px"><div class="card-header"><strong>Booking Progress</strong></div><div class="card-body">${_progressBody}</div></div>` : '';
         let actionsHTML = '';
         if (topActions.length > 0) {
@@ -2310,14 +2399,18 @@
     }
 
     function computeBudget(trip) {
-        const result = { total: 0, byCategory: { lodging: 0, transport: 0, activities: 0 }, byCurrency: {} };
+        const tripCur = trip?.currency || settings.defaultCurrency;
+        const hasRates = Object.keys(exchangeRates).length > 0;
+        const result = { total: 0, convertedTotal: 0, byCategory: { lodging: 0, transport: 0, activities: 0 }, byCurrency: {}, hasRates };
         if (!trip) return result;
         function addCost(amount, currency, category) {
             const num = parseFloat(amount); if (isNaN(num) || num === 0) return;
-            result.byCategory[category] = (result.byCategory[category] || 0) + num;
-            result.total += num;
-            const cur = currency || trip.currency || settings.defaultCurrency;
+            const cur = currency || tripCur;
             result.byCurrency[cur] = (result.byCurrency[cur] || 0) + num;
+            result.total += num;
+            const converted = hasRates ? convertCurrency(num, cur, tripCur) : num;
+            result.byCategory[category] = (result.byCategory[category] || 0) + converted;
+            result.convertedTotal += converted;
         }
         for (const l of trip.lodging || []) addCost(l.cost, l.currency, 'lodging');
         for (const t of trip.transport || []) addCost(t.cost, t.currency, 'transport');
@@ -2326,10 +2419,18 @@
     }
 
     function computeProgress(trip) {
-        const result = { bookedLodging: 0, totalLodging: 0, bookedTransport: 0, totalTransport: 0, bookedActivities: 0, totalReservations: 0 };
+        const result = { bookedNights: 0, totalNights: 0, bookedTransport: 0, totalTransport: 0, bookedActivities: 0, totalReservations: 0, legsWithHotelOptions: 0, legsNeedingLodging: 0 };
         if (!trip) return result;
-        result.totalLodging = (trip.lodging || []).length;
-        result.bookedLodging = (trip.lodging || []).filter(l => l.booked).length;
+        const legs = (trip.legs || []).filter(l => l.legType !== 'home' && l.legType !== 'stayingWithFriend');
+        for (const leg of legs) {
+            const cov = legLodgingCoverage(trip, leg);
+            result.totalNights += cov.total;
+            result.bookedNights += cov.covered;
+            if (cov.total > 0 && cov.covered < cov.total) {
+                result.legsNeedingLodging++;
+                if ((trip.hotelOptions || []).some(ho => ho.city === leg.city)) result.legsWithHotelOptions++;
+            }
+        }
         result.totalTransport = (trip.transport || []).length;
         result.bookedTransport = (trip.transport || []).filter(t => t.booked).length;
         const reservable = (trip.activities || []).filter(a => a.reservationNeeded);
@@ -3321,6 +3422,21 @@
             if (l.booked && l.checkIn && l.checkOut && l.checkIn <= dateStr && dateStr < l.checkOut) return true;
         }
         return false;
+    }
+
+    function legLodgingCoverage(trip, leg) {
+        if (!leg || !leg.startDate || !leg.endDate) return { covered: 0, total: 0 };
+        const start = new Date(leg.startDate + 'T00:00:00');
+        const end = new Date(leg.endDate + 'T00:00:00');
+        let total = 0, covered = 0;
+        const cur = new Date(start);
+        while (cur < end) {
+            const ds = localDateStr(cur);
+            total++;
+            if (hasBookedLodgingForNight(trip, ds)) covered++;
+            cur.setDate(cur.getDate() + 1);
+        }
+        return { covered, total };
     }
 
     function getLegForDate(trip, dateStr) {
@@ -5523,6 +5639,7 @@
 
     loadSettings();
     loadData().then(async () => {
+        loadExchangeRates();
         restoreNavState();
         await checkShareLink();
         await checkSharedFile();
