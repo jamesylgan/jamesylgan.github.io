@@ -891,7 +891,27 @@
     // --- Modal System ---
 
     const FORM_CACHE_KEY = 'trip-planner-form-cache';
+    const DRAFT_TYPES = new Set(['lodging', 'activity', 'transport', 'hotelOption']);
     let formCacheTimer = null;
+
+    function getDraftKey(editingType, editingId) {
+        return `trip-planner-draft-${editingType}-${editingId || 'new'}`;
+    }
+
+    function getDraft(editingType, editingId) {
+        try {
+            const raw = sessionStorage.getItem(getDraftKey(editingType, editingId));
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) { return null; }
+    }
+
+    function clearDraft(editingType, editingId) {
+        try { sessionStorage.removeItem(getDraftKey(editingType, editingId)); } catch (e) {}
+    }
+
+    function hasDraft(editingType, editingId) {
+        return getDraft(editingType, editingId) !== null;
+    }
 
     function snapshotModalForm() {
         const body = document.getElementById('modalBody');
@@ -910,7 +930,11 @@
             hasFields = true;
         });
         if (hasFields) {
-            try { sessionStorage.setItem(FORM_CACHE_KEY, JSON.stringify({ editingType: state.editingType, editingId: state.editingId, fields })); } catch (e) {}
+            const data = { editingType: state.editingType, editingId: state.editingId, fields };
+            try { sessionStorage.setItem(FORM_CACHE_KEY, JSON.stringify(data)); } catch (e) {}
+            if (DRAFT_TYPES.has(state.editingType)) {
+                try { sessionStorage.setItem(getDraftKey(state.editingType, state.editingId), JSON.stringify(data)); } catch (e) {}
+            }
         }
     }
 
@@ -953,8 +977,54 @@
 
     function closeModal() {
         stopFormAutoSave();
-        clearFormCache();
+        if (DRAFT_TYPES.has(state.editingType)) {
+            snapshotModalForm();
+            toast('Draft saved');
+        } else {
+            clearFormCache();
+        }
         document.getElementById('modalOverlay').classList.remove('open');
+    }
+
+    function closeModalClean() {
+        stopFormAutoSave();
+        clearFormCache();
+        if (DRAFT_TYPES.has(state.editingType)) {
+            clearDraft(state.editingType, state.editingId);
+        }
+        document.getElementById('modalOverlay').classList.remove('open');
+    }
+
+    function saveDraft() {
+        closeModal();
+    }
+
+    async function deleteDraft() {
+        const ok = await showConfirm('Delete Draft', 'Discard this draft? Your unsaved changes will be lost.');
+        if (!ok) return;
+        clearDraft(state.editingType, state.editingId);
+        clearFormCache();
+        stopFormAutoSave();
+        document.getElementById('modalOverlay').classList.remove('open');
+        toast('Draft deleted');
+    }
+
+    async function discardDraft() {
+        const ok = await showConfirm('Discard Draft', 'Revert to the last saved version? Your unsaved edits will be lost.');
+        if (!ok) return;
+        clearDraft(state.editingType, state.editingId);
+        clearFormCache();
+        const id = state.editingId;
+        const type = state.editingType;
+        const openers = {
+            lodging: () => openLodgingModal(id),
+            transport: () => openTransportModal(id),
+            activity: () => openActivityModal(id),
+            hotelOption: () => openHotelOptionModal(id),
+        };
+        const opener = openers[type];
+        if (opener) opener();
+        toast('Reverted to saved version');
     }
 
     function showConfirm(title, message) {
@@ -2434,8 +2504,8 @@
                 <div class="form-group"><label>Leg (City)</label><select class="select" id="lodgingLeg">${legOptions(trip, l?.legId || '')}</select></div>
                 <div class="form-group"><label>Address</label><input class="input" id="lodgingAddress" value="${esc(l?.address || '')}" placeholder="Street address"></div>
                 <div class="form-row">
-                    <div class="form-group"><label>Check-in</label><input class="input" id="lodgingCheckIn" type="date" value="${l?.checkIn || ''}"></div>
-                    <div class="form-group"><label>Check-out</label><input class="input" id="lodgingCheckOut" type="date" value="${l?.checkOut || ''}"></div>
+                    <div class="form-group"><label>Check-in</label><input class="input" id="lodgingCheckIn" type="date" value="${l?.checkIn || ''}" onchange="onCheckinDateChange(this.value)"></div>
+                    <div class="form-group"><label>Check-out</label><input class="input" id="lodgingCheckOut" type="date" value="${l?.checkOut || ''}"${l?.checkIn ? ` min="${(() => { const d = new Date(l.checkIn + 'T00:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })()"` : ''}></div>
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label>Cost</label><input class="input" id="lodgingCost" type="number" step="0.01" min="0" value="${l?.cost != null ? l.cost : ''}" placeholder="0.00"></div>
@@ -2449,10 +2519,34 @@
             </div>
             <div class="modal-footer">
                 ${l ? `<button class="btn btn-danger" onclick="deleteLodging('${l.id}')" style="margin-right:auto">Delete</button>` : ''}
-                <button class="btn" onclick="closeModal()">Cancel</button>
+                ${!l && hasDraft('lodging', null) ? `<button class="btn btn-danger" onclick="deleteDraft()" style="margin-right:auto">Delete Draft</button>` : ''}
+                ${l && hasDraft('lodging', l.id) ? `<button class="btn" onclick="discardDraft()">Discard Draft</button>` : ''}
+                <button class="btn" onclick="saveDraft()">Save Draft</button>
                 <button class="btn btn-primary" onclick="saveLodging()">Save</button>
             </div>
         `);
+        const _lodgingDraft = getDraft('lodging', lodgingId || null);
+        if (_lodgingDraft) setTimeout(() => { restoreModalForm(_lodgingDraft); const ci = document.getElementById('lodgingCheckIn'); if (ci?.value) onCheckinDateChange(ci.value); }, 50);
+        else if (l?.checkIn) setTimeout(() => onCheckinDateChange(l.checkIn), 50);
+    }
+
+    function onCheckinDateChange(checkinValue, checkoutId) {
+        const checkoutEl = document.getElementById(checkoutId || 'lodgingCheckOut');
+        if (!checkoutEl) return;
+        if (!checkinValue) { checkoutEl.min = ''; return; }
+        const checkinDate = new Date(checkinValue + 'T00:00:00');
+        const nextDay = new Date(checkinDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const minDate = nextDay.toISOString().split('T')[0];
+        checkoutEl.min = minDate;
+        if (checkoutEl.value && checkoutEl.value < minDate) checkoutEl.value = '';
+        if (!checkoutEl.value) {
+            const nextMonth = new Date(checkinDate);
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
+            nextMonth.setDate(1);
+            const nextMonthStr = nextMonth.toISOString().split('T')[0];
+            if (nextMonthStr > checkinValue) checkoutEl.value = nextMonthStr;
+        }
     }
 
     function saveLodging() {
@@ -2469,14 +2563,14 @@
         if (!trip.lodging) trip.lodging = [];
         if (state.editingId) { const existing = trip.lodging.find(x => x.id === state.editingId); if (existing) Object.assign(existing, lodgingData); }
         else { trip.lodging.push({ id: uid(), coordinates: null, confirmationNumber: '', bookingPlatform: '', phone: '', ...lodgingData }); }
-        save(); closeModal(); render(); toast(state.editingId ? 'Lodging updated' : 'Lodging added');
+        save(); closeModalClean(); render(); toast(state.editingId ? 'Lodging updated' : 'Lodging added');
     }
 
     function deleteLodging(id) {
         showConfirm('Delete Lodging', 'Are you sure you want to delete this lodging?').then(ok => {
             if (!ok) return; const trip = getTrip(); if (!trip) return;
             trip.lodging = (trip.lodging || []).filter(x => x.id !== id);
-            save(); closeModal(); render(); toast('Lodging deleted');
+            save(); closeModalClean(); render(); toast('Lodging deleted');
         });
     }
 
@@ -2511,10 +2605,14 @@
             </div>
             <div class="modal-footer">
                 ${ho ? `<button class="btn btn-danger" onclick="deleteHotelOption('${ho.id}')" style="margin-right:auto">Delete</button>` : ''}
-                <button class="btn" onclick="closeModal()">Cancel</button>
+                ${!ho && hasDraft('hotelOption', null) ? `<button class="btn btn-danger" onclick="deleteDraft()" style="margin-right:auto">Delete Draft</button>` : ''}
+                ${ho && hasDraft('hotelOption', ho.id) ? `<button class="btn" onclick="discardDraft()">Discard Draft</button>` : ''}
+                <button class="btn" onclick="saveDraft()">Save Draft</button>
                 <button class="btn btn-primary" onclick="saveHotelOption()">Save</button>
             </div>
         `);
+        const _hoDraft = getDraft('hotelOption', optionId || null);
+        if (_hoDraft) setTimeout(() => restoreModalForm(_hoDraft), 50);
     }
 
     function saveHotelOption() {
@@ -2527,14 +2625,14 @@
         if (!trip.hotelOptions) trip.hotelOptions = [];
         if (state.editingId) { const existing = trip.hotelOptions.find(x => x.id === state.editingId); if (existing) Object.assign(existing, data); }
         else { trip.hotelOptions.push({ id: uid(), ...data }); }
-        save(); closeModal(); render(); toast(state.editingId ? 'Hotel option updated' : 'Hotel option added');
+        save(); closeModalClean(); render(); toast(state.editingId ? 'Hotel option updated' : 'Hotel option added');
     }
 
     function deleteHotelOption(id) {
         showConfirm('Delete Hotel Option', 'Are you sure you want to delete this hotel option?').then(ok => {
             if (!ok) return; const trip = getTrip(); if (!trip) return;
             trip.hotelOptions = (trip.hotelOptions || []).filter(x => x.id !== id);
-            save(); closeModal(); render(); toast('Hotel option deleted');
+            save(); closeModalClean(); render(); toast('Hotel option deleted');
         });
     }
 
@@ -2542,14 +2640,15 @@
         const trip = getTrip(); if (!trip) return;
         const ho = (trip.hotelOptions || []).find(x => x.id === hotelOptionId);
         if (!ho) { toast('Hotel option not found'); return; }
+        state.editingId = null; state.editingType = 'quickBook';
         openModal(`
             <div class="modal-header"><h3>Book: ${esc(ho.name)}</h3><button class="btn-icon" onclick="closeModal()">\u2715</button></div>
             <div class="modal-body">
                 <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">${esc(ho.city)}${ho.cost != null ? ' &middot; ' + formatCurrency(ho.cost, ho.currency) + '/night' : ''}</div>
                 <input type="hidden" id="qbHotelOptionId" value="${esc(ho.id)}">
                 <div class="form-row">
-                    <div class="form-group"><label>Check-in</label><input class="input" id="qbCheckIn" type="date" value="${prefillCheckIn || ''}"></div>
-                    <div class="form-group"><label>Check-out</label><input class="input" id="qbCheckOut" type="date" value=""></div>
+                    <div class="form-group"><label>Check-in</label><input class="input" id="qbCheckIn" type="date" value="${prefillCheckIn || ''}" onchange="onCheckinDateChange(this.value, 'qbCheckOut')"></div>
+                    <div class="form-group"><label>Check-out</label><input class="input" id="qbCheckOut" type="date" value=""${prefillCheckIn ? ` min="${(() => { const d = new Date(prefillCheckIn + 'T00:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; })()"` : ''}></div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -2606,10 +2705,14 @@
             </div>
             <div class="modal-footer">
                 ${t ? `<button class="btn btn-danger" onclick="deleteTransport('${t.id}')" style="margin-right:auto">Delete</button>` : ''}
-                <button class="btn" onclick="closeModal()">Cancel</button>
+                ${!t && hasDraft('transport', null) ? `<button class="btn btn-danger" onclick="deleteDraft()" style="margin-right:auto">Delete Draft</button>` : ''}
+                ${t && hasDraft('transport', t.id) ? `<button class="btn" onclick="discardDraft()">Discard Draft</button>` : ''}
+                <button class="btn" onclick="saveDraft()">Save Draft</button>
                 <button class="btn btn-primary" onclick="saveTransport()">Save</button>
             </div>
         `);
+        const _transportDraft = getDraft('transport', transportId || null);
+        if (_transportDraft) setTimeout(() => restoreModalForm(_transportDraft), 50);
     }
 
     function saveTransport() {
@@ -2628,14 +2731,14 @@
         if (!trip.transport) trip.transport = [];
         if (state.editingId) { const existing = trip.transport.find(x => x.id === state.editingId); if (existing) Object.assign(existing, transportData); }
         else { trip.transport.push({ id: uid(), confirmationNumber: '', bookingPlatform: '', seatInfo: '', ...transportData }); }
-        save(); closeModal(); render(); toast(state.editingId ? 'Transport updated' : 'Transport added');
+        save(); closeModalClean(); render(); toast(state.editingId ? 'Transport updated' : 'Transport added');
     }
 
     function deleteTransport(id) {
         showConfirm('Delete Transport', 'Are you sure you want to delete this transport?').then(ok => {
             if (!ok) return; const trip = getTrip(); if (!trip) return;
             trip.transport = (trip.transport || []).filter(x => x.id !== id);
-            save(); closeModal(); render(); toast('Transport deleted');
+            save(); closeModalClean(); render(); toast('Transport deleted');
         });
     }
 
@@ -2740,8 +2843,12 @@
             const ciEl = document.getElementById('lodgingCheckIn');
             const coEl = document.getElementById('lodgingCheckOut');
             const legEl = document.getElementById('lodgingLeg');
-            if (ciEl && dateStr) ciEl.value = dateStr;
-            if (coEl && endDateStr) coEl.value = endDateStr;
+            if (ciEl && dateStr) { ciEl.value = dateStr; onCheckinDateChange(dateStr); }
+            if (coEl && endDateStr) {
+                const d = new Date(endDateStr + 'T00:00:00');
+                d.setDate(d.getDate() + 1);
+                coEl.value = localDateStr(d);
+            }
             if (legEl && legId) legEl.value = legId;
         }, 50);
     }
@@ -2814,11 +2921,15 @@
             </div>
             <div class="modal-footer">
                 ${act ? `<button class="btn btn-danger" onclick="deleteActivity('${act.id}')" style="margin-right:auto">Delete</button>` : ''}
-                <button class="btn" onclick="${fromDayPlanId ? 'returnToDayPlanModal()' : 'closeModal()'}">Cancel</button>
+                ${!act && hasDraft('activity', null) ? `<button class="btn btn-danger" onclick="deleteDraft()" style="margin-right:auto">Delete Draft</button>` : ''}
+                ${act && hasDraft('activity', act.id) ? `<button class="btn" onclick="discardDraft()">Discard Draft</button>` : ''}
+                <button class="btn" onclick="saveDraft()">Save Draft</button>
                 <button class="btn btn-primary" onclick="saveActivity(${fromDayPlanId ? '{returnToDayPlan:true}' : ''})">${fromDayPlanId ? 'Save & Back' : 'Save'}</button>
             </div>
         `);
         initPhotoEditor(act?.photos || []);
+        const _actDraft = getDraft('activity', activityId || null);
+        if (_actDraft) setTimeout(() => restoreModalForm(_actDraft), 50);
     }
 
     function initPhotoEditor(existingPhotos) {
@@ -2897,10 +3008,12 @@
         }
         save();
         if (opts?.returnToDayPlan && _dayPlanReturnState) {
+            clearFormCache();
+            if (DRAFT_TYPES.has(state.editingType)) clearDraft(state.editingType, state.editingId);
             toast('Activity saved');
             returnToDayPlanModal();
         } else {
-            closeModal(); render(); toast(state.editingId ? 'Activity updated' : 'Activity created');
+            closeModalClean(); render(); toast(state.editingId ? 'Activity updated' : 'Activity created');
         }
     }
 
@@ -2909,7 +3022,7 @@
         if (!ok) return; const trip = getTrip(); if (!trip) return;
         trip.activities = (trip.activities || []).filter(a => a.id !== id);
         for (const dp of (trip.dayPlans || [])) dp.activityIds = (dp.activityIds || []).filter(aid => aid !== id);
-        save(); closeModal(); render(); toast('Activity deleted');
+        save(); closeModalClean(); render(); toast('Activity deleted');
     }
 
     function toggleActivityVisited(id) {
@@ -3529,7 +3642,10 @@
                 const isToday = dateStr === today;
                 let filteredActs = _applyActivityFilters(events.activities, filter);
                 filteredActs = _sortActivitiesForDate(filteredActs, dateStr, today, events.dayPlans);
-                const legLabel = leg ? esc(leg.city) : '';
+                const nextDateStr = _renderDays[i + 1] || null;
+                const nextLeg = nextDateStr ? getLegForDate(trip, nextDateStr) : null;
+                const isTravelDay = events.transport.length > 0 || (leg && nextLeg && leg.id !== nextLeg.id);
+                const legLabel = leg ? (isTravelDay && nextLeg && nextLeg.id !== leg.id ? esc(leg.city) + ' \u2192 ' + esc(nextLeg.city) : esc(leg.city)) : '';
                 const todayBadge = isToday ? ' <span class="badge badge-in-progress" style="font-size:10px;margin-left:6px">Today</span>' : '';
                 const usedPlan = (trip.dayPlans || []).find(dp => dp.usedDate === dateStr);
                 const planBadge = usedPlan ? ` <span style="font-size:11px;color:var(--purple)">&middot; ${esc(usedPlan.name)}</span>` : '';
