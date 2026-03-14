@@ -630,6 +630,8 @@ public class MainActivity extends AppCompatActivity {
             java.util.Map<String, String> responseHeaders = new java.util.HashMap<>();
             responseHeaders.put("Accept-Ranges", "bytes");
             responseHeaders.put("Access-Control-Allow-Origin", "*");
+            responseHeaders.put("Access-Control-Expose-Headers", "Content-Range, Content-Length, Accept-Ranges");
+            responseHeaders.put("Cache-Control", "no-store");
             responseHeaders.put("Content-Type", "application/octet-stream");
 
             if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
