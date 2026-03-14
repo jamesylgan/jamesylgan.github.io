@@ -209,7 +209,7 @@ public class MainActivity extends AppCompatActivity {
                 pageLoaded = true;
                 // Inject Android app flag and re-render so Android-only UI appears
                 view.evaluateJavascript(
-                    "window.__ANDROID_APP__ = true; window.__APP_VERSION__ = '1.2.1';"
+                    "window.__ANDROID_APP__ = true; window.__APP_VERSION__ = '1.3.1';"
                     + "if(typeof render==='function')render();", null);
                 injectPendingTrip();
             }
@@ -227,9 +227,16 @@ public class MainActivity extends AppCompatActivity {
                 }
                 fileChooserCallback = callback;
 
-                Intent intent = fileChooserParams.createIntent();
+                // Build our own intent with */* so Android shows .trip files
+                // (the default createIntent() uses the HTML accept attribute which
+                // Android can't map to a MIME type for custom extensions like .trip)
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.setType("*/*");
+                String[] mimeTypes = {"application/json", "application/octet-stream"};
+                intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
                 try {
-                    fileChooserLauncher.launch(intent);
+                    fileChooserLauncher.launch(Intent.createChooser(intent, "Import trip"));
                 } catch (Exception e) {
                     fileChooserCallback = null;
                     callback.onReceiveValue(null);

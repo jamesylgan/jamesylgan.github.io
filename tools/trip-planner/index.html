@@ -3491,6 +3491,22 @@
         const _renderDays = travelFilteredDays || days;
         if (_renderDays.length === 0) { dayCardsHTML = `<div class="empty-state" style="padding:24px 0"><p>Set trip dates to see your day-by-day itinerary.</p></div>`; }
         else {
+            // When filtering by leg, show inbound/outbound transport banners
+            let _legFilterInbound = null, _legFilterOutbound = null;
+            if (!_travelActive && filter.legId) {
+                const _allLegs = (trip.legs || []).slice().sort((a,b) => (a.order||0)-(b.order||0));
+                const _selIdx = _allLegs.findIndex(l => l.id === filter.legId);
+                const _selLeg = _selIdx >= 0 ? _allLegs[_selIdx] : null;
+                if (_selLeg) {
+                    const _prevCity = _selIdx > 0 ? _allLegs[_selIdx - 1].city : trip.startLocation;
+                    const _nextCity = _selIdx < _allLegs.length - 1 ? _allLegs[_selIdx + 1].city : trip.endLocation;
+                    if (_prevCity && _selLeg.city && _prevCity.toLowerCase() !== _selLeg.city.toLowerCase()) _legFilterInbound = { from: _prevCity, to: _selLeg.city, dateHint: _selLeg.startDate || '' };
+                    if (_nextCity && _selLeg.city && _nextCity.toLowerCase() !== _selLeg.city.toLowerCase()) _legFilterOutbound = { from: _selLeg.city, to: _nextCity, dateHint: _selLeg.endDate || '' };
+                }
+            }
+
+            if (_legFilterInbound) dayCardsHTML += renderTravelBanner(trip, _legFilterInbound.from, _legFilterInbound.to, _legFilterInbound.dateHint);
+
             let prevCity = null;
             let shownStartBanner = false;
             for (let i = 0; i < _renderDays.length; i++) {
@@ -3498,13 +3514,15 @@
                 if (!_travelActive && filter.legId && (!leg || leg.id !== filter.legId)) continue;
                 const _dayNum = days.indexOf(dateStr);
                 const curCity = leg ? leg.city : null;
-                if (!shownStartBanner && curCity && trip.startLocation && trip.startLocation.toLowerCase() !== curCity.toLowerCase()) {
-                    dayCardsHTML += renderTravelBanner(trip, trip.startLocation, curCity, _renderDays[0]);
-                    shownStartBanner = true;
-                } else if (!shownStartBanner) { shownStartBanner = true; }
-                if (prevCity && curCity && prevCity.toLowerCase() !== curCity.toLowerCase()) {
-                    dayCardsHTML += renderTravelBanner(trip, prevCity, curCity, dateStr);
-                }
+                if (!_legFilterInbound) {
+                    if (!shownStartBanner && curCity && trip.startLocation && trip.startLocation.toLowerCase() !== curCity.toLowerCase()) {
+                        dayCardsHTML += renderTravelBanner(trip, trip.startLocation, curCity, _renderDays[0]);
+                        shownStartBanner = true;
+                    } else if (!shownStartBanner) { shownStartBanner = true; }
+                    if (prevCity && curCity && prevCity.toLowerCase() !== curCity.toLowerCase()) {
+                        dayCardsHTML += renderTravelBanner(trip, prevCity, curCity, dateStr);
+                    }
+                } else { shownStartBanner = true; }
                 prevCity = curCity;
                 const events = getEventsForDate(trip, dateStr); const collapsed = state.collapsedDays[dateStr];
                 const d = new Date(dateStr + 'T00:00:00'); const dayOfWeek = d.toLocaleDateString('en-US',{weekday:'long'});
@@ -3569,7 +3587,9 @@
                 }
                 dayCardsHTML += `</div>`;
             }
-            if (prevCity && trip.endLocation && trip.endLocation.toLowerCase() !== prevCity.toLowerCase()) {
+            if (_legFilterOutbound) {
+                dayCardsHTML += renderTravelBanner(trip, _legFilterOutbound.from, _legFilterOutbound.to, _legFilterOutbound.dateHint);
+            } else if (prevCity && trip.endLocation && trip.endLocation.toLowerCase() !== prevCity.toLowerCase()) {
                 dayCardsHTML += renderTravelBanner(trip, prevCity, trip.endLocation, _renderDays[_renderDays.length - 1]);
             }
         }
