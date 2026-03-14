@@ -3195,7 +3195,7 @@
         const result = { transport: [], lodging: [], activities: [], dayPlans: [] };
         if (!trip || !dateStr) return result;
         for (const t of trip.transport || []) { if (t.departure && t.departure.split('T')[0] === dateStr) result.transport.push(t); }
-        for (const l of trip.lodging || []) { if (l.checkIn && l.checkOut && l.checkIn <= dateStr && dateStr < l.checkOut) result.lodging.push(l); }
+        for (const l of trip.lodging || []) { if (l.checkIn && l.checkOut && l.checkIn <= dateStr && dateStr <= l.checkOut) result.lodging.push(l); }
         for (const dp of trip.dayPlans || []) { if (dp.assignedDate === dateStr) result.dayPlans.push(dp); }
         const dpActIds = new Set();
         for (const dp of result.dayPlans) { for (const aid of dp.activityIds || []) dpActIds.add(aid); }
@@ -3545,7 +3545,7 @@
                         dayCardsHTML += `<div class="item-row" style="margin-bottom:6px;cursor:pointer" onclick="openTransportModal('${t.id}')"><span class="category-icon">${icon}</span><div class="item-body"><div class="item-title">${esc(t.carrier||'')} ${esc(t.flightNumber||'')} ${esc(t.fromCity||'')} \u2192 ${esc(t.toCity||'')}</div><div class="item-meta">${timeStr ? '<span>'+timeStr+'</span>' : ''}</div></div><div class="item-actions">${t.booked ? '<span class="badge badge-ready" style="font-size:10px">Booked</span>' : '<span class="badge badge-booking" style="font-size:10px">Unbooked</span>'}</div></div>`;
                     }
                     for (const l of events.lodging) {
-                        const label = (l.checkIn===dateStr && l.checkOut===dateStr) ? 'Check-in / Check-out' : l.checkIn===dateStr ? 'Check-in' : 'Check-out';
+                        const label = (l.checkIn===dateStr && l.checkOut===dateStr) ? 'Check-in / Check-out' : l.checkIn===dateStr ? 'Check-in' : l.checkOut===dateStr ? 'Check-out' : 'Stay';
                         dayCardsHTML += `<div class="item-row" style="margin-bottom:6px;cursor:pointer" onclick="openLodgingModal('${l.id}')"><span class="category-icon">\u{1F3E8}</span><div class="item-body"><div class="item-title">${esc(label)}: ${esc(l.name)}</div></div><div class="item-actions">${l.booked ? '<span class="badge badge-ready" style="font-size:10px">Booked</span>' : '<span class="badge badge-booking" style="font-size:10px">Unbooked</span>'}</div></div>`;
                     }
                     if (filteredActs.length > 0) {
