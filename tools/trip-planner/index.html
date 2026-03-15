@@ -2406,14 +2406,12 @@
                                    placeholder="xxxx.apps.googleusercontent.com"
                                    onchange="settings.googleClientId=this.value.trim();saveSetting()">
                         </div>
-                        ${window.__ANDROID_APP__ ? `
                         <div class="form-group" style="margin-top:8px">
                             <label>Google Client Secret</label>
-                            <input class="input" id="settGoogleClientSecret" type="password" value="${esc(settings.googleClientSecret)}"
+                            <input class="input" id="settGoogleClientSecret" value="${esc(settings.googleClientSecret)}"
                                    placeholder="GOCSPX-..."
                                    onchange="settings.googleClientSecret=this.value.trim();saveSetting()">
                         </div>
-                        ` : ''}
                         <details style="font-size:11px;color:var(--text-muted);margin-top:6px">
                             <summary style="cursor:pointer">Setup instructions</summary>
                             <ol style="padding-left:16px;margin-top:6px;line-height:1.6">
