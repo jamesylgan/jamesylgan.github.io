@@ -45,6 +45,17 @@
                 <data android:scheme="content" android:mimeType="application/json" />
             </intent-filter>
 
+            <!-- Google OAuth callback redirect -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="bellevue.tech"
+                    android:path="/tools/trip-planner/oauth-callback" />
+            </intent-filter>
+
             <!-- Share sheet -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
