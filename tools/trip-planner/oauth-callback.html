@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trip Planner - Signing in...</title>
+<style>
+  body { font-family: -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f5f5f5; }
+  .card { background: #fff; border-radius: 12px; padding: 2rem; max-width: 360px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+  h2 { margin: 0 0 .5rem; }
+  p { color: #666; margin: .5rem 0; }
+  .spinner { width: 32px; height: 32px; border: 3px solid #ddd; border-top-color: #4285f4; border-radius: 50%; animation: spin .8s linear infinite; margin: 1rem auto; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  a { color: #4285f4; }
+  #error { display: none; color: #c00; margin-top: 1rem; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="spinner" id="spinner"></div>
+  <h2>Signing in...</h2>
+  <p id="status">Returning to Trip Planner...</p>
+  <p id="error"></p>
+</div>
+<script>
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var code = params.get('code');
+
+  if (!code) {
+    document.getElementById('spinner').style.display = 'none';
+    document.getElementById('status').textContent = 'Sign-in failed.';
+    document.getElementById('error').style.display = 'block';
+    document.getElementById('error').textContent = params.get('error') || 'No authorization code received.';
+    return;
+  }
+
+  // Try to open the app via intent:// URL (Android)
+  var intentUrl = 'intent://bellevue.tech/tools/trip-planner/oauth-callback?code=' +
+    encodeURIComponent(code) +
+    '#Intent;scheme=https;package=tech.bellevue.tripplanner;end';
+
+  window.location.href = intentUrl;
+
+  // If we're still here after a moment, the app didn't handle it
+  setTimeout(function() {
+    document.getElementById('status').innerHTML =
+      'If the app did not open automatically, copy this code and paste it in the app:<br><br>' +
+      '<code style="user-select:all;background:#f0f0f0;padding:4px 8px;border-radius:4px;word-break:break-all">' +
+      code.replace(/</g, '&lt;') + '</code>';
+    document.getElementById('spinner').style.display = 'none';
+  }, 2000);
+})();
+</script>
+</body>
+</html>
