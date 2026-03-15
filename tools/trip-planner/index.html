@@ -926,7 +926,7 @@
                     code_verifier: _oauthCodeVerifier,
                 }).toString(),
             });
-            if (!res.ok) { toast('Token exchange failed'); _oauthResolve(null); return; }
+            if (!res.ok) { const err = await res.json().catch(() => ({})); toast('Token exchange failed: ' + (err.error_description || err.error || res.status)); _oauthResolve(null); return; }
             const tokenData = await res.json();
             await _handleOAuthTokenResponse(tokenData.access_token, tokenData.expires_in);
             _oauthResolve(tokenData.access_token);
