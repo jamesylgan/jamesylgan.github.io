@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "tech.bellevue.tripplanner",
+    "sha256_cert_fingerprints": [
+      "A6:16:E4:9A:26:AD:F7:FA:7D:C4:02:8E:93:0E:9B:35:87:8D:F7:BA:99:A5:4E:3D:91:36:AF:0B:1E:64:11:22"
+    ]
+  }
+}]
