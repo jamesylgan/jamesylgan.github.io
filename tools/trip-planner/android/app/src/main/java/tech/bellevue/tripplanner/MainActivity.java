@@ -209,7 +209,7 @@ public class MainActivity extends AppCompatActivity {
                 pageLoaded = true;
                 // Inject Android app flag and re-render so Android-only UI appears
                 view.evaluateJavascript(
-                    "window.__ANDROID_APP__ = true; window.__APP_VERSION__ = '1.3.1';"
+                    "window.__ANDROID_APP__ = true; window.__APP_VERSION__ = '1.6.0';"
                     + "if(typeof render==='function')render();", null);
                 injectPendingTrip();
             }
@@ -268,7 +268,27 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        if (handleOAuthCallback(intent)) return;
         handleIntent(intent);
+    }
+
+    /**
+     * Check if the intent is an OAuth callback redirect from the external browser.
+     * URL: https://bellevue.tech/tools/trip-planner/oauth-callback?code=AUTH_CODE
+     */
+    private boolean handleOAuthCallback(Intent intent) {
+        if (intent == null || intent.getData() == null) return false;
+        Uri uri = intent.getData();
+        if (uri.getHost() == null || !uri.getHost().equals("bellevue.tech")) return false;
+        if (uri.getPath() == null || !uri.getPath().equals("/tools/trip-planner/oauth-callback")) return false;
+
+        String code = uri.getQueryParameter("code");
+        if (code == null || code.isEmpty()) return false;
+
+        // Pass the authorization code to the WebView for token exchange
+        String escaped = code.replace("\\", "\\\\").replace("'", "\\'");
+        webView.evaluateJavascript("window._handleOAuthCode('" + escaped + "')", null);
+        return true;
     }
 
     @Override
@@ -557,6 +577,18 @@ public class MainActivity extends AppCompatActivity {
             } catch (JSONException e) {
                 return "{\"usedBytes\":0,\"availableBytes\":0}";
             }
+        }
+
+        // --- OAuth ---
+
+        /**
+         * Open a URL in the default external browser (used for Google OAuth).
+         */
+        @JavascriptInterface
+        public void openUrl(String url) {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
         }
     }
 
