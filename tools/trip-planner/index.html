@@ -331,6 +331,7 @@
         showOfflineMaps: false,
         showSheetsSync: false,
         googleClientId: '',
+        googleClientSecret: '',
     };
 
     let data = { trips: [] };
@@ -920,6 +921,7 @@
                     grant_type: 'authorization_code',
                     code,
                     client_id: settings.googleClientId,
+                    client_secret: settings.googleClientSecret,
                     redirect_uri: OAUTH_REDIRECT_URI,
                     code_verifier: _oauthCodeVerifier,
                 }).toString(),
@@ -2394,9 +2396,9 @@
                 </div>
                 <div class="toggle-wrap">
                     <label>Google Sheets Sync</label>
-                    <button class="toggle ${settings.showSheetsSync ? 'on' : ''}" onclick="settings.showSheetsSync=!settings.showSheetsSync;saveSetting();this.classList.toggle('on');const sw=document.getElementById('sheetsSyncWrap');if(sw){sw.style.maxHeight=settings.showSheetsSync?'300px':'0';sw.style.opacity=settings.showSheetsSync?'1':'0'}"></button>
+                    <button class="toggle ${settings.showSheetsSync ? 'on' : ''}" onclick="settings.showSheetsSync=!settings.showSheetsSync;saveSetting();this.classList.toggle('on');const sw=document.getElementById('sheetsSyncWrap');if(sw){sw.style.maxHeight=settings.showSheetsSync?'400px':'0';sw.style.opacity=settings.showSheetsSync?'1':'0'}"></button>
                 </div>
-                <div id="sheetsSyncWrap" style="overflow:hidden;transition:max-height 0.3s ease,opacity 0.3s ease;max-height:${settings.showSheetsSync ? '300px' : '0'};opacity:${settings.showSheetsSync ? '1' : '0'}">
+                <div id="sheetsSyncWrap" style="overflow:hidden;transition:max-height 0.3s ease,opacity 0.3s ease;max-height:${settings.showSheetsSync ? '400px' : '0'};opacity:${settings.showSheetsSync ? '1' : '0'}">
                     <div style="padding:4px 0 8px">
                         <div class="form-group">
                             <label>Google Client ID</label>
@@ -2404,6 +2406,14 @@
                                    placeholder="xxxx.apps.googleusercontent.com"
                                    onchange="settings.googleClientId=this.value.trim();saveSetting()">
                         </div>
+                        ${window.__ANDROID_APP__ ? `
+                        <div class="form-group" style="margin-top:8px">
+                            <label>Google Client Secret</label>
+                            <input class="input" id="settGoogleClientSecret" type="password" value="${esc(settings.googleClientSecret)}"
+                                   placeholder="GOCSPX-..."
+                                   onchange="settings.googleClientSecret=this.value.trim();saveSetting()">
+                        </div>
+                        ` : ''}
                         <details style="font-size:11px;color:var(--text-muted);margin-top:6px">
                             <summary style="cursor:pointer">Setup instructions</summary>
                             <ol style="padding-left:16px;margin-top:6px;line-height:1.6">
@@ -2413,8 +2423,8 @@
                                 <li>Go to <strong>APIs &amp; Services &rarr; Credentials</strong></li>
                                 <li>Click <strong>Create Credentials &rarr; OAuth client ID</strong></li>
                                 <li>Application type: <strong>Web application</strong></li>
-                                <li>Under <strong>Authorized JavaScript origins</strong>, add your domain (e.g. <code>https://bellevue.tech</code>) and <code>http://localhost</code> for dev</li>
-                                <li>Under <strong>Authorized redirect URIs</strong>, add <code>https://bellevue.tech/tools/trip-planner/oauth-callback</code> (needed for the Android app)</li>
+                                <li>Add your domain under Authorized JavaScript origins</li>
+                                <li>Add <code>https://bellevue.tech/tools/trip-planner/oauth-callback</code> under Authorized redirect URIs</li>
                                 <li>Copy the <strong>Client ID</strong> and paste it above</li>
                                 <li>You may need to configure the <strong>OAuth consent screen</strong> first (External, add your email as test user)</li>
                             </ol>
