@@ -804,6 +804,19 @@
         return `<option value="">All legs</option>` + trip.legs.map(l => `<option value="${l.id}"${l.id === selected ? ' selected' : ''}>${esc(l.city)}</option>`).join('');
     }
 
+    function transportLegOptions(trip, selected, isFrom) {
+        if (!trip) return '';
+        let opts = `<option value="">—</option>`;
+        if (isFrom && trip.startLocation) {
+            opts += `<option value="__start__"${selected === '__start__' ? ' selected' : ''}>Start: ${esc(trip.startLocation)}</option>`;
+        }
+        opts += (trip.legs || []).slice().sort((a,b) => (a.order||0)-(b.order||0)).map(l => `<option value="${l.id}"${l.id === selected ? ' selected' : ''}>${esc(l.city)}</option>`).join('');
+        if (!isFrom && trip.endLocation) {
+            opts += `<option value="__end__"${selected === '__end__' ? ' selected' : ''}>End: ${esc(trip.endLocation)}</option>`;
+        }
+        return opts;
+    }
+
     // --- Encryption ---
 
     async function deriveKey(passphrase, salt) {
@@ -2986,24 +2999,24 @@
                 else if (!ll.some(l => l.booked)) items.push({ text:`Book lodging for ${leg.city}${optSuffix}`, type:'lodging', action:`openLodgingModalForDate('${leg.startDate || ''}','${leg.id}','${leg.endDate || ''}')`, priority:1, hotelOptions: _hoOpts, legId: leg.id, startDate: leg.startDate || '', endDate: leg.endDate || '' });
             }
         }
-        // Transport to first leg (from home/origin)
+        // Transport to first leg (from start city)
         if (legs.length > 0) {
             const firstLeg = legs[0];
-            const lt0 = (trip.transport || []).filter(t => t.toLegId === firstLeg.id && (!t.fromLegId || !legs.some(l => l.id === t.fromLegId)));
-            if (lt0.length === 0) items.push({ text:`Add transport to ${firstLeg.city}`, type:'transport', action:`openTransportModalByLeg('','${firstLeg.id}','${firstLeg.startDate || ''}')`, priority:2 });
-            else if (!lt0.some(t => t.booked)) { const _t0 = lt0[0]; const _c0 = _t0.carrier || ''; const _n0 = (_t0.notes || '').trim(); items.push({ text:`Book ${_c0 ? _c0 + ' ' : ''}transport to ${firstLeg.city}`, type:'transport', action:`openTransportModal('${_t0.id}')`, priority:2, subtitle: _n0 ? (_n0.length > 120 ? _n0.slice(0, 120) + '...' : _n0) : '' }); }
+            const lt0 = (trip.transport || []).filter(t => t.fromLegId === '__start__' || (t.toLegId === firstLeg.id && (!t.fromLegId || !legs.some(l => l.id === t.fromLegId))));
+            if (lt0.length === 0 && trip.startLocation) items.push({ text:`Add transport from ${trip.startLocation} to ${firstLeg.city}`, type:'transport', action:`openTransportModalByLeg('__start__','${firstLeg.id}','${firstLeg.startDate || ''}')`, priority:2 });
+            else if (lt0.length > 0 && !lt0.some(t => t.booked)) { const _t0 = lt0[0]; const _c0 = _t0.carrier || ''; const _n0 = (_t0.notes || '').trim(); items.push({ text:`Book ${_c0 ? _c0 + ' ' : ''}transport to ${firstLeg.city}`, type:'transport', action:`openTransportModal('${_t0.id}')`, priority:2, subtitle: _n0 ? (_n0.length > 120 ? _n0.slice(0, 120) + '...' : _n0) : '' }); }
         }
         for (let i = 1; i < legs.length; i++) {
             const lt = (trip.transport || []).filter(t => t.toLegId === legs[i].id || t.fromLegId === legs[i-1].id);
             if (lt.length === 0) items.push({ text:`Add transport to ${legs[i].city}`, type:'transport', action:`openTransportModalByLeg('${legs[i-1].id}','${legs[i].id}','${legs[i].startDate || ''}')`, priority:2 });
             else if (!lt.some(t => t.booked)) { const _ti = lt[0]; const _ci = _ti.carrier || ''; const _ni = (_ti.notes || '').trim(); items.push({ text:`Book ${_ci ? _ci + ' ' : ''}transport to ${legs[i].city}`, type:'transport', action:`openTransportModal('${_ti.id}')`, priority:2, subtitle: _ni ? (_ni.length > 120 ? _ni.slice(0, 120) + '...' : _ni) : '' }); }
         }
-        // Transport from last leg (back home/onward)
+        // Transport from last leg (to end city)
         if (legs.length > 0) {
             const lastLeg = legs[legs.length - 1];
-            const ltN = (trip.transport || []).filter(t => t.fromLegId === lastLeg.id && (!t.toLegId || !legs.some(l => l.id === t.toLegId)));
-            if (ltN.length === 0) items.push({ text:`Add transport from ${lastLeg.city}`, type:'transport', action:`openTransportModalByLeg('${lastLeg.id}','','${lastLeg.endDate || ''}')`, priority:2 });
-            else if (!ltN.some(t => t.booked)) { const _tN = ltN[0]; const _cN = _tN.carrier || ''; const _nN = (_tN.notes || '').trim(); items.push({ text:`Book ${_cN ? _cN + ' ' : ''}transport from ${lastLeg.city}`, type:'transport', action:`openTransportModal('${_tN.id}')`, priority:2, subtitle: _nN ? (_nN.length > 120 ? _nN.slice(0, 120) + '...' : _nN) : '' }); }
+            const ltN = (trip.transport || []).filter(t => t.toLegId === '__end__' || (t.fromLegId === lastLeg.id && (!t.toLegId || !legs.some(l => l.id === t.toLegId))));
+            if (ltN.length === 0 && trip.endLocation) items.push({ text:`Add transport from ${lastLeg.city} to ${trip.endLocation}`, type:'transport', action:`openTransportModalByLeg('${lastLeg.id}','__end__','${lastLeg.endDate || ''}')`, priority:2 });
+            else if (ltN.length > 0 && !ltN.some(t => t.booked)) { const _tN = ltN[0]; const _cN = _tN.carrier || ''; const _nN = (_tN.notes || '').trim(); items.push({ text:`Book ${_cN ? _cN + ' ' : ''}transport from ${lastLeg.city}`, type:'transport', action:`openTransportModal('${_tN.id}')`, priority:2, subtitle: _nN ? (_nN.length > 120 ? _nN.slice(0, 120) + '...' : _nN) : '' }); }
         }
         if (trip._transportNeedsReview) {
             for (const t of trip.transport || []) {
@@ -3320,8 +3333,8 @@
             <div class="modal-body">
                 <div class="form-group"><label>Type</label><select class="select" id="transportType">${transportTypeOptions(t?.type || 'flight')}</select></div>
                 <div class="form-row">
-                    <div class="form-group"><label>From Leg</label><select class="select" id="transportFromLeg">${legOptions(trip, t?.fromLegId || '')}</select></div>
-                    <div class="form-group"><label>To Leg</label><select class="select" id="transportToLeg">${legOptions(trip, t?.toLegId || '')}</select></div>
+                    <div class="form-group"><label>From</label><select class="select" id="transportFromLeg">${transportLegOptions(trip, t?.fromLegId || '', true)}</select></div>
+                    <div class="form-group"><label>To</label><select class="select" id="transportToLeg">${transportLegOptions(trip, t?.toLegId || '', false)}</select></div>
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label>Carrier</label><input class="input" id="transportCarrier" value="${esc(t?.carrier || '')}" placeholder="e.g. United Airlines"></div>
@@ -3357,9 +3370,11 @@
         const trip = getTrip(); if (!trip) return;
         const fromLegId = document.getElementById('transportFromLeg').value;
         const toLegId = document.getElementById('transportToLeg').value;
-        const fromLeg = (trip.legs || []).find(l => l.id === fromLegId);
-        const toLeg = (trip.legs || []).find(l => l.id === toLegId);
-        const transportData = { type: document.getElementById('transportType').value, fromLegId, toLegId, fromCity: fromLeg ? fromLeg.city : '', toCity: toLeg ? toLeg.city : '', carrier: document.getElementById('transportCarrier').value.trim(), flightNumber: document.getElementById('transportFlightNumber').value.trim(), departure: document.getElementById('transportDeparture').value, arrival: document.getElementById('transportArrival').value, cost: document.getElementById('transportCost').value ? parseFloat(document.getElementById('transportCost').value) : null, currency: document.getElementById('transportCurrency').value, booked: document.getElementById('transportBooked').classList.contains('on'), notes: document.getElementById('transportNotes').value.trim() };
+        const fromLeg = fromLegId && fromLegId !== '__start__' ? (trip.legs || []).find(l => l.id === fromLegId) : null;
+        const toLeg = toLegId && toLegId !== '__end__' ? (trip.legs || []).find(l => l.id === toLegId) : null;
+        const fromCity = fromLegId === '__start__' ? (trip.startLocation || '') : (fromLeg ? fromLeg.city : '');
+        const toCity = toLegId === '__end__' ? (trip.endLocation || '') : (toLeg ? toLeg.city : '');
+        const transportData = { type: document.getElementById('transportType').value, fromLegId, toLegId, fromCity, toCity, carrier: document.getElementById('transportCarrier').value.trim(), flightNumber: document.getElementById('transportFlightNumber').value.trim(), departure: document.getElementById('transportDeparture').value, arrival: document.getElementById('transportArrival').value, cost: document.getElementById('transportCost').value ? parseFloat(document.getElementById('transportCost').value) : null, currency: document.getElementById('transportCurrency').value, booked: document.getElementById('transportBooked').classList.contains('on'), notes: document.getElementById('transportNotes').value.trim() };
         if (isSensitiveAllowed()) {
             const seatEl = document.getElementById('transportSeat'); const confEl = document.getElementById('transportConfirmation'); const platEl = document.getElementById('transportPlatform');
             if (seatEl) transportData.seatInfo = seatEl.value.trim();
@@ -4048,15 +4063,19 @@
 
     function openTransportModalPrefilled(fromCity, toCity, dateHint) {
         const trip = getTrip(); if (!trip) return;
-        const fromLeg = (trip.legs || []).find(l => l.city === fromCity);
-        const toLeg = (trip.legs || []).find(l => l.city === toCity);
+        let fromVal = '';
+        if (trip.startLocation && fromCity.toLowerCase() === trip.startLocation.toLowerCase()) fromVal = '__start__';
+        else { const fromLeg = (trip.legs || []).find(l => l.city.toLowerCase() === fromCity.toLowerCase()); if (fromLeg) fromVal = fromLeg.id; }
+        let toVal = '';
+        if (trip.endLocation && toCity.toLowerCase() === trip.endLocation.toLowerCase()) toVal = '__end__';
+        else { const toLeg = (trip.legs || []).find(l => l.city.toLowerCase() === toCity.toLowerCase()); if (toLeg) toVal = toLeg.id; }
         openTransportModal();
         setTimeout(() => {
             const fromEl = document.getElementById('transportFromLeg');
             const toEl = document.getElementById('transportToLeg');
             const depEl = document.getElementById('transportDeparture');
-            if (fromEl && fromLeg) fromEl.value = fromLeg.id;
-            if (toEl && toLeg) toEl.value = toLeg.id;
+            if (fromEl && fromVal) fromEl.value = fromVal;
+            if (toEl && toVal) toEl.value = toVal;
             if (depEl && dateHint) depEl.value = dateHint + 'T12:00';
         }, 50);
     }
@@ -4067,8 +4086,8 @@
             const fromEl = document.getElementById('transportFromLeg');
             const toEl = document.getElementById('transportToLeg');
             const depEl = document.getElementById('transportDeparture');
-            if (fromEl && fromLegId) fromEl.value = fromLegId;
-            if (toEl && toLegId) toEl.value = toLegId;
+            if (fromEl && fromLegId) fromEl.value = fromLegId; // supports __start__
+            if (toEl && toLegId) toEl.value = toLegId; // supports __end__
             if (depEl && dateStr) depEl.value = dateStr + 'T12:00';
         }, 50);
     }
@@ -4273,11 +4292,12 @@
 
             if (_legFilterInbound) dayCardsHTML += renderTravelBanner(trip, _legFilterInbound.from, _legFilterInbound.to, _legFilterInbound.dateHint);
 
+            const _selLegForFilter = filter.legId ? (trip.legs || []).find(l => l.id === filter.legId) : null;
             let prevCity = null;
             let shownStartBanner = false;
             for (let i = 0; i < _renderDays.length; i++) {
                 const dateStr = _renderDays[i]; const leg = getLegForDate(trip, dateStr);
-                if (!_travelActive && filter.legId && (!leg || leg.id !== filter.legId)) continue;
+                if (!_travelActive && filter.legId && (!_selLegForFilter || dateStr < _selLegForFilter.startDate || dateStr > _selLegForFilter.endDate)) continue;
                 const _dayNum = days.indexOf(dateStr);
                 const curCity = leg ? leg.city : null;
                 if (!_legFilterInbound) {
