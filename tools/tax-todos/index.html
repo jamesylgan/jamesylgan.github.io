@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <title>Tax Obligations Tracker</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #111827; --bg-card: #1f2937; --bg-surface: #1a2235;
+            --text: #f3f4f6; --text-muted: #9ca3af; --text-dim: #6b7280;
+            --border: #374151; --border-light: #2d3748;
+            --accent: #3b82f6; --accent-hover: #2563eb;
+            --red: #f87171; --green: #34d399; --yellow: #fbbf24; --orange: #fb923c;
+            --purple: #a78bfa;
+            --sidebar-w: 260px;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg); color: var(--text);
+            height: 100vh; overflow: hidden; display: flex; flex-direction: column;
+        }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /* Header */
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 20px; border-bottom: 1px solid var(--border);
+            background: var(--bg-surface); flex-shrink: 0; flex-wrap: wrap; gap: 8px;
+        }
+        .header h1 { font-size: 1.1rem; font-weight: 600; }
+        .header h1 span { color: var(--accent); }
+        .header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+        /* Year selector */
+        .year-select {
+            padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border);
+            background: var(--bg-card); color: var(--text); font-size: 13px; cursor: pointer;
+        }
+
+        /* US Person toggle */
+        .toggle-wrap { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+        .toggle-label { color: var(--text-muted); user-select: none; cursor: pointer; }
+        .toggle-label.active { color: var(--purple); font-weight: 600; }
+        .toggle {
+            position: relative; width: 40px; height: 22px; cursor: pointer;
+        }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle .slider {
+            position: absolute; inset: 0; background: var(--border); border-radius: 11px;
+            transition: .2s;
+        }
+        .toggle .slider::before {
+            content: ''; position: absolute; height: 16px; width: 16px;
+            left: 3px; bottom: 3px; background: var(--text-muted);
+            border-radius: 50%; transition: .2s;
+        }
+        .toggle input:checked + .slider { background: var(--purple); }
+        .toggle input:checked + .slider::before { transform: translateX(18px); background: white; }
+
+        /* View tabs */
+        .view-tabs { display: flex; gap: 2px; }
+        .view-tab {
+            padding: 6px 16px; border-radius: 6px; border: 1px solid var(--border);
+            background: transparent; color: var(--text-muted); cursor: pointer;
+            font-size: 13px; font-weight: 500; transition: all .15s;
+        }
+        .view-tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+        .view-tab:hover:not(.active) { background: var(--border-light); color: var(--text); }
+
+        /* Dates bar */
+        .dates-bar {
+            display: flex; gap: 0; padding: 0 20px; background: var(--bg-card);
+            border-bottom: 1px solid var(--border); flex-shrink: 0; overflow-x: auto;
+        }
+        .date-chip {
+            padding: 6px 14px; font-size: 12px; white-space: nowrap;
+            border-right: 1px solid var(--border); display: flex; align-items: center; gap: 6px;
+        }
+        .date-chip:last-child { border-right: none; }
+        .date-chip.us-only { display: none; }
+        .us-mode .date-chip.us-only { display: flex; }
+        .date-chip.collapsed .date-label { display: none; }
+        .date-chip.collapsed { padding: 6px 8px; opacity: 0.5; }
+        .date-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; cursor: pointer; }
+        .dates-bar { cursor: grab; user-select: none; }
+        .dates-bar.dragging { cursor: grabbing; }
+        .dot-past { background: var(--text-dim); }
+        .dot-imminent { background: var(--red); }
+        .dot-soon { background: var(--yellow); }
+        .dot-later { background: var(--green); }
+        .dot-us { background: var(--purple); }
+
+        /* Main layout */
+        .main { display: flex; flex: 1; overflow: hidden; }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-w); min-width: var(--sidebar-w); background: var(--bg-surface);
+            border-right: 1px solid var(--border); overflow-y: auto; padding: 12px 0;
+            flex-shrink: 0;
+        }
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+        .toc-section {
+            padding: 8px 16px; cursor: pointer; font-size: 13px; font-weight: 500;
+            color: var(--text-muted); transition: all .15s; border-left: 3px solid transparent;
+        }
+        .toc-section:hover { background: var(--border-light); color: var(--text); }
+        .toc-section.active { color: var(--accent); border-left-color: var(--accent); background: rgba(59,130,246,.08); }
+        .toc-sub {
+            padding: 5px 16px 5px 32px; cursor: pointer; font-size: 12px;
+            color: var(--text-dim); transition: all .15s; border-left: 3px solid transparent;
+        }
+        .toc-sub:hover { color: var(--text-muted); background: var(--border-light); }
+        .toc-sub.active { color: var(--accent); border-left-color: var(--accent); }
+        .toc-section.us-only, .toc-sub.us-only { display: none; }
+        .us-mode .toc-section.us-only, .us-mode .toc-sub.us-only { display: block; }
+
+        /* Task sidebar categories */
+        .task-cat {
+            padding: 8px 16px; cursor: pointer; font-size: 13px; font-weight: 500;
+            color: var(--text-muted); transition: all .15s; border-left: 3px solid transparent;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .task-cat:hover { background: var(--border-light); color: var(--text); }
+        .task-cat.active { color: var(--accent); border-left-color: var(--accent); background: rgba(59,130,246,.08); }
+        .task-cat .cat-count {
+            font-size: 11px; padding: 1px 7px; border-radius: 8px;
+            background: var(--border); color: var(--text-muted);
+        }
+        .task-cat.active .cat-count { background: rgba(59,130,246,.2); color: var(--accent); }
+        .task-cat.us-only { display: none; }
+        .us-mode .task-cat.us-only { display: flex; }
+
+        /* Content area */
+        .content {
+            flex: 1; overflow-y: auto; padding: 24px 32px; max-width: 850px;
+        }
+        .content::-webkit-scrollbar { width: 6px; }
+        .content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        .content-wide { max-width: 100%; }
+
+        /* Document content */
+        .doc-section { display: none; }
+        .doc-section.active { display: block; }
+        .doc-section.us-only { display: none !important; }
+        .us-mode .doc-section.us-only.active { display: block !important; }
+        .doc-section h2 { font-size: 1.3rem; margin-bottom: 16px; color: var(--text); border-bottom: 2px solid var(--accent); padding-bottom: 8px; }
+        .doc-section h3 { font-size: 1.05rem; margin: 20px 0 10px; color: var(--accent); }
+        .doc-section h4 { font-size: 0.95rem; margin: 16px 0 8px; color: var(--text); }
+        .doc-section p { line-height: 1.7; margin-bottom: 12px; color: var(--text); font-size: 14px; }
+        .doc-section ul, .doc-section ol { margin: 8px 0 12px 20px; }
+        .doc-section li { line-height: 1.6; margin-bottom: 6px; font-size: 14px; }
+        .doc-section li li { margin-bottom: 3px; }
+        .doc-section strong { color: var(--text); }
+        .doc-section .ref { color: var(--text-dim); font-size: 12px; }
+        .us-only-content { display: none; }
+        .us-mode .us-only-content { display: block; }
+        .us-tag {
+            display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 3px;
+            background: rgba(167,139,250,.15); color: var(--purple); font-weight: 600;
+            vertical-align: middle; margin-left: 4px;
+        }
+
+        /* Callout boxes */
+        .callout {
+            padding: 12px 16px; border-radius: 6px; margin: 12px 0;
+            font-size: 13px; line-height: 1.6; border-left: 3px solid;
+        }
+        .callout-blue { background: rgba(59,130,246,.08); border-color: var(--accent); }
+        .callout-yellow { background: rgba(251,191,36,.08); border-color: var(--yellow); }
+        .callout-red { background: rgba(248,113,113,.08); border-color: var(--red); }
+        .callout-green { background: rgba(52,211,153,.08); border-color: var(--green); }
+        .callout-purple { background: rgba(167,139,250,.08); border-color: var(--purple); }
+        .callout strong { display: block; margin-bottom: 4px; }
+
+        /* Comparison table */
+        .cmp-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+        .cmp-table th {
+            background: var(--bg-surface); padding: 8px 10px; text-align: left;
+            border-bottom: 2px solid var(--accent); font-weight: 600; font-size: 12px;
+            color: var(--text-muted); white-space: nowrap;
+        }
+        .cmp-table td {
+            padding: 8px 10px; border-bottom: 1px solid var(--border);
+            vertical-align: top; line-height: 1.5;
+        }
+        .cmp-table tr:hover td { background: rgba(59,130,246,.04); }
+        .cmp-table .us-row { display: none; }
+        .us-mode .cmp-table .us-row { display: table-row; }
+
+        /* Task view */
+        .tasks-container { display: none; }
+        .tasks-container.active { display: flex; flex: 1; overflow: hidden; }
+
+        /* Task progress */
+        .task-progress-bar {
+            display: flex; align-items: center; gap: 10px; padding: 0 0 16px;
+        }
+        .tp-bar { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+        .tp-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--green)); border-radius: 3px; transition: width .3s; }
+        .tp-text { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+
+        /* Task items */
+        .task-group-header {
+            font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .task-group-header .tg-count { font-size: 12px; color: var(--text-muted); font-weight: 400; }
+        .task-item {
+            display: flex; align-items: flex-start; padding: 10px 12px;
+            border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px;
+            background: var(--bg-card); gap: 10px; transition: opacity .2s; cursor: default;
+        }
+        .task-item.done { opacity: 0.5; }
+        .task-item.done .task-title { text-decoration: line-through; color: var(--text-muted); }
+        .task-item input[type="checkbox"] {
+            width: 18px; height: 18px; cursor: pointer; flex-shrink: 0;
+            margin-top: 2px; accent-color: var(--accent);
+        }
+        .task-body { flex: 1; min-width: 0; }
+        .task-title { font-weight: 500; font-size: 14px; word-break: break-word; }
+        .task-detail { font-size: 12px; color: var(--text-muted); margin-top: 3px; line-height: 1.5; }
+        .task-link {
+            font-size: 11px; color: var(--accent); cursor: pointer; margin-top: 3px;
+            display: inline-block;
+        }
+        .task-link:hover { text-decoration: underline; }
+        .task-date-badge {
+            font-size: 11px; padding: 1px 8px; border-radius: 4px; margin-top: 4px;
+            display: inline-block;
+        }
+        .badge-urgent { background: rgba(248,113,113,.15); color: var(--red); }
+        .badge-soon { background: rgba(251,191,36,.15); color: var(--yellow); }
+        .badge-later { background: rgba(59,130,246,.1); color: var(--accent); }
+        .badge-ongoing { background: rgba(52,211,153,.1); color: var(--green); }
+        .badge-us { background: rgba(167,139,250,.1); color: var(--purple); }
+
+        /* Notes expand */
+        .task-notes-toggle {
+            font-size: 11px; color: var(--text-dim); cursor: pointer; margin-top: 4px;
+            user-select: none;
+        }
+        .task-notes-toggle:hover { color: var(--text-muted); }
+        .task-notes { margin-top: 6px; display: none; }
+        .task-notes.open { display: block; }
+        .task-notes textarea {
+            width: 100%; min-height: 50px; background: var(--bg-surface);
+            border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px;
+            color: var(--text); font-size: 12px; resize: vertical; font-family: inherit;
+        }
+
+        /* Custom task input */
+        .add-task-row {
+            display: flex; gap: 6px; margin-top: 16px; padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+        .add-task-row input {
+            flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
+            font-size: 13px; background: var(--bg-surface); color: var(--text);
+        }
+        .add-task-row button {
+            padding: 8px 16px; border-radius: 6px; border: none;
+            background: var(--accent); color: white; cursor: pointer; font-size: 13px;
+            font-weight: 500; white-space: nowrap;
+        }
+        .add-task-row button:hover { background: var(--accent-hover); }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 20px; right: 20px; padding: 10px 20px;
+            background: var(--bg-card); border: 1px solid var(--accent); border-radius: 8px;
+            font-size: 13px; color: var(--text); z-index: 999; opacity: 0;
+            transition: opacity .3s; pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { width: 200px; min-width: 200px; }
+            .content { padding: 16px; }
+            .dates-bar { padding: 0 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1><span>Tax Obligations</span> &mdash; Beckham Law Tracker</h1>
+    <div class="header-right">
+        <select class="year-select" id="year-select" onchange="changeYear(this.value)"></select>
+        <div class="toggle-wrap">
+            <span class="toggle-label" id="us-label">US Person</span>
+            <label class="toggle">
+                <input type="checkbox" id="us-toggle" onchange="toggleUSMode(this.checked)">
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div class="view-tabs">
+            <button class="view-tab active" onclick="switchView('doc')">Guide</button>
+            <button class="view-tab" onclick="switchView('tasks')">Checklist</button>
+        </div>
+    </div>
+</div>
+
+<div class="dates-bar" id="dates-bar"></div>
+
+<!-- ===== GUIDE VIEW ===== -->
+<div class="main" id="doc-view">
+    <div class="sidebar" id="doc-sidebar">
+        <div class="toc-section active" data-section="overview">Overview</div>
+        <div class="toc-section" data-section="beckham">Beckham Law Basics</div>
+        <div class="toc-sub" data-section="beckham" data-sub="how-it-works">How It Works</div>
+        <div class="toc-sub" data-section="beckham" data-sub="what-is-taxed">What Is &amp; Isn't Taxed</div>
+        <div class="toc-sub" data-section="beckham" data-sub="duration">Duration &amp; Renewal</div>
+        <div class="toc-section" data-section="spanish-filings">Spanish Tax Filings</div>
+        <div class="toc-sub" data-section="spanish-filings" data-sub="modelo151">Modelo 151 (Income Tax)</div>
+        <div class="toc-sub" data-section="spanish-filings" data-sub="modelo720">Modelo 720 (Foreign Assets)</div>
+        <div class="toc-sub" data-section="spanish-filings" data-sub="wealth-tax">Wealth Tax</div>
+        <div class="toc-sub" data-section="spanish-filings" data-sub="social-security">Social Security</div>
+        <div class="toc-section" data-section="deadlines">Filing Calendar</div>
+        <div class="toc-section us-only" data-section="us-filings">US Tax Filings</div>
+        <div class="toc-sub us-only" data-section="us-filings" data-sub="form1040">Form 1040 (Income Tax)</div>
+        <div class="toc-sub us-only" data-section="us-filings" data-sub="fbar">FBAR (FinCEN 114)</div>
+        <div class="toc-sub us-only" data-section="us-filings" data-sub="fatca">FATCA (Form 8938)</div>
+        <div class="toc-sub us-only" data-section="us-filings" data-sub="exclusion-credit">FEIE vs FTC</div>
+        <div class="toc-sub us-only" data-section="us-filings" data-sub="state-taxes">State Taxes</div>
+        <div class="toc-section us-only" data-section="us-spain-interplay">US &amp; Spain Interplay</div>
+        <div class="toc-section" data-section="gotchas">Common Gotchas</div>
+        <div class="toc-section" data-section="resources">Resources &amp; Links</div>
+    </div>
+    <div class="content" id="doc-content">
+
+        <!-- OVERVIEW -->
+        <div class="doc-section active" id="sec-overview">
+            <h2>Overview</h2>
+            <p>This tool helps you track your annual tax filing obligations as a <strong>full-time employee of a Spanish company</strong> under Spain's <strong>Beckham Law</strong> (R&eacute;gimen Especial de Trabajadores Desplazados a Territorio Espa&ntilde;ol).</p>
+            <p>Use the <strong>Guide</strong> tab to understand each obligation in plain English, and the <strong>Checklist</strong> tab to track what you've completed each year. Everything auto-saves to your browser's local storage.</p>
+
+            <div class="callout callout-blue">
+                <strong>What this tool is</strong>
+                A personal checklist and reference guide for understanding your filing obligations and deadlines. It helps you stay organized &mdash; it does not provide tax advice, calculate amounts, or replace a qualified tax professional (asesor fiscal).
+            </div>
+
+            <div class="callout callout-yellow">
+                <strong>US Person Mode</strong>
+                Toggle "US Person" in the header to show additional sections for FBAR, FATCA, Form 1040, and dual-filing considerations. These obligations exist independently of and in addition to your Spanish obligations.
+            </div>
+
+            <h3>Your Situation at a Glance</h3>
+            <ul>
+                <li><strong>Residence:</strong> Spain (tax resident under Beckham Law)</li>
+                <li><strong>Employment:</strong> Full-time employee of a Spanish company</li>
+                <li><strong>Tax regime:</strong> IRNR-style taxation (non-resident rules applied to a resident)</li>
+                <li><strong>Income taxed:</strong> Spanish-source only (not worldwide) at a flat rate</li>
+            </ul>
+        </div>
+
+        <!-- BECKHAM LAW BASICS -->
+        <div class="doc-section" id="sec-beckham">
+            <h2>Beckham Law Basics</h2>
+
+            <h3 id="sub-how-it-works">How It Works</h3>
+            <p>The Beckham Law (officially: R&eacute;gimen Especial de Trabajadores Desplazados, Art. 93 LIRPF) allows qualifying workers who move to Spain to be taxed under <strong>non-resident income tax rules (IRNR)</strong> even though they are <strong>tax residents</strong> of Spain. In practice, this means:</p>
+            <ul>
+                <li>You are a <strong>Spanish tax resident</strong> for all legal purposes (you live here, have a NIE, are registered in the padr&oacute;n)</li>
+                <li>But your income tax is calculated under IRNR rules &mdash; only <strong>Spanish-source income</strong> is taxed</li>
+                <li>Employment income from your Spanish employer is taxed at a <strong>flat 24%</strong> on the first &euro;600,000, and 47% above that</li>
+                <li>You opted in by filing <strong>Modelo 149</strong> within 6 months of your Social Security registration</li>
+            </ul>
+
+            <h3 id="sub-what-is-taxed">What Is &amp; Isn't Taxed in Spain</h3>
+            <h4>Taxed (Spanish-source)</h4>
+            <ul>
+                <li>Your <strong>salary</strong> from your Spanish employer &mdash; flat 24% (up to &euro;600,000)</li>
+                <li><strong>Spanish rental income</strong> (if you own property in Spain)</li>
+                <li><strong>Capital gains from Spanish assets</strong> (Spanish stocks, Spanish real estate sales) &mdash; taxed at savings rates: 19% on first &euro;6,000, 21% on &euro;6,001&ndash;&euro;50,000, 23% on &euro;50,001&ndash;&euro;200,000, 27% on &euro;200,001&ndash;&euro;300,000, 28% above &euro;300,000</li>
+                <li><strong>Interest from Spanish bank accounts</strong></li>
+            </ul>
+            <h4>NOT taxed in Spain (foreign-source)</h4>
+            <ul>
+                <li>Dividends from non-Spanish stocks (US stocks, international funds, etc.)</li>
+                <li>Interest from non-Spanish bank accounts</li>
+                <li>Capital gains from selling non-Spanish assets</li>
+                <li>Rental income from non-Spanish property</li>
+                <li>Any other income sourced outside Spain</li>
+            </ul>
+            <div class="callout callout-green">
+                <strong>This is the main benefit</strong>
+                Your worldwide income outside Spain is simply not taxed by Spain while under Beckham Law. If you have US brokerage accounts, US rental income, or other foreign investment income, Spain does not tax it.
+            </div>
+
+            <h3 id="sub-duration">Duration &amp; Renewal</h3>
+            <ul>
+                <li>Beckham Law applies for the <strong>tax year you move to Spain</strong> plus the <strong>following 5 tax years</strong> (6 years total maximum)</li>
+                <li>It is <strong>not renewed</strong> &mdash; once the 6 years expire, you revert to the general IRPF regime (worldwide taxation at progressive rates)</li>
+                <li>You can voluntarily <strong>renounce</strong> the regime early if it becomes disadvantageous (e.g., if you have very little foreign income)</li>
+                <li>If you leave Spain and return, you generally <strong>cannot re-apply</strong> (there is a 5-year rule for prior non-residence)</li>
+            </ul>
+            <div class="callout callout-yellow">
+                <strong>Plan ahead for Year 6+</strong>
+                When Beckham Law expires, Spain will tax your worldwide income. This can significantly impact investment income, US retirement accounts, etc. Start planning 1&ndash;2 years before expiry.
+            </div>
+        </div>
+
+        <!-- SPANISH TAX FILINGS -->
+        <div class="doc-section" id="sec-spanish-filings">
+            <h2>Spanish Tax Filings</h2>
+
+            <h3 id="sub-modelo151">Modelo 151 &mdash; Annual Income Tax Return</h3>
+            <p>This is <strong>the</strong> key annual filing under Beckham Law. It replaces the standard Modelo 100 (IRPF) for Beckham Law filers.</p>
+            <ul>
+                <li><strong>What it is:</strong> Your annual Spanish income tax declaration under the special regime</li>
+                <li><strong>Who files:</strong> All Beckham Law participants, every year</li>
+                <li><strong>Filing period:</strong> Typically <strong>April &ndash; June 30</strong> of the following year (same window as regular IRPF campaign &mdash; Agencia Tributaria announces exact dates each year)</li>
+                <li><strong>What you report:</strong> Spanish-source income only (employment, Spanish capital gains, Spanish rental income, etc.)</li>
+                <li><strong>Tax rate applied:</strong> Flat 24% on employment income (up to &euro;600k); savings rates on capital gains/interest</li>
+                <li><strong>How to file:</strong> Via Agencia Tributaria's Sede Electr&oacute;nica (online with Cl@ve PIN or digital certificate) or through your asesor fiscal</li>
+            </ul>
+            <div class="callout callout-blue">
+                <strong>Your employer withholds tax (retenci&oacute;n)</strong>
+                Your Spanish employer should be withholding at the 24% flat rate on your salary throughout the year. Modelo 151 is a reconciliation &mdash; you declare your total income, subtract withholdings already paid, and either owe the difference or receive a refund.
+            </div>
+            <div class="callout callout-red">
+                <strong>Do NOT file Modelo 100</strong>
+                Beckham Law filers use Modelo 151, not the standard Modelo 100. Filing the wrong form can create complications. If your asesor mentions "la renta" or "Modelo 100," clarify that you are under the r&eacute;gimen especial.
+            </div>
+
+            <h3 id="sub-modelo720">Modelo 720 &mdash; Informative Declaration of Foreign Assets</h3>
+            <p>Modelo 720 requires Spanish <strong>tax residents</strong> to report foreign assets above certain thresholds. This is an <strong>informative</strong> declaration (no tax is owed on it), but failure to file carries penalties.</p>
+            <ul>
+                <li><strong>Deadline:</strong> <strong>March 31</strong> of the following year</li>
+                <li><strong>Thresholds (per category):</strong> You must report if any category exceeds &euro;50,000:
+                    <ul>
+                        <li>Category 1: Foreign bank accounts</li>
+                        <li>Category 2: Foreign securities (stocks, funds, bonds, etc.)</li>
+                        <li>Category 3: Foreign real estate</li>
+                    </ul>
+                </li>
+                <li><strong>Subsequent years:</strong> Only re-file if a category increases by more than &euro;20,000 from the last reported value</li>
+            </ul>
+            <div class="callout callout-yellow">
+                <strong>Beckham Law &amp; Modelo 720: Gray Area</strong>
+                Because Beckham Law taxes you under IRNR rules (non-resident), some tax advisors argue Modelo 720 does not apply. However, you ARE legally a Spanish tax resident, and the 720 obligation is tied to tax residency, not the tax regime. The safer approach is to file it. Consult your asesor fiscal for your specific situation.
+            </div>
+            <div class="callout callout-green">
+                <strong>EU Court ruling (Jan 2022)</strong>
+                The CJEU ruled Spain's 720 penalties disproportionate. Since then, Spain reformed the penalty regime (Ley 5/2022). Penalties are now much more reasonable, but the filing obligation itself remains.
+            </div>
+
+            <h3 id="sub-wealth-tax">Wealth Tax (Impuesto sobre el Patrimonio)</h3>
+            <p>Spain has a wealth tax on net assets. Under Beckham Law:</p>
+            <ul>
+                <li><strong>Only Spanish-located assets</strong> are subject to wealth tax (not worldwide assets)</li>
+                <li><strong>Filed via Modelo 714</strong> during the regular income tax campaign (April&ndash;June)</li>
+                <li>Thresholds and rates vary by Comunidad Aut&oacute;noma (Madrid has historically had a 100% bonus, effectively eliminating it)</li>
+                <li>The national <strong>Impuesto Temporal de Solidaridad de las Grandes Fortunas</strong> (solidarity tax) applies if net assets exceed &euro;3 million &mdash; this overrides Madrid's regional bonus</li>
+            </ul>
+            <div class="callout callout-green">
+                <strong>For most Beckham Law employees</strong>
+                If your Spanish-located assets (Spanish bank accounts, Spanish property, etc.) are under the exempt threshold, wealth tax is unlikely to apply. But check each year.
+            </div>
+
+            <h3 id="sub-social-security">Social Security</h3>
+            <p>As a full-time employee, your employer handles Social Security contributions:</p>
+            <ul>
+                <li><strong>Employee contribution:</strong> ~6.35&ndash;6.45% of your gross salary (deducted from your paycheck)</li>
+                <li><strong>Employer contribution:</strong> ~30&ndash;36% (paid by the company, not deducted from you)</li>
+                <li><strong>No action required from you</strong> &mdash; this is automatic via your n&oacute;mina</li>
+                <li>Verify contributions on your annual <strong>Informe de Vida Laboral</strong> (available from Seguridad Social website)</li>
+            </ul>
+        </div>
+
+        <!-- FILING CALENDAR -->
+        <div class="doc-section" id="sec-deadlines">
+            <h2>Filing Calendar</h2>
+            <p>Key deadlines for tax year <strong id="calendar-year-label"></strong>. Deadlines fall in the <em>following</em> year unless otherwise noted.</p>
+
+            <table class="cmp-table">
+                <thead>
+                    <tr>
+                        <th>Deadline</th><th>Filing</th><th>What It Is</th><th>Who</th>
+                    </tr>
+                </thead>
+                <tbody id="calendar-tbody">
+                </tbody>
+            </table>
+
+            <div class="callout callout-blue">
+                <strong>Exact dates may shift</strong>
+                Agencia Tributaria announces the exact renta campaign dates each spring. The dates above are the standard deadlines &mdash; check AEAT's website for any year-specific changes.
+            </div>
+        </div>
+
+        <!-- US TAX FILINGS -->
+        <div class="doc-section us-only" id="sec-us-filings">
+            <h2>US Tax Filings <span class="us-tag">US PERSON</span></h2>
+            <p>As a US person (citizen or green card holder), you are <strong>required to file US taxes on worldwide income</strong> regardless of where you live. This obligation exists <strong>in addition to</strong> your Spanish obligations.</p>
+
+            <div class="callout callout-red">
+                <strong>US taxes you worldwide income</strong>
+                Unlike Spain under Beckham Law, the US does not care where your income is sourced. All income &mdash; Spanish salary, foreign investments, bank interest, capital gains &mdash; must be reported to the IRS.
+            </div>
+
+            <h3 id="sub-form1040">Form 1040 &mdash; US Federal Income Tax Return</h3>
+            <ul>
+                <li><strong>Standard deadline:</strong> April 15</li>
+                <li><strong>Automatic extension for Americans abroad:</strong> <strong>June 15</strong> (you qualify if your "tax home" is outside the US)</li>
+                <li><strong>Extension available to:</strong> <strong>October 15</strong> (file Form 4868 by June 15)</li>
+                <li><strong>What you report:</strong> All worldwide income &mdash; Spanish salary, US/foreign investment income, bank interest, capital gains, everything</li>
+                <li><strong>How to avoid double taxation:</strong> Use either the Foreign Earned Income Exclusion (Form 2555) or the Foreign Tax Credit (Form 1116) &mdash; see below</li>
+            </ul>
+            <div class="callout callout-yellow">
+                <strong>Payment deadline is still April 15</strong>
+                The automatic extension to June 15 extends the <em>filing</em> deadline, not the <em>payment</em> deadline. If you owe tax, you should estimate and pay by April 15 to avoid interest charges. Most Beckham Law filers with proper FTC/FEIE end up owing little or nothing to the IRS.
+            </div>
+
+            <h3 id="sub-fbar">FBAR &mdash; FinCEN Form 114 (Report of Foreign Bank Accounts)</h3>
+            <p>The FBAR is <strong>not a tax form</strong> &mdash; it's a financial reporting requirement administered by FinCEN (Financial Crimes Enforcement Network), not the IRS.</p>
+            <ul>
+                <li><strong>Filing threshold:</strong> Aggregate value of all foreign financial accounts exceeds <strong>$10,000 at any point</strong> during the calendar year</li>
+                <li><strong>Deadline:</strong> <strong>April 15</strong> (automatic extension to <strong>October 15</strong>, no form needed)</li>
+                <li><strong>What to report:</strong> Every non-US financial account you have signatory authority or financial interest over &mdash; Spanish bank accounts, Spanish brokerage accounts, any other non-US accounts</li>
+                <li><strong>How to file:</strong> Electronically via the <a href="https://bsaefiling.fincen.treas.gov/" target="_blank">BSA E-Filing System</a></li>
+                <li><strong>Penalties for non-filing:</strong> Severe &mdash; up to $10,000 per violation (non-willful) or greater of $100,000 or 50% of account balance (willful)</li>
+            </ul>
+            <div class="callout callout-red">
+                <strong>If you have a Spanish bank account, you almost certainly need to file FBAR</strong>
+                Even if your Spanish account only holds a few thousand euros, if the <em>aggregate</em> of all your foreign accounts (Spanish bank + any others) exceeded $10,000 at any point in the year, you must file.
+            </div>
+
+            <h3 id="sub-fatca">FATCA &mdash; Form 8938 (Statement of Specified Foreign Financial Assets)</h3>
+            <p>FATCA (Foreign Account Tax Compliance Act) requires reporting of foreign financial assets above certain thresholds. This is filed <strong>with your tax return</strong> (attached to Form 1040).</p>
+            <ul>
+                <li><strong>Thresholds for single filers living abroad:</strong>
+                    <ul>
+                        <li>Total value exceeds <strong>$200,000 on the last day</strong> of the tax year, OR</li>
+                        <li>Total value exceeds <strong>$300,000 at any time</strong> during the tax year</li>
+                    </ul>
+                </li>
+                <li><strong>What to report:</strong> Foreign bank accounts, foreign brokerage accounts, foreign mutual funds, foreign pension plans, ownership in foreign entities, etc.</li>
+                <li><strong>Deadline:</strong> Same as your tax return (April 15 / June 15 / October 15 with extension)</li>
+                <li><strong>Relationship to FBAR:</strong> Overlapping but separate requirements. Many assets must be reported on <em>both</em> FBAR and Form 8938. File both if you meet both thresholds.</li>
+            </ul>
+
+            <h3 id="sub-exclusion-credit">FEIE vs FTC &mdash; Avoiding Double Taxation</h3>
+            <p>You must choose one method to avoid paying US tax on income already taxed by Spain:</p>
+
+            <h4>Option A: Foreign Earned Income Exclusion (FEIE) &mdash; Form 2555</h4>
+            <ul>
+                <li>Excludes up to ~$126,500 (2024, indexed annually) of <strong>foreign earned income</strong> from US taxation</li>
+                <li>Must meet either the <strong>Bona Fide Residence test</strong> or <strong>Physical Presence test</strong> (330 days abroad in a 12-month period)</li>
+                <li>Only applies to <strong>earned income</strong> (salary, self-employment) &mdash; does NOT cover investment income, capital gains, or interest</li>
+                <li>Cannot be combined with FTC on the same income</li>
+            </ul>
+
+            <h4>Option B: Foreign Tax Credit (FTC) &mdash; Form 1116</h4>
+            <ul>
+                <li>Credits you dollar-for-dollar for foreign taxes paid to Spain</li>
+                <li>Generally <strong>more advantageous for Beckham Law filers</strong> because the 24% Spanish flat rate on employment income may generate enough foreign tax credits to offset most/all US tax on that income</li>
+                <li>Covers all income types (earned and unearned)</li>
+                <li>Excess credits can be carried forward 10 years or back 1 year</li>
+            </ul>
+
+            <div class="callout callout-green">
+                <strong>Most common approach for Beckham Law + US Person</strong>
+                FTC (Form 1116) is usually preferred. The 24% Spanish tax often exceeds the effective US rate on the same income, generating excess credits. However, investment income sourced outside Spain (which Spain doesn't tax under Beckham) will be fully taxable by the US with no Spanish tax to credit against it.
+            </div>
+
+            <h3 id="sub-state-taxes">State Tax Obligations</h3>
+            <ul>
+                <li>Depends on your <strong>last US state of residence</strong> before moving abroad</li>
+                <li>Some states (e.g., California, Virginia, New Mexico) may consider you a resident and tax you even while living abroad</li>
+                <li>Other states (e.g., Texas, Florida, Washington, Nevada) have no income tax</li>
+                <li>If your last state was a no-income-tax state: no state filing needed</li>
+                <li>If your last state was a state like California: consult a tax professional about whether you successfully established non-residency</li>
+            </ul>
+        </div>
+
+        <!-- US & SPAIN INTERPLAY -->
+        <div class="doc-section us-only" id="sec-us-spain-interplay">
+            <h2>US &amp; Spain Interplay <span class="us-tag">US PERSON</span></h2>
+
+            <p>The US&ndash;Spain <strong>Tax Treaty</strong> (Convention for the Avoidance of Double Taxation) provides mechanisms to avoid double taxation. Key points:</p>
+
+            <h3>Treaty Benefits</h3>
+            <ul>
+                <li><strong>Employment income:</strong> Taxed primarily where performed (Spain), with credits available in the US</li>
+                <li><strong>Dividends:</strong> Withholding rates capped at 15% (useful for US dividends received by a Spanish tax resident)</li>
+                <li><strong>Interest:</strong> Generally 10% max withholding</li>
+                <li><strong>Capital gains:</strong> Generally taxed in the country of residence (Spain for you), except real property gains</li>
+            </ul>
+
+            <h3>Practical Double-Taxation Scenarios</h3>
+
+            <h4>Your Spanish salary</h4>
+            <p>Spain taxes at 24% (Beckham). The US taxes at your marginal rate. Use FTC (Form 1116) to credit the Spanish tax against the US liability. Usually results in zero or minimal US tax on this income.</p>
+
+            <h4>US-source investment income (dividends, interest, capital gains)</h4>
+            <p>Spain does NOT tax this under Beckham Law. The US DOES tax this. <strong>No double taxation here</strong>, but you have no foreign tax credit to offset it either &mdash; you owe normal US tax on this income.</p>
+
+            <h4>Spanish bank interest</h4>
+            <p>Spain taxes this (19&ndash;28%). The US also taxes it. Use FTC to credit the Spanish tax.</p>
+
+            <div class="callout callout-purple">
+                <strong>Key Insight for Beckham + US Person</strong>
+                Beckham Law's benefit (Spain doesn't tax foreign income) means the US side gets no foreign tax credit on that income. For income that Spain <em>doesn't</em> tax (US dividends, foreign capital gains), you pay normal US tax. Net effect: Beckham saves you Spanish tax but you still owe US tax on worldwide non-Spanish income.
+            </div>
+
+            <h3>Filing Order</h3>
+            <p>In practice, most filers:</p>
+            <ol>
+                <li><strong>File FBAR by April 15</strong> (or let it auto-extend to October 15)</li>
+                <li><strong>File Modelo 720 by March 31</strong> (if applicable)</li>
+                <li><strong>Extend US return to October 15</strong> (because you need your Spanish tax info first)</li>
+                <li><strong>File Modelo 151 by June 30</strong></li>
+                <li><strong>File US return (Form 1040 + Form 1116/2555 + Form 8938)</strong> once you know your final Spanish tax liability</li>
+            </ol>
+            <div class="callout callout-blue">
+                <strong>Why extend the US return?</strong>
+                You need to know exactly how much Spanish tax you paid (from Modelo 151) to accurately calculate your Foreign Tax Credit on Form 1116. Since Spain's filing deadline is June 30, extending the US return to October 15 gives you that information.
+            </div>
+        </div>
+
+        <!-- COMMON GOTCHAS -->
+        <div class="doc-section" id="sec-gotchas">
+            <h2>Common Gotchas</h2>
+
+            <h3>Spanish Side</h3>
+            <ul>
+                <li><strong>Filing the wrong form:</strong> Use Modelo 151, NOT Modelo 100. This is the most common mistake.</li>
+                <li><strong>Employer withholding rate:</strong> Your employer should withhold at 24%, not the progressive IRPF rates. Verify on your n&oacute;mina.</li>
+                <li><strong>Modelo 720 confusion:</strong> Even though Beckham taxes you like a non-resident, you ARE a tax resident. Most advisors recommend filing 720 if you exceed the thresholds.</li>
+                <li><strong>Forgetting Modelo 149:</strong> If you didn't file this when you first arrived, you may not be validly under Beckham Law. Check with your asesor.</li>
+                <li><strong>Capital gains classification:</strong> Gains from Spanish assets use savings rates (19&ndash;28%), not the flat 24%. These are separate categories on Modelo 151.</li>
+                <li><strong>Stock options / RSUs:</strong> Complex under Beckham Law. The taxable event timing and sourcing rules differ. Get professional advice if you have equity compensation.</li>
+                <li><strong>Beckham Law expiry:</strong> When your 6 years end, you move to the regular regime. Foreign income becomes taxable. Plan ahead.</li>
+            </ul>
+
+            <div class="us-only-content">
+                <h3>US Side <span class="us-tag">US PERSON</span></h3>
+                <ul>
+                    <li><strong>FBAR penalties are disproportionate:</strong> The $10,000 threshold is low. If you have a Spanish checking account and a Spanish brokerage account, you probably exceed it. File every year.</li>
+                    <li><strong>PFIC trap:</strong> Non-US mutual funds (including many Spanish/European funds) are treated as PFICs (Passive Foreign Investment Companies) by the IRS, resulting in punitive taxation. Stick to US-domiciled ETFs/funds where possible.</li>
+                    <li><strong>Spanish pension plan contributions:</strong> May not be deductible on your US return. Employer pension contributions may be treated as taxable income by the IRS.</li>
+                    <li><strong>Currency conversion:</strong> All amounts on US forms must be in USD. Use the IRS yearly average exchange rate or the spot rate on the transaction date (be consistent).</li>
+                    <li><strong>FEIE + FTC interaction:</strong> You cannot use both on the same income. If using FEIE, any excess Spanish tax on excluded income cannot generate FTC.</li>
+                    <li><strong>Estimated tax payments:</strong> If you expect to owe US tax (e.g., on investment income not taxed by Spain), consider quarterly estimated payments to avoid penalties.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- RESOURCES & LINKS -->
+        <div class="doc-section" id="sec-resources">
+            <h2>Resources &amp; Links</h2>
+
+            <h3>Spanish Tax Authority (Agencia Tributaria / AEAT)</h3>
+            <ul>
+                <li><a href="https://sede.agenciatributaria.gob.es/" target="_blank">Sede Electr&oacute;nica &mdash; AEAT</a> (online tax portal)</li>
+                <li><a href="https://www.agenciatributaria.es/AEAT.internet/en_gb/Inicio/La_Agencia_Tributaria/Campanas/_Campanas_/Impuesto_sobre_la_Renta_de_las_Personas_Fisicas__IRPF_/_INFORMACION/Cuestiones_destacadas/Regimen_especial_aplicable_a_los_trabajadores__profesionales__emprendedores_e_inversores_desplazados_a_territorio_espanol.shtml" target="_blank">AEAT: R&eacute;gimen especial trabajadores desplazados</a></li>
+                <li><a href="https://www.boe.es/buscar/act.php?id=BOE-A-2006-20764" target="_blank">LIRPF (Ley 35/2006) &mdash; Art. 93</a> (Beckham Law statute)</li>
+            </ul>
+
+            <h3>Spanish Forms Reference</h3>
+            <ul>
+                <li><strong>Modelo 149:</strong> Opt-in to Beckham Law (filed once)</li>
+                <li><strong>Modelo 151:</strong> Annual income tax under Beckham Law</li>
+                <li><strong>Modelo 720:</strong> Informative declaration of foreign assets (&gt;&euro;50k per category)</li>
+                <li><strong>Modelo 714:</strong> Wealth tax (if applicable)</li>
+            </ul>
+
+            <div class="us-only-content">
+                <h3>US Tax Resources <span class="us-tag">US PERSON</span></h3>
+                <ul>
+                    <li><a href="https://www.irs.gov/individuals/international-taxpayers/us-citizens-and-resident-aliens-abroad" target="_blank">IRS: US Citizens and Resident Aliens Abroad</a></li>
+                    <li><a href="https://www.irs.gov/individuals/international-taxpayers/foreign-earned-income-exclusion" target="_blank">IRS: Foreign Earned Income Exclusion</a></li>
+                    <li><a href="https://www.irs.gov/individuals/international-taxpayers/foreign-tax-credit" target="_blank">IRS: Foreign Tax Credit</a></li>
+                    <li><a href="https://bsaefiling.fincen.treas.gov/" target="_blank">BSA E-Filing: FBAR Submission</a></li>
+                    <li><a href="https://www.irs.gov/businesses/corporations/summary-of-fatca-reporting-for-us-taxpayers" target="_blank">IRS: FATCA Reporting Summary</a></li>
+                </ul>
+
+                <h3>US Forms Reference <span class="us-tag">US PERSON</span></h3>
+                <ul>
+                    <li><strong>Form 1040:</strong> US Federal Income Tax Return</li>
+                    <li><strong>Form 4868:</strong> Extension of time to file (April 15 &rarr; October 15)</li>
+                    <li><strong>Form 2555:</strong> Foreign Earned Income Exclusion</li>
+                    <li><strong>Form 1116:</strong> Foreign Tax Credit</li>
+                    <li><strong>Form 8938:</strong> FATCA (Statement of Specified Foreign Financial Assets)</li>
+                    <li><strong>FinCEN 114:</strong> FBAR (Report of Foreign Bank and Financial Accounts)</li>
+                </ul>
+            </div>
+
+            <h3>US&ndash;Spain Tax Treaty</h3>
+            <ul>
+                <li><a href="https://www.irs.gov/businesses/international-businesses/spain-tax-treaty-documents" target="_blank">IRS: Spain Tax Treaty Documents</a></li>
+            </ul>
+        </div>
+
+    </div><!-- /doc-content -->
+</div><!-- /doc-view -->
+
+<!-- ===== CHECKLIST VIEW ===== -->
+<div class="tasks-container" id="tasks-view">
+    <div class="sidebar" id="tasks-sidebar"></div>
+    <div class="content content-wide" id="tasks-content"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Prevent flash: set initial view before paint
+(function() {
+    const v = localStorage.getItem('tax-todos-view');
+    if (v === 'tasks') {
+        document.getElementById('doc-view').style.display = 'none';
+        document.getElementById('tasks-view').style.display = 'flex';
+        const tabs = document.querySelectorAll('.view-tab');
+        tabs[0].classList.remove('active');
+        tabs[1].classList.add('active');
+    }
+})();
+</script>
+
+<script>
+const STORAGE_PREFIX = 'tax-todos';
+const US_MODE_KEY = 'tax-todos-us-mode';
+const YEAR_KEY = 'tax-todos-year';
+const VIEW_KEY = 'tax-todos-view';
+const SECTION_KEY = 'tax-todos-section';
+const TASK_CAT_KEY = 'tax-todos-task-cat';
+
+// ── Tax year config ─────────────────────────────────────────────────────
+function getTaxYear() {
+    return parseInt(document.getElementById('year-select').value) || new Date().getFullYear() - 1;
+}
+
+function storageKey(year) {
+    return `${STORAGE_PREFIX}-${year}`;
+}
+
+// ── Categories ──────────────────────────────────────────────────────────
+const TASK_CATEGORIES = [
+    { id: 'info-gathering', label: 'Gather Documents', badge: 'soon' },
+    { id: 'spanish-q1', label: 'Jan – Mar (Modelo 720)', badge: 'soon' },
+    { id: 'spanish-q2', label: 'Apr – Jun (Modelo 151)', badge: 'later' },
+    { id: 'us-q1', label: 'Jan – Apr (US Extensions)', badge: 'us', usOnly: true },
+    { id: 'us-q2', label: 'Apr – Jun (US Prep)', badge: 'us', usOnly: true },
+    { id: 'us-q3', label: 'Jul – Oct (US Filing)', badge: 'us', usOnly: true },
+    { id: 'year-end', label: 'Year-End Review', badge: 'ongoing' },
+    { id: 'custom', label: 'Custom Tasks', badge: 'ongoing' }
+];
+
+// ── Default tasks (year placeholder replaced at runtime) ────────────────
+function getDefaultTasks(year) {
+    const fy = year + 1; // filing year (deadlines are in the year AFTER the tax year)
+    const tasks = [
+        // Info gathering
+        { id: 's1', cat: 'info-gathering', title: `Collect all ${year} nóminas (payslips) from employer`, detail: `Download all 12 monthly payslips for ${year}. Verify the retención rate is 24% (Beckham flat rate). You'll need total gross income and total withholdings for Modelo 151.`, section: 'spanish-filings', done: false, notes: '' },
+        { id: 's2', cat: 'info-gathering', title: `Get Certificado de Retenciones from employer`, detail: `Your employer issues this (usually by February). It's the official document summarizing your ${year} income and withholdings. Required for Modelo 151.`, section: 'spanish-filings', done: false, notes: '' },
+        { id: 's3', cat: 'info-gathering', title: 'Gather Spanish bank account statements', detail: `Download ${year} annual statements from all Spanish bank accounts. Note any interest earned (taxable in Spain). Also needed for asset declarations.`, done: false, notes: '' },
+        { id: 's4', cat: 'info-gathering', title: `Confirm you are still under Beckham Law for ${year}`, detail: 'Count your years: Beckham applies for the year you arrived + 5 more years. If this is year 6+, you may have reverted to regular IRPF. Check with your asesor.', section: 'beckham', done: false, notes: '' },
+        { id: 's5', cat: 'info-gathering', title: 'Locate your Modelo 149 confirmation', detail: 'If this is your first year, confirm your Modelo 149 was accepted. Keep the resolution letter (resolución) for your records. If you never filed it, consult an asesor immediately.', section: 'beckham', done: false, notes: '' },
+
+        // Spanish Q1: Modelo 720
+        { id: 's10', cat: 'spanish-q1', title: `Determine if Modelo 720 filing is required for ${year}`, detail: `Check if any foreign asset category exceeds €50,000: (1) foreign bank accounts, (2) foreign securities/investments, (3) foreign real estate. If you filed last year, only re-file if a category increased by >€20,000.`, section: 'spanish-filings', done: false, notes: '' },
+        { id: 's11', cat: 'spanish-q1', title: `Gather foreign account balances as of Dec 31, ${year}`, detail: `For each foreign bank/brokerage account: note the balance on Dec 31 and the average balance for Q4. Convert to EUR using the ECB rate for Dec 31.`, done: false, notes: '' },
+        { id: 's12', cat: 'spanish-q1', title: `File Modelo 720 by March 31, ${fy} (if required)`, detail: `File electronically via AEAT Sede Electrónica using Cl@ve PIN or digital certificate. Or have your asesor file it. This is informative only — no tax payment.`, section: 'spanish-filings', done: false, notes: '' },
+
+        // Spanish Q2: Modelo 151
+        { id: 's20', cat: 'spanish-q2', title: `Check AEAT for ${year} renta campaign opening date`, detail: `Agencia Tributaria announces the exact dates each spring (usually early April). Check sede.agenciatributaria.gob.es for the campaign calendar.`, section: 'deadlines', done: false, notes: '' },
+        { id: 's21', cat: 'spanish-q2', title: `Prepare Modelo 151 data: Spanish-source income summary`, detail: `Compile: (1) employment income + withholdings from Certificado de Retenciones, (2) Spanish bank interest, (3) any Spanish capital gains, (4) any Spanish rental income. Foreign income is excluded.`, section: 'spanish-filings', done: false, notes: '' },
+        { id: 's22', cat: 'spanish-q2', title: `File Modelo 151 by June 30, ${fy}`, detail: `File via AEAT Sede Electrónica or through your asesor. If you owe money, you can pay in two installments (60% at filing, 40% in November — if the renta allows it). If your withholdings exceeded the tax due, you'll receive a refund.`, section: 'spanish-filings', done: false, notes: '' },
+        { id: 's23', cat: 'spanish-q2', title: 'Check if Wealth Tax (Modelo 714) applies', detail: `Only if your Spanish-located net assets exceed the applicable threshold. Madrid typically offers a 100% bonus (no wealth tax), but check the solidarity tax (>€3M). Most Beckham Law employees don't owe this.`, section: 'spanish-filings', done: false, notes: '' },
+        { id: 's24', cat: 'spanish-q2', title: `Save a copy of filed Modelo 151 and payment receipt`, detail: `Download the filed return and any payment confirmations from AEAT. Store with your tax records. You'll need the Spanish tax paid figure for your US return (if US Person).`, done: false, notes: '' },
+
+        // Year-end
+        { id: 's40', cat: 'year-end', title: `Verify employer withholding rate is correct for next year`, detail: 'Check with HR/payroll that your retención rate remains at 24% (Beckham flat rate). If your Beckham Law is expiring, they need to switch to progressive IRPF rates.', done: false, notes: '' },
+        { id: 's41', cat: 'year-end', title: 'Check if Beckham Law expires next year', detail: 'If this is year 5 of 6, start planning for the transition to regular IRPF. Consider consulting an asesor about restructuring investments or timing income.', section: 'beckham', done: false, notes: '' },
+        { id: 's42', cat: 'year-end', title: 'Review foreign asset balances for next year\'s Modelo 720', detail: 'Note Dec 31 balances of foreign accounts/securities/property. If a category newly exceeds €50,000 or increased by >€20,000, you\'ll need to file 720 next March.', section: 'spanish-filings', done: false, notes: '' },
+    ];
+
+    // US-only tasks
+    const usTasks = [
+        { id: 'u1', cat: 'info-gathering', title: `Gather all US income documents (1099s, W-2s, K-1s)`, detail: `Collect any US-source income documents for ${year}: 1099-DIV (dividends), 1099-INT (interest), 1099-B (capital gains), K-1s (partnerships), etc. These arrive Jan–March.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u2', cat: 'info-gathering', title: `Calculate aggregate value of all foreign accounts for FBAR`, detail: `List every non-US financial account and note the maximum balance during ${year}. If the aggregate max exceeds $10,000, you must file FBAR. Convert to USD using Treasury rates.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+
+        { id: 'u10', cat: 'us-q1', title: `File FBAR (FinCEN 114) for ${year} by April 15, ${fy}`, detail: `File electronically at bsaefiling.fincen.treas.gov. Report all non-US accounts. Auto-extends to Oct 15 if you miss this date, but best to file early. No payment — this is informational.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u11', cat: 'us-q1', title: `Estimate US tax liability and pay by April 15, ${fy} if needed`, detail: `Even with the automatic June 15 extension for filing, payment is due April 15. If you expect to owe (e.g., on US investment income not taxed by Spain), pay an estimate to avoid interest.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u12', cat: 'us-q1', title: `File Form 4868 to extend US return to October 15, ${fy}`, detail: `File by June 15 (your automatic abroad extension date). This gives you until Oct 15 to file — important because you need your final Spanish tax figures from Modelo 151 (due June 30) for your FTC.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+
+        { id: 'u20', cat: 'us-q2', title: `After filing Modelo 151: note total Spanish tax paid for ${year}`, detail: `You need this for Form 1116 (Foreign Tax Credit). Total = withholdings paid + any additional tax paid at filing, minus any refund received. Keep the Modelo 151 copy.`, section: 'us-spain-interplay', done: false, notes: '', usOnly: true },
+        { id: 'u21', cat: 'us-q2', title: 'Decide: FEIE (Form 2555) or FTC (Form 1116)', detail: 'For most Beckham Law filers, FTC is more advantageous. The 24% Spanish rate often generates enough credits to offset US tax on your Spanish salary. Consult your US tax preparer.', section: 'us-filings', done: false, notes: '', usOnly: true },
+
+        { id: 'u30', cat: 'us-q3', title: `Prepare and file Form 1040 for ${year}`, detail: `Report all worldwide income. Attach Form 1116 (FTC) or Form 2555 (FEIE). Attach Form 8938 (FATCA) if thresholds are met. File by October 15, ${fy}.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u31', cat: 'us-q3', title: `File Form 8938 (FATCA) if thresholds are met`, detail: `Attached to Form 1040. Required if foreign financial assets exceed $200,000 on Dec 31 or $300,000 at any time (single filer abroad). Report all foreign accounts, securities, and financial assets.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u32', cat: 'us-q3', title: `File state tax return for ${year} (if applicable)`, detail: `Depends on your last state of residence. No-income-tax states (TX, FL, WA, NV, etc.): nothing to file. Other states: check residency rules. Some states (CA) are aggressive about claiming continued residency.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u33', cat: 'us-q3', title: `Verify FBAR was filed (if not done in April)`, detail: `The auto-extension runs to Oct 15. If you haven't filed FBAR yet, do it now. Check bsaefiling.fincen.treas.gov for confirmation.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+
+        { id: 'u40', cat: 'year-end', title: 'Review PFIC exposure in foreign investment accounts', detail: 'If you hold non-US domiciled mutual funds or ETFs, they may be classified as PFICs by the IRS. Consider switching to US-domiciled equivalents to avoid punitive tax treatment.', section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u41', cat: 'year-end', title: 'Evaluate estimated tax payments for next year', detail: 'If you owed US tax this year, consider making quarterly estimated payments next year (Form 1040-ES) to avoid underpayment penalties.', done: false, notes: '', usOnly: true },
+    ];
+
+    return tasks.concat(usTasks);
+}
+
+// ── Deadline data for the dates bar and calendar table ──────────────────
+function getDeadlines(year) {
+    const fy = year + 1;
+    return [
+        { date: `${fy}-01-31`, label: 'Certificado de Retenciones (approx)', type: 'spanish', taskId: 's2' },
+        { date: `${fy}-03-31`, label: `Modelo 720 deadline`, type: 'spanish', taskId: 's12' },
+        { date: `${fy}-04-01`, label: `Renta campaign opens (approx)`, type: 'spanish', taskId: 's20' },
+        { date: `${fy}-04-15`, label: `FBAR deadline / US tax payment due`, type: 'us', taskId: 'u10' },
+        { date: `${fy}-06-15`, label: `US auto-extension abroad / File Form 4868`, type: 'us', taskId: 'u12' },
+        { date: `${fy}-06-30`, label: `Modelo 151 deadline`, type: 'spanish', taskId: 's22' },
+        { date: `${fy}-10-15`, label: `US Form 1040 extended deadline / FBAR auto-extension`, type: 'us', taskId: 'u30' },
+    ];
+}
+
+function getCalendarRows(year) {
+    const fy = year + 1;
+    return [
+        { deadline: `Jan–Feb ${fy}`, filing: 'Certificado de Retenciones', what: `Employer issues summary of your ${year} income and withholdings`, who: 'Employer → You' },
+        { deadline: `By Mar 31, ${fy}`, filing: 'Modelo 720', what: `Report foreign assets exceeding €50k per category (informative, no tax)`, who: 'Spain (if thresholds met)' },
+        { deadline: `Apr 15, ${fy}`, filing: 'FBAR (FinCEN 114)', what: `Report foreign bank/financial accounts (aggregate >$10k)`, who: 'US Persons', usOnly: true },
+        { deadline: `Apr 15, ${fy}`, filing: 'US Tax Payment', what: `Estimated tax payment due even if filing is extended`, who: 'US Persons', usOnly: true },
+        { deadline: `Apr–Jun ${fy}`, filing: 'Modelo 151', what: `Spanish income tax under Beckham Law (replaces Modelo 100)`, who: 'Spain' },
+        { deadline: `Jun 15, ${fy}`, filing: 'Form 4868', what: `Extend US return to Oct 15 (auto extension for abroad filers)`, who: 'US Persons', usOnly: true },
+        { deadline: `By Jun 30, ${fy}`, filing: 'Modelo 151', what: `Hard deadline for Modelo 151 filing`, who: 'Spain' },
+        { deadline: `By Jun 30, ${fy}`, filing: 'Modelo 714', what: `Wealth Tax (if applicable — most Madrid residents exempt)`, who: 'Spain (if applicable)' },
+        { deadline: `By Oct 15, ${fy}`, filing: 'Form 1040 + 1116/2555 + 8938', what: `US federal income tax return with FTC/FEIE and FATCA`, who: 'US Persons', usOnly: true },
+        { deadline: `By Oct 15, ${fy}`, filing: 'FBAR auto-extension', what: `Last day for FBAR if not filed in April`, who: 'US Persons', usOnly: true },
+    ];
+}
+
+// ── State ────────────────────────────────────────────────────────────────
+let tasks = [];
+let usMode = false;
+let activeSection = 'overview';
+let activeCategory = 'all';
+
+// ── Init ─────────────────────────────────────────────────────────────────
+function init() {
+    // Populate year selector (current year - 3 through current year)
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const sel = document.getElementById('year-select');
+    for (let y = curYear; y >= curYear - 4; y--) {
+        const opt = document.createElement('option');
+        opt.value = y;
+        // Default to previous year (most common: filing for last year's taxes)
+        // But if we're in Jan–Mar, the previous year is the likely active filing year
+        opt.textContent = `Tax Year ${y}`;
+        sel.appendChild(opt);
+    }
+    const savedYear = localStorage.getItem(YEAR_KEY);
+    sel.value = (savedYear && sel.querySelector(`option[value="${savedYear}"]`)) ? savedYear : curYear - 1;
+
+    // Load US mode
+    usMode = localStorage.getItem(US_MODE_KEY) === 'true';
+    document.getElementById('us-toggle').checked = usMode;
+    applyUSMode();
+
+    // Load tasks
+    loadTasks();
+
+    // Render dates bar and calendar
+    renderDatesBar();
+    renderCalendar();
+
+    // TOC click handlers
+    document.querySelectorAll('.toc-section').forEach(el => {
+        el.addEventListener('click', () => navigateToSection(el.dataset.section));
+    });
+    document.querySelectorAll('.toc-sub').forEach(el => {
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            navigateToSection(el.dataset.section, el.dataset.sub);
+        });
+    });
+
+    // Restore saved view, section, and task category
+    const savedView = localStorage.getItem(VIEW_KEY) || 'doc';
+    const savedSection = localStorage.getItem(SECTION_KEY) || 'overview';
+    const savedTaskCat = localStorage.getItem(TASK_CAT_KEY);
+    if (savedTaskCat) activeCategory = savedTaskCat;
+
+    const [secId, subId] = savedSection.split(':');
+    navigateToSection(secId, subId || null);
+    if (savedView === 'tasks') switchView('tasks');
+}
+
+// ── Year change ──────────────────────────────────────────────────────────
+function changeYear(val) {
+    localStorage.setItem(YEAR_KEY, val);
+    loadTasks();
+    renderDatesBar();
+    renderCalendar();
+    if (document.getElementById('tasks-view').classList.contains('active')) {
+        renderTasks();
+    }
+}
+
+// ── US Mode ──────────────────────────────────────────────────────────────
+function toggleUSMode(checked) {
+    usMode = checked;
+    localStorage.setItem(US_MODE_KEY, usMode);
+    applyUSMode();
+    renderDatesBar();
+    renderCalendar();
+    if (document.getElementById('tasks-view').classList.contains('active')) {
+        renderTasks();
+    }
+}
+
+function applyUSMode() {
+    document.body.classList.toggle('us-mode', usMode);
+    document.getElementById('us-label').classList.toggle('active', usMode);
+}
+
+// ── Tasks persistence ────────────────────────────────────────────────────
+function loadTasks() {
+    const year = getTaxYear();
+    const saved = localStorage.getItem(storageKey(year));
+    const defaults = getDefaultTasks(year);
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            const savedMap = new Map(parsed.map(t => [t.id, t]));
+            // Always regenerate text from defaults for correct year; preserve user state
+            tasks = defaults.map(dt => {
+                const st = savedMap.get(dt.id);
+                return st ? { ...dt, done: st.done, notes: st.notes } : { ...dt };
+            });
+            // Preserve custom tasks
+            parsed.filter(t => !defaults.find(d => d.id === t.id)).forEach(t => {
+                tasks.push({ ...t });
+            });
+        } catch(e) {
+            tasks = defaults.map(t => ({...t}));
+        }
+    } else {
+        tasks = defaults.map(t => ({...t}));
+    }
+}
+
+function saveTasks() {
+    const year = getTaxYear();
+    localStorage.setItem(storageKey(year), JSON.stringify(tasks));
+}
+
+// ── Dates bar ────────────────────────────────────────────────────────────
+function renderDatesBar() {
+    const year = getTaxYear();
+    const deadlines = getDeadlines(year);
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    let html = '';
+    deadlines.forEach((d, i) => {
+        const dt = new Date(d.date + 'T00:00:00');
+        const diff = Math.ceil((dt - today) / 86400000);
+        let dotClass, isUS = d.type === 'us';
+
+        if (diff < 0) dotClass = 'dot-past';
+        else if (diff <= 14) dotClass = 'dot-imminent';
+        else if (diff <= 60) dotClass = 'dot-soon';
+        else dotClass = 'dot-later';
+
+        if (isUS) dotClass = 'dot-us';
+
+        const taskDone = d.taskId && tasks.find(t => t.id === d.taskId)?.done;
+        const collapsed = taskDone ? ' collapsed' : '';
+
+        const dateStr = dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        html += `<div class="date-chip ${isUS ? 'us-only' : ''}${collapsed}" data-idx="${i}"><span class="date-dot ${dotClass}" onclick="toggleDateChip(event, ${i})"></span><span class="date-label">${dateStr}: ${d.label}</span></div>`;
+    });
+    document.getElementById('dates-bar').innerHTML = html;
+    initDatesBarDrag();
+}
+
+function toggleDateChip(e, idx) {
+    e.stopPropagation();
+    const chip = document.querySelector(`.date-chip[data-idx="${idx}"]`);
+    if (chip) chip.classList.toggle('collapsed');
+}
+
+function initDatesBarDrag() {
+    const bar = document.getElementById('dates-bar');
+    let isDown = false, startX, scrollLeft;
+    bar.addEventListener('mousedown', e => {
+        if (e.target.classList.contains('date-dot')) return;
+        isDown = true; bar.classList.add('dragging');
+        startX = e.pageX - bar.offsetLeft;
+        scrollLeft = bar.scrollLeft;
+    });
+    bar.addEventListener('mouseleave', () => { isDown = false; bar.classList.remove('dragging'); });
+    bar.addEventListener('mouseup', () => { isDown = false; bar.classList.remove('dragging'); });
+    bar.addEventListener('mousemove', e => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - bar.offsetLeft;
+        bar.scrollLeft = scrollLeft - (x - startX);
+    });
+}
+
+// ── Calendar table ───────────────────────────────────────────────────────
+function renderCalendar() {
+    const year = getTaxYear();
+    document.getElementById('calendar-year-label').textContent = year;
+    const rows = getCalendarRows(year);
+    let html = '';
+    rows.forEach(r => {
+        html += `<tr class="${r.usOnly ? 'us-row' : ''}">
+            <td><strong>${r.deadline}</strong></td>
+            <td>${r.filing}</td>
+            <td>${r.what}</td>
+            <td>${r.who}</td>
+        </tr>`;
+    });
+    document.getElementById('calendar-tbody').innerHTML = html;
+}
+
+// ── View switching ───────────────────────────────────────────────────────
+function switchView(view) {
+    localStorage.setItem(VIEW_KEY, view);
+    document.querySelectorAll('.view-tab').forEach((t, i) => {
+        t.classList.toggle('active', (view === 'doc' && i === 0) || (view === 'tasks' && i === 1));
+    });
+    document.getElementById('doc-view').style.display = view === 'doc' ? 'flex' : 'none';
+    document.getElementById('tasks-view').classList.toggle('active', view === 'tasks');
+    if (view === 'tasks') renderTasks();
+}
+
+// ── Document navigation ──────────────────────────────────────────────────
+function navigateToSection(sectionId, subId) {
+    activeSection = sectionId;
+    localStorage.setItem(SECTION_KEY, subId ? `${sectionId}:${subId}` : sectionId);
+    document.querySelectorAll('.doc-section').forEach(s => s.classList.remove('active'));
+    const sec = document.getElementById('sec-' + sectionId);
+    if (sec) sec.classList.add('active');
+
+    document.querySelectorAll('.toc-section, .toc-sub').forEach(t => t.classList.remove('active'));
+    if (subId) {
+        document.querySelector(`.toc-sub[data-section="${sectionId}"][data-sub="${subId}"]`)?.classList.add('active');
+        const el = document.getElementById('sub-' + subId);
+        if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    } else {
+        document.querySelector(`.toc-section[data-section="${sectionId}"]`)?.classList.add('active');
+        document.getElementById('doc-content').scrollTop = 0;
+    }
+}
+
+function goToSection(sectionId) {
+    switchView('doc');
+    navigateToSection(sectionId);
+}
+
+// ── Task rendering ───────────────────────────────────────────────────────
+function getVisibleTasks() {
+    return usMode ? tasks : tasks.filter(t => !t.usOnly);
+}
+
+function getVisibleCategories() {
+    return usMode ? TASK_CATEGORIES : TASK_CATEGORIES.filter(c => !c.usOnly);
+}
+
+function renderTasks() {
+    const sidebar = document.getElementById('tasks-sidebar');
+    const content = document.getElementById('tasks-content');
+    const visible = getVisibleTasks();
+    const cats = getVisibleCategories();
+
+    const totalDone = visible.filter(t => t.done).length;
+    const totalCount = visible.length;
+    const pct = totalCount ? Math.round(totalDone / totalCount * 100) : 0;
+
+    // Sidebar
+    let sideHtml = `<div class="task-cat ${activeCategory === 'all' ? 'active' : ''}" onclick="filterTasks('all')">
+        <span>All Tasks</span><span class="cat-count">${totalDone}/${totalCount}</span>
+    </div>`;
+    cats.forEach(cat => {
+        const catTasks = visible.filter(t => t.cat === cat.id);
+        if (catTasks.length === 0 && cat.id !== 'custom') return;
+        const catDone = catTasks.filter(t => t.done).length;
+        sideHtml += `<div class="task-cat ${activeCategory === cat.id ? 'active' : ''} ${cat.usOnly ? 'us-only' : ''}" onclick="filterTasks('${cat.id}')">
+            <span>${cat.label}</span><span class="cat-count">${catDone}/${catTasks.length}</span>
+        </div>`;
+    });
+    sidebar.innerHTML = sideHtml;
+
+    // Content
+    let html = `<div class="task-progress-bar">
+        <span class="tp-text">${totalDone} of ${totalCount} completed</span>
+        <div class="tp-bar"><div class="tp-fill" style="width:${pct}%"></div></div>
+        <span class="tp-text">${pct}%</span>
+    </div>`;
+
+    const year = getTaxYear();
+    html += `<div style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Checklist for <strong>Tax Year ${year}</strong> (filings due in ${year + 1})</div>`;
+
+    const catsToShow = activeCategory === 'all' ? cats : cats.filter(c => c.id === activeCategory);
+
+    catsToShow.forEach(cat => {
+        const catTasks = visible.filter(t => t.cat === cat.id);
+        if (catTasks.length === 0 && cat.id !== 'custom') return;
+        const catDone = catTasks.filter(t => t.done).length;
+
+        html += `<div style="margin-bottom:24px">
+            <div class="task-group-header">${cat.label} <span class="tg-count">${catDone}/${catTasks.length}</span></div>`;
+
+        catTasks.forEach(t => {
+            html += renderTaskItem(t);
+        });
+
+        if (cat.id === 'custom') {
+            html += `<div class="add-task-row">
+                <input type="text" id="new-task-input" placeholder="Add a custom task..." onkeydown="if(event.key==='Enter')addCustomTask()">
+                <button onclick="addCustomTask()">Add</button>
+            </div>`;
+        }
+
+        html += `</div>`;
+    });
+
+    content.innerHTML = html;
+}
+
+function renderTaskItem(t) {
+    const cat = TASK_CATEGORIES.find(c => c.id === t.cat);
+    const badgeClass = cat ? `badge-${cat.badge}` : 'badge-ongoing';
+
+    let html = `<div class="task-item ${t.done ? 'done' : ''}">
+        <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTask('${t.id}')">
+        <div class="task-body">
+            <div class="task-title">${esc(t.title)}${t.usOnly ? ' <span class="us-tag">US</span>' : ''}</div>`;
+
+    if (t.detail) {
+        html += `<div class="task-detail">${esc(t.detail)}</div>`;
+    }
+
+    if (t.section) {
+        const sectionNames = {
+            'overview': 'Overview', 'beckham': 'Beckham Law Basics',
+            'spanish-filings': 'Spanish Tax Filings', 'deadlines': 'Filing Calendar',
+            'us-filings': 'US Tax Filings', 'us-spain-interplay': 'US & Spain Interplay',
+            'gotchas': 'Common Gotchas', 'resources': 'Resources'
+        };
+        html += `<div class="task-link" onclick="goToSection('${t.section}')">See: ${sectionNames[t.section] || t.section}</div>`;
+    }
+
+    html += `<div class="task-notes-toggle" onclick="toggleNotes('${t.id}', this)">+ notes</div>
+        <div class="task-notes" id="notes-${t.id}">
+            <textarea placeholder="Add your notes here..." onblur="saveNotes('${t.id}', this.value)">${esc(t.notes || '')}</textarea>
+        </div>
+        </div>
+    </div>`;
+    return html;
+}
+
+function esc(s) {
+    if (!s) return '';
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── Task actions ─────────────────────────────────────────────────────────
+function toggleTask(id) {
+    const t = tasks.find(t => t.id === id);
+    if (t) { t.done = !t.done; saveTasks(); renderTasks(); renderDatesBar(); }
+}
+
+function toggleNotes(id, el) {
+    const notes = document.getElementById('notes-' + id);
+    if (notes) {
+        notes.classList.toggle('open');
+        el.textContent = notes.classList.contains('open') ? '- notes' : '+ notes';
+        if (notes.classList.contains('open')) notes.querySelector('textarea')?.focus();
+    }
+}
+
+function saveNotes(id, value) {
+    const t = tasks.find(t => t.id === id);
+    if (t) { t.notes = value; saveTasks(); }
+}
+
+function filterTasks(catId) {
+    activeCategory = catId;
+    localStorage.setItem(TASK_CAT_KEY, catId);
+    renderTasks();
+}
+
+function addCustomTask() {
+    const input = document.getElementById('new-task-input');
+    if (!input || !input.value.trim()) return;
+    const id = 'tc' + Date.now();
+    tasks.push({ id, cat: 'custom', title: input.value.trim(), detail: '', done: false, notes: '' });
+    saveTasks();
+    renderTasks();
+    toast('Task added');
+}
+
+function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+init();
+</script>
+</body>
+</html>
