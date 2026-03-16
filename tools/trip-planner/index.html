@@ -329,6 +329,8 @@
         viewMode: 'plan',
         travelDefaultTab: 'map',
         showOfflineMaps: false,
+        showSheetsSync: false,
+        googleClientId: '',
     };
 
     let data = { trips: [] };
@@ -833,11 +835,412 @@
         } else {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         }
+        if (settings.showSheetsSync) scheduleSheetsPush();
     }
 
     function saveSetting() {
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     }
+
+    // --- Google Sheets Sync ---
+
+    const GOOGLE_AUTH_KEY = 'trip-planner-google-auth-v1';
+    let _gisLoaded = false;
+    let _gisLoadPromise = null;
+    let googleAuth = { accessToken: null, expiresAt: null, email: null };
+
+    function loadGIS() {
+        if (_gisLoaded) return Promise.resolve();
+        if (_gisLoadPromise) return _gisLoadPromise;
+        _gisLoadPromise = new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://accounts.google.com/gsi/client';
+            s.onload = () => { _gisLoaded = true; resolve(); };
+            s.onerror = () => { _gisLoadPromise = null; reject(new Error('Failed to load Google sign-in')); };
+            document.head.appendChild(s);
+        });
+        return _gisLoadPromise;
+    }
+
+    function loadGoogleAuth() {
+        try {
+            const raw = localStorage.getItem(GOOGLE_AUTH_KEY);
+            if (raw) googleAuth = { ...googleAuth, ...JSON.parse(raw) };
+        } catch (e) {}
+    }
+
+    function saveGoogleAuth() {
+        localStorage.setItem(GOOGLE_AUTH_KEY, JSON.stringify(googleAuth));
+    }
+
+    function clearGoogleAuth() {
+        googleAuth = { accessToken: null, expiresAt: null, email: null };
+        localStorage.removeItem(GOOGLE_AUTH_KEY);
+    }
+
+    function isGoogleTokenValid() {
+        return googleAuth.accessToken && googleAuth.expiresAt && Date.now() < googleAuth.expiresAt;
+    }
+
+    let _oauthResolve = null;
+    let _oauthCodeVerifier = null;
+    const OAUTH_REDIRECT_URI = 'https://bellevue.tech/tools/trip-planner/oauth-callback';
+    const OAUTH_SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email';
+
+    async function _generatePKCE() {
+        const arr = new Uint8Array(32);
+        crypto.getRandomValues(arr);
+        const verifier = btoa(String.fromCharCode(...arr)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+        const challenge = btoa(String.fromCharCode(...new Uint8Array(hash))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        return { verifier, challenge };
+    }
+
+    async function _handleOAuthTokenResponse(accessToken, expiresIn) {
+        googleAuth.accessToken = accessToken;
+        googleAuth.expiresAt = Date.now() + (expiresIn * 1000);
+        try {
+            const r = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+                headers: { 'Authorization': 'Bearer ' + accessToken }
+            });
+            const info = await r.json();
+            googleAuth.email = info.email;
+        } catch (e) {}
+        saveGoogleAuth();
+    }
+
+    // Called by Android after OAuth redirect
+    window._handleOAuthCode = async function(code) {
+        if (!_oauthCodeVerifier || !_oauthResolve) return;
+        try {
+            const res = await fetch('https://oauth2.googleapis.com/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    grant_type: 'authorization_code',
+                    code,
+                    client_id: settings.googleClientId,
+                    redirect_uri: OAUTH_REDIRECT_URI,
+                    code_verifier: _oauthCodeVerifier,
+                }).toString(),
+            });
+            if (!res.ok) { toast('Token exchange failed'); _oauthResolve(null); return; }
+            const tokenData = await res.json();
+            await _handleOAuthTokenResponse(tokenData.access_token, tokenData.expires_in);
+            _oauthResolve(tokenData.access_token);
+        } catch (e) {
+            toast('OAuth failed: ' + e.message);
+            _oauthResolve(null);
+        } finally {
+            _oauthCodeVerifier = null;
+            _oauthResolve = null;
+        }
+    };
+
+    async function ensureGoogleToken() {
+        if (isGoogleTokenValid()) return googleAuth.accessToken;
+        if (!settings.googleClientId) {
+            toast('Set Google Client ID in Settings first');
+            return null;
+        }
+        if (window.__ANDROID_APP__) {
+            // Android: use PKCE auth code flow via external browser
+            const pkce = await _generatePKCE();
+            _oauthCodeVerifier = pkce.verifier;
+            const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+                client_id: settings.googleClientId,
+                redirect_uri: OAUTH_REDIRECT_URI,
+                response_type: 'code',
+                scope: OAUTH_SCOPES,
+                code_challenge: pkce.challenge,
+                code_challenge_method: 'S256',
+                access_type: 'online',
+            }).toString();
+            return new Promise(resolve => {
+                _oauthResolve = resolve;
+                AndroidNative.openUrl(authUrl);
+            });
+        }
+        // Browser: use GIS popup
+        try { await loadGIS(); } catch (e) { toast(e.message); return null; }
+        return new Promise(resolve => {
+            const client = google.accounts.oauth2.initTokenClient({
+                client_id: settings.googleClientId,
+                scope: OAUTH_SCOPES,
+                callback: async (resp) => {
+                    if (resp.error) {
+                        toast('Google sign-in failed: ' + resp.error);
+                        resolve(null);
+                        return;
+                    }
+                    await _handleOAuthTokenResponse(resp.access_token, resp.expires_in);
+                    resolve(resp.access_token);
+                },
+            });
+            client.requestAccessToken();
+        });
+    }
+
+    function googleLogout() {
+        if (!window.__ANDROID_APP__ && _gisLoaded && googleAuth.accessToken) {
+            try { google.accounts.oauth2.revoke(googleAuth.accessToken, () => {}); } catch (e) {}
+        }
+        clearGoogleAuth();
+        toast('Signed out of Google');
+        render();
+    }
+
+    function extractSheetId(url) {
+        const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+        return m ? m[1] : null;
+    }
+
+    // readSheetTrip returns:
+    //   { data: object }  — parsed trip data from cell A1
+    //   { data: null }    — sheet exists but cell A1 is empty
+    //   { error: string } — permission, not found, or parse error
+    //   null               — no token (auth cancelled)
+    async function readSheetTrip(sheetId) {
+        const token = await ensureGoogleToken();
+        if (!token) return null;
+        const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A1`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (res.status === 401) {
+            clearGoogleAuth();
+            toast('Session expired — please sign in again');
+            return { error: 'auth' };
+        }
+        if (res.status === 403) {
+            toast('You don\'t have access to this sheet. Ask the owner to share it with ' + (googleAuth.email || 'your Google account') + '.');
+            return { error: 'forbidden' };
+        }
+        if (res.status === 404) { toast('Sheet not found — check the URL'); return { error: 'not_found' }; }
+        if (!res.ok) throw new Error('Sheets API error ' + res.status);
+        const d = await res.json();
+        if (!d.values || !d.values[0] || !d.values[0][0]) return { data: null };
+        try {
+            return { data: JSON.parse(d.values[0][0]) };
+        } catch (e) {
+            toast('Sheet cell A1 does not contain valid trip data');
+            return { error: 'parse' };
+        }
+    }
+
+    async function writeSheetTrip(sheetId, trip) {
+        const token = await ensureGoogleToken();
+        if (!token) return false;
+        const payload = JSON.stringify({
+            version: 1, format: 'trip-planner-single',
+            exportedAt: new Date().toISOString(), trip
+        });
+        if (payload.length > 50000) {
+            toast('Trip data too large for Sheets sync (' + Math.round(payload.length / 1024) + 'KB)');
+            return false;
+        }
+        const res = await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A1?valueInputOption=RAW`,
+            { method: 'PUT', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ values: [[payload]] }) }
+        );
+        if (res.status === 401) {
+            clearGoogleAuth();
+            toast('Session expired — please sign in again');
+            return false;
+        }
+        if (res.status === 403) {
+            toast('You don\'t have write access to this sheet. Ask the owner to give you Editor access.');
+            return false;
+        }
+        if (!res.ok) throw new Error('Sheets write error ' + res.status);
+        return true;
+    }
+
+    let _sheetsPushTimer = null;
+
+    function scheduleSheetsPush() {
+        clearTimeout(_sheetsPushTimer);
+        _sheetsPushTimer = setTimeout(() => pushCurrentTripToSheets(), 2000);
+    }
+
+    async function pushCurrentTripToSheets() {
+        const trip = getTrip(state.tripId);
+        if (!trip || !trip.sheetId) return;
+        if (!isGoogleTokenValid()) return;
+        try {
+            await writeSheetTrip(trip.sheetId, trip);
+            trip.sheetLastSync = new Date().toISOString();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch (e) {
+            console.warn('Sheets auto-push failed:', e);
+        }
+    }
+
+    async function manualSheetsSync() {
+        const trip = getTrip();
+        if (!trip || !trip.sheetId) { toast('Trip not linked to Sheets'); return; }
+        const syncBtn = document.getElementById('syncBtn');
+        if (syncBtn) syncBtn.style.animation = 'spin 1s linear infinite';
+        try {
+            const result = await readSheetTrip(trip.sheetId);
+            if (!result || result.error) return; // auth cancelled or error (already toasted)
+            const sheetData = result.data;
+            if (sheetData && sheetData.trip && sheetData.exportedAt) {
+                const remoteTime = new Date(sheetData.exportedAt).getTime();
+                const localTime = new Date(trip.sheetLastSync || 0).getTime();
+                if (remoteTime > localTime) {
+                    const ok = await showConfirm('Remote Changes Found',
+                        'The Sheets version is newer than your local data. Replace local with remote?');
+                    if (ok) {
+                        const remote = ensureTripArrays(sheetData.trip);
+                        remote.sheetId = trip.sheetId;
+                        remote.sheetLastSync = new Date().toISOString();
+                        const idx = data.trips.findIndex(t => t.id === trip.id);
+                        if (idx >= 0) data.trips[idx] = remote;
+                        save();
+                        render();
+                        toast('Pulled latest from Sheets');
+                        return;
+                    }
+                }
+            }
+            const ok = await writeSheetTrip(trip.sheetId, trip);
+            if (ok) {
+                trip.sheetLastSync = new Date().toISOString();
+                save();
+                toast('Synced to Sheets');
+            }
+        } catch (e) {
+            toast('Sync failed: ' + e.message);
+        } finally {
+            if (syncBtn) syncBtn.style.animation = '';
+        }
+    }
+
+    function openImportFromSheetsModal() {
+        openModal(`
+            <div class="modal-header">
+                <h3>Import from Google Sheets</h3>
+                <button class="btn-icon" onclick="closeModal()">\u2715</button>
+            </div>
+            <div class="modal-body">
+                ${googleAuth.email ?
+                    `<p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
+                        Signed in as <strong>${esc(googleAuth.email)}</strong>
+                        <button class="btn btn-sm btn-ghost" style="margin-left:4px" onclick="googleLogout();openImportFromSheetsModal()">Sign out</button>
+                    </p>` :
+                    `<p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
+                        You'll be prompted to sign in to Google when importing.
+                    </p>`}
+                <div class="form-group">
+                    <label>Google Sheets URL</label>
+                    <input class="input" id="sheetsUrl" placeholder="https://docs.google.com/spreadsheets/d/...">
+                </div>
+                <p style="font-size:11px;color:var(--text-muted)">
+                    Paste a Google Sheets URL. The sheet should contain trip data, or be empty to link a local trip.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="doImportFromSheets()">Import &amp; Link</button>
+            </div>
+        `);
+    }
+
+    async function doImportFromSheets() {
+        const url = document.getElementById('sheetsUrl').value.trim();
+        const sheetId = extractSheetId(url);
+        if (!sheetId) { toast('Invalid Google Sheets URL'); return; }
+        try {
+            const result = await readSheetTrip(sheetId);
+            if (!result || result.error) return; // auth cancelled or error (already toasted)
+            const sheetData = result.data;
+            if (sheetData && sheetData.format === 'trip-planner-single' && sheetData.trip) {
+                const trip = ensureTripArrays(sheetData.trip);
+                trip.sheetId = sheetId;
+                trip.sheetLastSync = new Date().toISOString();
+                const existing = data.trips.find(t => t.id === trip.id);
+                if (existing) {
+                    const ok = await showConfirm('Trip Exists',
+                        `"${esc(trip.name)}" already exists locally. Replace with the Sheets version?`);
+                    if (!ok) return;
+                    Object.assign(existing, trip);
+                } else {
+                    data.trips.push(trip);
+                }
+                save();
+                closeModal();
+                render();
+                toast('Imported & linked "' + esc(trip.name) + '"');
+            } else if (!sheetData) {
+                closeModal();
+                openLinkTripToSheetModal(sheetId);
+            } else {
+                toast('Sheet does not contain valid trip data');
+            }
+        } catch (e) {
+            toast('Import failed: ' + e.message);
+        }
+    }
+
+    function openLinkTripToSheetModal(sheetId) {
+        const opts = data.trips.map(t =>
+            `<option value="${t.id}">${esc(t.name)}</option>`
+        ).join('');
+        if (!opts) { toast('No trips to link — create a trip first'); return; }
+        openModal(`
+            <div class="modal-header">
+                <h3>Link Trip to Sheet</h3>
+                <button class="btn-icon" onclick="closeModal()">\u2715</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom:12px">The sheet is empty. Choose a trip to push to it:</p>
+                <div class="form-group">
+                    <label>Trip</label>
+                    <select class="select" id="linkTripSelect">${opts}</select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="doLinkTripToSheet('${sheetId}')">Push &amp; Link</button>
+            </div>
+        `);
+    }
+
+    async function doLinkTripToSheet(sheetId) {
+        const tripId = document.getElementById('linkTripSelect').value;
+        const trip = getTrip(tripId);
+        if (!trip) return;
+        try {
+            const ok = await writeSheetTrip(sheetId, trip);
+            if (ok) {
+                trip.sheetId = sheetId;
+                trip.sheetLastSync = new Date().toISOString();
+                save();
+                closeModal();
+                render();
+                toast('Linked & pushed "' + esc(trip.name) + '" to Sheets');
+            }
+        } catch (e) {
+            toast('Push failed: ' + e.message);
+        }
+    }
+
+    async function unlinkSheet(tripId) {
+        const ok = await showConfirm('Unlink Sheet', 'Stop syncing this trip with Google Sheets? Local data will be kept.');
+        if (!ok) return;
+        const trip = getTrip(tripId);
+        if (trip) {
+            delete trip.sheetId;
+            delete trip.sheetLastSync;
+            save();
+            closeModal();
+            render();
+            toast('Sheet unlinked');
+        }
+    }
+
+    // --- End Google Sheets Sync ---
 
     function _setPhotoSize(size) {
         settings.photoSize = size;
@@ -1215,6 +1618,7 @@
                     <button class="${_toggleCls}" onclick="toggleViewMode()">${_toggleLabel}</button>
                 </div>
                 <div class="header-actions">
+                    ${settings.showSheetsSync && trip?.sheetId ? '<button class="btn-icon" id="syncBtn" onclick="manualSheetsSync()" title="Sync with Google Sheets">\u{1F504}</button>' : ''}
                     <button class="btn-icon" onclick="openSettingsModal()" title="Settings">\u2699\uFE0F</button>
                 </div>
             `;
@@ -1296,6 +1700,7 @@
                             <span>\u{1F4CD} ${legCount} ${legCount === 1 ? 'city' : 'cities'}</span>
                             <span>\u{1F3AF} ${actCount} activities</span>
                             ${totalLodging ? `<span>\u{1F3E8} ${bookedLodging}/${totalLodging} booked</span>` : ''}
+                            ${settings.showSheetsSync && t.sheetId ? '<span style="color:var(--success)">\u2601 Sheets</span>' : ''}
                         </div>
                     </div>
                 </div>
@@ -1305,8 +1710,9 @@
             <div class="view-content">
                 <div class="view-header">
                     <h2>My Trips</h2>
-                    <div style="display:flex;gap:8px">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
                         <button class="btn btn-sm" onclick="document.getElementById('importFile').click()">Import</button>
+                        ${settings.showSheetsSync ? '<button class="btn btn-sm" onclick="openImportFromSheetsModal()">Import from Sheets</button>' : ''}
                         <button class="btn btn-sm" onclick="exportAll()">Export</button>
                         <button class="btn btn-primary btn-sm" onclick="openTripModal()">+ New Trip</button>
                     </div>
@@ -1908,6 +2314,41 @@
                     <button class="toggle ${settings.showOfflineMaps ? 'on' : ''}" onclick="settings.showOfflineMaps=!settings.showOfflineMaps;saveSetting();this.classList.toggle('on')"></button>
                 </div>
                 <div class="toggle-wrap">
+                    <label>Google Sheets Sync</label>
+                    <button class="toggle ${settings.showSheetsSync ? 'on' : ''}" onclick="settings.showSheetsSync=!settings.showSheetsSync;saveSetting();this.classList.toggle('on');const sw=document.getElementById('sheetsSyncWrap');if(sw){sw.style.maxHeight=settings.showSheetsSync?'300px':'0';sw.style.opacity=settings.showSheetsSync?'1':'0'}"></button>
+                </div>
+                <div id="sheetsSyncWrap" style="overflow:hidden;transition:max-height 0.3s ease,opacity 0.3s ease;max-height:${settings.showSheetsSync ? '300px' : '0'};opacity:${settings.showSheetsSync ? '1' : '0'}">
+                    <div style="padding:4px 0 8px">
+                        <div class="form-group">
+                            <label>Google Client ID</label>
+                            <input class="input" id="settGoogleClientId" value="${esc(settings.googleClientId)}"
+                                   placeholder="xxxx.apps.googleusercontent.com"
+                                   onchange="settings.googleClientId=this.value.trim();saveSetting()">
+                        </div>
+                        <details style="font-size:11px;color:var(--text-muted);margin-top:6px">
+                            <summary style="cursor:pointer">Setup instructions</summary>
+                            <ol style="padding-left:16px;margin-top:6px;line-height:1.6">
+                                <li>Go to <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a></li>
+                                <li>Create a new project (or select existing)</li>
+                                <li>Go to <strong>APIs &amp; Services &rarr; Library</strong>, search <strong>Google Sheets API</strong>, enable it</li>
+                                <li>Go to <strong>APIs &amp; Services &rarr; Credentials</strong></li>
+                                <li>Click <strong>Create Credentials &rarr; OAuth client ID</strong></li>
+                                <li>Application type: <strong>Web application</strong></li>
+                                <li>Under <strong>Authorized JavaScript origins</strong>, add your domain (e.g. <code>https://bellevue.tech</code>) and <code>http://localhost</code> for dev</li>
+                                <li>Under <strong>Authorized redirect URIs</strong>, add <code>https://bellevue.tech/tools/trip-planner/oauth-callback</code> (needed for the Android app)</li>
+                                <li>Copy the <strong>Client ID</strong> and paste it above</li>
+                                <li>You may need to configure the <strong>OAuth consent screen</strong> first (External, add your email as test user)</li>
+                            </ol>
+                        </details>
+                        ${googleAuth.email ? `
+                            <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;background:var(--bg);border-radius:var(--radius-sm);border:1px solid var(--border)">
+                                <span style="font-size:13px">${esc(googleAuth.email)}</span>
+                                <button class="btn btn-sm btn-ghost" style="margin-left:auto" onclick="googleLogout();openSettingsModal()">Sign Out</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+                <div class="toggle-wrap">
                     <label>Show Photos</label>
                     <button class="toggle ${settings.showPhotos ? 'on' : ''}" onclick="settings.showPhotos=!settings.showPhotos;saveSetting();this.classList.toggle('on');const ps=document.getElementById('photoSizeWrap');if(ps){ps.style.maxHeight=settings.showPhotos?'80px':'0';ps.style.opacity=settings.showPhotos?'1':'0'}"></button>
                 </div>
@@ -1949,6 +2390,8 @@
                         <button class="btn btn-sm" onclick="exportWhatsApp('${state.tripId}');closeModal()">Share Itinerary</button>
                         <button class="btn btn-sm" onclick="closeModal();setTimeout(()=>shareTripFile('${state.tripId}'),100)">Share Trip File</button>
                         ${canShareAsLink(state.tripId) ? `<button class="btn btn-sm" onclick="shareTripLink('${state.tripId}');closeModal()">Share Link</button>` : ''}
+                        ${settings.showSheetsSync && !getTrip(state.tripId)?.sheetId ? `<button class="btn btn-sm" onclick="closeModal();openImportFromSheetsModal()">Link to Sheets</button>` : ''}
+                        ${settings.showSheetsSync && getTrip(state.tripId)?.sheetId ? `<button class="btn btn-sm" onclick="manualSheetsSync();closeModal()">Sync Sheets</button><button class="btn btn-sm" onclick="unlinkSheet('${state.tripId}')">Unlink Sheets</button>` : ''}
                     </div>
                 ` : ''}
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -5644,6 +6087,7 @@
     }
 
     loadSettings();
+    loadGoogleAuth();
     loadData().then(async () => {
         loadExchangeRates();
         restoreNavState();
