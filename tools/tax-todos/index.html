@@ -85,8 +85,18 @@
         .date-chip.collapsed .date-label { display: none; }
         .date-chip.collapsed { padding: 6px 8px; opacity: 0.5; }
         .date-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; cursor: pointer; }
+        .date-chip .date-label { cursor: pointer; }
+        .date-chip .date-label:hover { color: var(--accent); }
         .dates-bar { cursor: grab; user-select: none; }
         .dates-bar.dragging { cursor: grabbing; }
+        @keyframes highlight-pulse {
+            0% { background: rgba(59,130,246,.25); }
+            100% { background: transparent; }
+        }
+        .highlight-flash {
+            animation: highlight-pulse 1.5s ease-out;
+            border-radius: 4px; padding: 2px 6px; margin: -2px -6px;
+        }
         .dot-past { background: var(--text-dim); }
         .dot-imminent { background: var(--red); }
         .dot-soon { background: var(--yellow); }
@@ -269,6 +279,75 @@
         }
         .add-task-row button:hover { background: var(--accent-hover); }
 
+        /* Settings button & modal */
+        .settings-btn {
+            padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border);
+            background: var(--bg-card); color: var(--text-muted); font-size: 15px;
+            cursor: pointer; line-height: 1; display: flex; align-items: center;
+        }
+        .settings-btn:hover { background: var(--border-light); color: var(--text); }
+        .settings-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100;
+        }
+        .settings-overlay.open { display: flex; align-items: center; justify-content: center; }
+        .settings-panel {
+            background: var(--bg-card); border-radius: 12px; padding: 24px;
+            width: 90%; max-width: 480px; max-height: 85vh; overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+        .settings-panel h2 { font-size: 1.1rem; margin-bottom: 16px; }
+        .setting-row {
+            padding: 12px 0; border-bottom: 1px solid var(--border-light);
+        }
+        .setting-row:last-child { border-bottom: none; }
+        .setting-row label {
+            display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: var(--text);
+        }
+        .setting-row .setting-hint {
+            font-size: 11px; color: var(--text-dim); margin-bottom: 6px;
+        }
+        .setting-row input, .setting-row select {
+            padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+            font-size: 13px; background: var(--bg-surface); color: var(--text); width: 100%;
+        }
+        .work-entry {
+            display: flex; gap: 6px; align-items: center; margin-bottom: 6px;
+        }
+        .work-entry input, .work-entry select { flex: 1; width: auto; }
+        .work-entry .remove-btn {
+            width: 28px; height: 28px; border-radius: 4px; border: none;
+            background: transparent; color: var(--red); cursor: pointer; font-size: 16px;
+            flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+        }
+        .work-entry .remove-btn:hover { background: rgba(248,113,113,.1); }
+        .add-work-btn {
+            padding: 6px 12px; border-radius: 6px; border: 1px dashed var(--border);
+            background: transparent; color: var(--text-muted); cursor: pointer;
+            font-size: 12px; width: 100%;
+        }
+        .add-work-btn:hover { background: var(--border-light); color: var(--text); }
+        .settings-actions {
+            display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;
+        }
+        .settings-actions button {
+            padding: 8px 20px; border-radius: 6px; border: none; cursor: pointer;
+            font-size: 13px; font-weight: 500;
+        }
+        .btn-settings-save { background: var(--accent); color: white; }
+        .btn-settings-save:hover { background: var(--accent-hover); }
+        .btn-settings-cancel { background: transparent; color: var(--text-muted); border: 1px solid var(--border) !important; }
+        .btn-settings-cancel:hover { background: var(--border-light); }
+
+        /* Info bar (Beckham countdown etc) */
+        .info-bar {
+            display: none; padding: 4px 20px; background: var(--bg-surface);
+            border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-muted);
+            gap: 16px; flex-shrink: 0;
+        }
+        .info-bar.visible { display: flex; }
+        .info-bar .info-item { display: flex; align-items: center; gap: 6px; }
+        .info-bar .info-highlight { color: var(--yellow); font-weight: 600; }
+
         /* Toast */
         .toast {
             position: fixed; bottom: 20px; right: 20px; padding: 10px 20px;
@@ -291,6 +370,7 @@
 <div class="header">
     <h1><span>Tax Obligations</span> &mdash; Beckham Law Tracker</h1>
     <div class="header-right">
+        <button class="settings-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <select class="year-select" id="year-select" onchange="changeYear(this.value)"></select>
         <div class="toggle-wrap">
             <span class="toggle-label" id="us-label">US Person</span>
@@ -307,6 +387,41 @@
 </div>
 
 <div class="dates-bar" id="dates-bar"></div>
+<div class="info-bar" id="info-bar"></div>
+
+<!-- Settings modal -->
+<div class="settings-overlay" id="settings-overlay" onclick="if(event.target===this)closeSettings()">
+    <div class="settings-panel">
+        <h2>Settings</h2>
+        <div class="setting-row">
+            <label>Spanish Tax Residency Start Year</label>
+            <div class="setting-hint">The calendar year you became a Spanish tax resident (year you moved). Beckham Law applies for this year + 5 more.</div>
+            <input type="number" id="set-residency-year" min="2000" max="2040" placeholder="e.g. 2024">
+        </div>
+        <div class="setting-row">
+            <label>Work History by Country</label>
+            <div class="setting-hint">Years you have worked in each country. Helps track obligations and residency context.</div>
+            <div id="work-history-entries"></div>
+            <button class="add-work-btn" onclick="addWorkEntry()">+ Add country</button>
+        </div>
+        <div class="setting-row" style="border-bottom:none">
+            <label style="color:var(--red)">Clear All Data</label>
+            <div class="setting-hint">Permanently delete all checklist data, notes, and settings from this browser.</div>
+            <button class="add-work-btn" style="border-color:var(--red);color:var(--red)" onclick="showClearConfirm()">Clear all data&hellip;</button>
+            <div id="clear-confirm" style="display:none;margin-top:10px">
+                <div style="font-size:12px;color:var(--red);margin-bottom:6px">Type <strong>DELETE</strong> to confirm:</div>
+                <div style="display:flex;gap:6px">
+                    <input type="text" id="clear-confirm-input" placeholder="Type DELETE" style="flex:1">
+                    <button class="btn-settings-save" style="background:var(--red)" onclick="executeClear()">Confirm</button>
+                </div>
+            </div>
+        </div>
+        <div class="settings-actions">
+            <button class="btn-settings-cancel" onclick="closeSettings()">Cancel</button>
+            <button class="btn-settings-save" onclick="saveSettings()">Save</button>
+        </div>
+    </div>
+</div>
 
 <!-- ===== GUIDE VIEW ===== -->
 <div class="main" id="doc-view">
@@ -731,6 +846,109 @@ const YEAR_KEY = 'tax-todos-year';
 const VIEW_KEY = 'tax-todos-view';
 const SECTION_KEY = 'tax-todos-section';
 const TASK_CAT_KEY = 'tax-todos-task-cat';
+const SETTINGS_KEY = 'tax-todos-settings';
+
+// ── Settings ────────────────────────────────────────────────────────────
+function loadSettings() {
+    try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; } catch(e) { return {}; }
+}
+
+function openSettings() {
+    const s = loadSettings();
+    document.getElementById('set-residency-year').value = s.residencyYear || '';
+    const entries = document.getElementById('work-history-entries');
+    entries.innerHTML = '';
+    (s.workHistory || []).forEach(w => addWorkEntry(w.country, w.fromYear, w.toYear));
+    if (!(s.workHistory?.length)) addWorkEntry();
+    document.getElementById('clear-confirm').style.display = 'none';
+    document.getElementById('clear-confirm-input').value = '';
+    document.getElementById('settings-overlay').classList.add('open');
+}
+
+function closeSettings() {
+    document.getElementById('settings-overlay').classList.remove('open');
+}
+
+function addWorkEntry(country, from, to) {
+    const container = document.getElementById('work-history-entries');
+    const div = document.createElement('div');
+    div.className = 'work-entry';
+    div.innerHTML = `
+        <input type="text" placeholder="Country" value="${country || ''}">
+        <input type="number" placeholder="From" min="1990" max="2050" value="${from || ''}" style="max-width:80px">
+        <input type="number" placeholder="To" min="1990" max="2050" value="${to || ''}" style="max-width:80px">
+        <button class="remove-btn" onclick="this.parentElement.remove()">&times;</button>`;
+    container.appendChild(div);
+}
+
+function saveSettings() {
+    const residencyYear = parseInt(document.getElementById('set-residency-year').value) || null;
+    const workHistory = [];
+    document.querySelectorAll('#work-history-entries .work-entry').forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        const country = inputs[0].value.trim();
+        const fromYear = parseInt(inputs[1].value) || null;
+        const toYear = parseInt(inputs[2].value) || null;
+        if (country) workHistory.push({ country, fromYear, toYear });
+    });
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ residencyYear, workHistory }));
+    closeSettings();
+    renderInfoBar();
+    toast('Settings saved');
+}
+
+function showClearConfirm() {
+    document.getElementById('clear-confirm').style.display = 'block';
+    document.getElementById('clear-confirm-input').value = '';
+    document.getElementById('clear-confirm-input').focus();
+}
+
+function executeClear() {
+    if (document.getElementById('clear-confirm-input').value !== 'DELETE') {
+        toast('Type DELETE to confirm');
+        return;
+    }
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('tax-todos')) keys.push(k);
+    }
+    keys.forEach(k => localStorage.removeItem(k));
+    closeSettings();
+    toast('All data cleared');
+    location.reload();
+}
+
+function renderInfoBar() {
+    const s = loadSettings();
+    const bar = document.getElementById('info-bar');
+    if (!s.residencyYear) { bar.classList.remove('visible'); return; }
+
+    const taxYear = getTaxYear();
+    const beckhamYear = taxYear - s.residencyYear + 1; // year 1 = first year
+    const beckhamTotal = 6;
+    const remaining = beckhamTotal - beckhamYear;
+
+    let html = '';
+    html += `<div class="info-item">Tax resident since <strong>${s.residencyYear}</strong></div>`;
+    if (beckhamYear >= 1 && beckhamYear <= beckhamTotal) {
+        html += `<div class="info-item">Beckham Law year <strong>${beckhamYear}</strong> of ${beckhamTotal}`;
+        if (remaining <= 1) html += ` &mdash; <span class="info-highlight">${remaining <= 0 ? 'FINAL YEAR' : remaining + ' year remaining'}</span>`;
+        html += `</div>`;
+    } else if (beckhamYear > beckhamTotal) {
+        html += `<div class="info-item"><span class="info-highlight">Beckham Law expired for this tax year</span></div>`;
+    }
+
+    if (s.workHistory?.length) {
+        const current = s.workHistory.filter(w => !w.toYear || w.toYear >= taxYear);
+        if (current.length) {
+            html += `<div class="info-item">Working in: ${current.map(w => w.country).join(', ')}</div>`;
+        }
+    }
+
+    bar.innerHTML = html;
+    bar.classList.add('visible');
+}
 
 // ── Tax year config ─────────────────────────────────────────────────────
 function getTaxYear() {
@@ -810,13 +1028,13 @@ function getDefaultTasks(year) {
 function getDeadlines(year) {
     const fy = year + 1;
     return [
-        { date: `${fy}-01-31`, label: 'Certificado de Retenciones (approx)', type: 'spanish', taskId: 's2' },
-        { date: `${fy}-03-31`, label: `Modelo 720 deadline`, type: 'spanish', taskId: 's12' },
-        { date: `${fy}-04-01`, label: `Renta campaign opens (approx)`, type: 'spanish', taskId: 's20' },
-        { date: `${fy}-04-15`, label: `FBAR deadline / US tax payment due`, type: 'us', taskId: 'u10' },
-        { date: `${fy}-06-15`, label: `US auto-extension abroad / File Form 4868`, type: 'us', taskId: 'u12' },
-        { date: `${fy}-06-30`, label: `Modelo 151 deadline`, type: 'spanish', taskId: 's22' },
-        { date: `${fy}-10-15`, label: `US Form 1040 extended deadline / FBAR auto-extension`, type: 'us', taskId: 'u30' },
+        { date: `${fy}-01-31`, label: 'Certificado de Retenciones (approx)', type: 'spanish', taskId: 's2', section: 'spanish-filings', sub: 'modelo151' },
+        { date: `${fy}-03-31`, label: `Modelo 720 deadline`, type: 'spanish', taskId: 's12', section: 'spanish-filings', sub: 'modelo720' },
+        { date: `${fy}-04-01`, label: `Renta campaign opens (approx)`, type: 'spanish', taskId: 's20', section: 'spanish-filings', sub: 'modelo151' },
+        { date: `${fy}-04-15`, label: `FBAR deadline / US tax payment due`, type: 'us', taskId: 'u10', section: 'us-filings', sub: 'fbar' },
+        { date: `${fy}-06-15`, label: `US auto-extension abroad / File Form 4868`, type: 'us', taskId: 'u12', section: 'us-filings', sub: 'form1040' },
+        { date: `${fy}-06-30`, label: `Modelo 151 deadline`, type: 'spanish', taskId: 's22', section: 'spanish-filings', sub: 'modelo151' },
+        { date: `${fy}-10-15`, label: `US Form 1040 extended deadline / FBAR auto-extension`, type: 'us', taskId: 'u30', section: 'us-filings', sub: 'form1040' },
     ];
 }
 
@@ -867,9 +1085,10 @@ function init() {
     // Load tasks
     loadTasks();
 
-    // Render dates bar and calendar
+    // Render dates bar, calendar, and info bar
     renderDatesBar();
     renderCalendar();
+    renderInfoBar();
 
     // TOC click handlers
     document.querySelectorAll('.toc-section').forEach(el => {
@@ -899,6 +1118,7 @@ function changeYear(val) {
     loadTasks();
     renderDatesBar();
     renderCalendar();
+    renderInfoBar();
     if (document.getElementById('tasks-view').classList.contains('active')) {
         renderTasks();
     }
@@ -956,6 +1176,7 @@ function saveTasks() {
 function renderDatesBar() {
     const year = getTaxYear();
     const deadlines = getDeadlines(year);
+    _deadlinesCache = deadlines;
     const today = new Date();
     today.setHours(0,0,0,0);
 
@@ -976,26 +1197,51 @@ function renderDatesBar() {
         const collapsed = taskDone ? ' collapsed' : '';
 
         const dateStr = dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-        html += `<div class="date-chip ${isUS ? 'us-only' : ''}${collapsed}" data-idx="${i}"><span class="date-dot ${dotClass}" onclick="toggleDateChip(event, ${i})"></span><span class="date-label">${dateStr}: ${d.label}</span></div>`;
+        html += `<div class="date-chip ${isUS ? 'us-only' : ''}${collapsed}" data-idx="${i}"><span class="date-dot ${dotClass}" onclick="toggleDateChip(event, ${i})"></span><span class="date-label" onclick="onDateChipClick(event, ${i})">${dateStr}: ${d.label}</span></div>`;
     });
     document.getElementById('dates-bar').innerHTML = html;
     initDatesBarDrag();
 }
 
+let _deadlinesCache = [];
+let _dragDistance = 0;
+
 function toggleDateChip(e, idx) {
     e.stopPropagation();
+    if (_dragDistance > 5) return;
     const chip = document.querySelector(`.date-chip[data-idx="${idx}"]`);
     if (chip) chip.classList.toggle('collapsed');
+}
+
+function onDateChipClick(e, idx) {
+    e.stopPropagation();
+    if (_dragDistance > 5) return;
+    const d = _deadlinesCache[idx];
+    if (!d) return;
+    switchView('doc');
+    navigateToSection(d.section, d.sub);
+    // Highlight the target subsection heading
+    setTimeout(() => {
+        const el = document.getElementById('sub-' + d.sub);
+        if (el) {
+            el.classList.remove('highlight-flash');
+            void el.offsetWidth;
+            el.classList.add('highlight-flash');
+        }
+    }, 100);
 }
 
 function initDatesBarDrag() {
     const bar = document.getElementById('dates-bar');
     let isDown = false, startX, scrollLeft;
     bar.addEventListener('mousedown', e => {
-        if (e.target.classList.contains('date-dot')) return;
+        if (e.target.classList.contains('date-dot') || e.target.classList.contains('date-label')) {
+            // Still track for drag detection
+        }
         isDown = true; bar.classList.add('dragging');
         startX = e.pageX - bar.offsetLeft;
         scrollLeft = bar.scrollLeft;
+        _dragDistance = 0;
     });
     bar.addEventListener('mouseleave', () => { isDown = false; bar.classList.remove('dragging'); });
     bar.addEventListener('mouseup', () => { isDown = false; bar.classList.remove('dragging'); });
@@ -1003,6 +1249,7 @@ function initDatesBarDrag() {
         if (!isDown) return;
         e.preventDefault();
         const x = e.pageX - bar.offsetLeft;
+        _dragDistance = Math.abs(x - startX);
         bar.scrollLeft = scrollLeft - (x - startX);
     });
 }
