@@ -1057,6 +1057,8 @@
     }
 
     let _sheetsPushTimer = null;
+    let _sheetsSyncOffline = false;
+    let _offlineModalShowing = false;
 
     function scheduleSheetsPush() {
         clearTimeout(_sheetsPushTimer);
@@ -1066,13 +1068,33 @@
     async function pushCurrentTripToSheets() {
         const trip = getTrip(state.tripId);
         if (!trip || !trip.sheetId) return;
+        if (_sheetsSyncOffline) return;
         if (!isGoogleTokenValid()) return;
         try {
             await writeSheetTrip(trip.sheetId, trip);
             trip.sheetLastSync = new Date().toISOString();
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         } catch (e) {
-            console.warn('Sheets auto-push failed:', e);
+            if (e instanceof TypeError && e.message.includes('fetch')) {
+                if (_offlineModalShowing) return;
+                _offlineModalShowing = true;
+                const choice = await showOfflineSyncModal();
+                _offlineModalShowing = false;
+                if (choice === 'retry') {
+                    return pushCurrentTripToSheets();
+                } else {
+                    // Save locally — move sheetId to previousSheetId
+                    trip.previousSheetId = trip.sheetId;
+                    delete trip.sheetId;
+                    delete trip.sheetLastSync;
+                    _sheetsSyncOffline = true;
+                    save();
+                    render();
+                    toast('Trip saved locally. You can re-upload when back online.');
+                }
+            } else {
+                console.warn('Sheets auto-push failed:', e);
+            }
         }
     }
 
@@ -1237,6 +1259,38 @@
             closeModal();
             render();
             toast('Sheet unlinked');
+        }
+    }
+
+    async function reuploadToSheets() {
+        const trip = getTrip(state.tripId);
+        if (!trip || !trip.previousSheetId) return;
+        const ok = await showConfirm('Re-upload to Sheets', 'Re-link and upload this trip to Google Sheets?');
+        if (!ok) return;
+        trip.sheetId = trip.previousSheetId;
+        delete trip.previousSheetId;
+        _sheetsSyncOffline = false;
+        try {
+            const pushed = await writeSheetTrip(trip.sheetId, trip);
+            if (pushed) {
+                trip.sheetLastSync = new Date().toISOString();
+                save();
+                render();
+                toast('Re-uploaded to Google Sheets');
+            } else {
+                // Auth failed or no access — revert to offline state
+                trip.previousSheetId = trip.sheetId;
+                delete trip.sheetId;
+                save();
+                render();
+            }
+        } catch (e) {
+            // Network error — revert to offline state
+            trip.previousSheetId = trip.sheetId;
+            delete trip.sheetId;
+            save();
+            render();
+            toast('Re-upload failed: ' + e.message);
         }
     }
 
@@ -1459,6 +1513,7 @@
     }
 
     function closeModal() {
+        if (document.getElementById('modalOverlay')._blockClose) return;
         stopFormAutoSave();
         if (DRAFT_TYPES.has(state.editingType)) {
             snapshotModalForm();
@@ -1525,6 +1580,28 @@
             ov.classList.add('open');
             body.querySelector('#confirmYes').onclick = () => { ov.classList.remove('open'); resolve(true); };
             body.querySelector('#confirmNo').onclick = () => { ov.classList.remove('open'); resolve(false); };
+        });
+    }
+
+    let _offlineSyncResolve = null;
+    function showOfflineSyncModal() {
+        return new Promise(resolve => {
+            _offlineSyncResolve = resolve;
+            const ov = document.getElementById('modalOverlay');
+            const body = document.getElementById('modalBody');
+            ov._blockClose = true; // prevent closeModal from dismissing
+            body.innerHTML = `
+                <div class="modal-header"><h3>Sync Failed — No Connection</h3></div>
+                <div class="modal-body"><p>Unable to reach Google Sheets. Your changes are saved locally.</p></div>
+                <div class="modal-footer">
+                    <button class="btn" id="offlineSaveLocal">Save Locally</button>
+                    <button class="btn btn-primary" id="offlineRetry">Re-check Connection</button>
+                </div>
+            `;
+            ov.classList.add('open');
+            const dismiss = (val) => { ov._blockClose = false; ov.classList.remove('open'); _offlineSyncResolve = null; resolve(val); };
+            body.querySelector('#offlineRetry').onclick = () => dismiss('retry');
+            body.querySelector('#offlineSaveLocal').onclick = () => dismiss('local');
         });
     }
 
@@ -1619,6 +1696,7 @@
                 </div>
                 <div class="header-actions">
                     ${settings.showSheetsSync && trip?.sheetId ? '<button class="btn-icon" id="syncBtn" onclick="manualSheetsSync()" title="Sync with Google Sheets">\u{1F504}</button>' : ''}
+                    ${settings.showSheetsSync && trip?.previousSheetId ? '<span style="color:var(--warning,#f59e0b);font-size:12px;cursor:pointer" onclick="reuploadToSheets()" title="Click to re-upload to Sheets">\u2601 Offline</span>' : ''}
                     <button class="btn-icon" onclick="openSettingsModal()" title="Settings">\u2699\uFE0F</button>
                 </div>
             `;
@@ -1701,6 +1779,7 @@
                             <span>\u{1F3AF} ${actCount} activities</span>
                             ${totalLodging ? `<span>\u{1F3E8} ${bookedLodging}/${totalLodging} booked</span>` : ''}
                             ${settings.showSheetsSync && t.sheetId ? '<span style="color:var(--success)">\u2601 Sheets</span>' : ''}
+                            ${settings.showSheetsSync && t.previousSheetId ? '<span style="color:var(--warning,#f59e0b)">\u2601 Offline</span>' : ''}
                         </div>
                     </div>
                 </div>
@@ -2392,6 +2471,7 @@
                         ${canShareAsLink(state.tripId) ? `<button class="btn btn-sm" onclick="shareTripLink('${state.tripId}');closeModal()">Share Link</button>` : ''}
                         ${settings.showSheetsSync && !getTrip(state.tripId)?.sheetId ? `<button class="btn btn-sm" onclick="closeModal();openImportFromSheetsModal()">Link to Sheets</button>` : ''}
                         ${settings.showSheetsSync && getTrip(state.tripId)?.sheetId ? `<button class="btn btn-sm" onclick="manualSheetsSync();closeModal()">Sync Sheets</button><button class="btn btn-sm" onclick="unlinkSheet('${state.tripId}')">Unlink Sheets</button>` : ''}
+                        ${settings.showSheetsSync && getTrip(state.tripId)?.previousSheetId ? `<button class="btn btn-sm" onclick="closeModal();reuploadToSheets()">Re-upload to Sheets</button>` : ''}
                     </div>
                 ` : ''}
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -6103,6 +6183,14 @@
             document.body.appendChild(banner);
             setTimeout(() => { if (banner.parentElement) banner.remove(); }, 15000);
         }
+    });
+
+    window.addEventListener('online', () => {
+        _sheetsSyncOffline = false;
+        const trip = getTrip(state.tripId);
+        if (!trip || !trip.previousSheetId) return;
+        // Prompt user to re-upload (reuploadToSheets has its own confirm dialog)
+        reuploadToSheets();
     });
     </script>
 </body>
