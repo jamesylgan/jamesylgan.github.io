@@ -2191,6 +2191,11 @@
         const text = generateWhatsAppText(tripId);
         if (!text) { toast('Nothing to export'); return; }
 
+        if (window.__ANDROID_APP__ && window.AndroidNative?.shareText) {
+            AndroidNative.shareText(text);
+            return;
+        }
+
         if (navigator.share) {
             try {
                 await navigator.share({ text });
@@ -3993,8 +3998,13 @@
 
     function getLegForDate(trip, dateStr) {
         if (!trip || !dateStr) return null;
-        for (const leg of trip.legs || []) { if (leg.startDate && leg.endDate && dateStr >= leg.startDate && dateStr <= leg.endDate) return leg; }
-        return null;
+        let best = null;
+        for (const leg of trip.legs || []) {
+            if (leg.startDate && leg.endDate && dateStr >= leg.startDate && dateStr <= leg.endDate) {
+                if (!best || (leg.order || 0) > (best.order || 0)) best = leg;
+            }
+        }
+        return best;
     }
 
     function computeLegDayNumbers(trip) {
@@ -4296,7 +4306,8 @@
             let prevCity = null;
             let shownStartBanner = false;
             for (let i = 0; i < _renderDays.length; i++) {
-                const dateStr = _renderDays[i]; const leg = getLegForDate(trip, dateStr);
+                const dateStr = _renderDays[i];
+                const leg = _selLegForFilter || getLegForDate(trip, dateStr);
                 if (!_travelActive && filter.legId && (!_selLegForFilter || dateStr < _selLegForFilter.startDate || dateStr > _selLegForFilter.endDate)) continue;
                 const _dayNum = days.indexOf(dateStr);
                 const curCity = leg ? leg.city : null;
