@@ -209,7 +209,7 @@ public class MainActivity extends AppCompatActivity {
                 pageLoaded = true;
                 // Inject Android app flag and re-render so Android-only UI appears
                 view.evaluateJavascript(
-                    "window.__ANDROID_APP__ = true; window.__APP_VERSION__ = '1.6.1';"
+                    "window.__ANDROID_APP__ = true; window.__APP_VERSION__ = '1.6.2';"
                     + "if(typeof render==='function')render();", null);
                 injectPendingTrip();
             }
@@ -355,6 +355,14 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> Toast.makeText(
                         MainActivity.this, "Share failed", Toast.LENGTH_SHORT).show());
             }
+        }
+
+        @JavascriptInterface
+        public void shareText(String text) {
+            Intent shareIntent = new Intent(Intent.ACTION_SEND);
+            shareIntent.setType("text/plain");
+            shareIntent.putExtra(Intent.EXTRA_TEXT, text);
+            startActivity(Intent.createChooser(shareIntent, "Share"));
         }
 
         // --- Offline maps: Repo management ---
