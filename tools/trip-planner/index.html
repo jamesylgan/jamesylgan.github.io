@@ -2681,6 +2681,14 @@
         const notes = document.getElementById('legNotes').value.trim();
         const legType = document.getElementById('legType').value || 'default';
         const hostAddress = document.getElementById('legHostAddress')?.value?.trim() || '';
+        if (startDate && endDate) {
+            const otherLegs = trip.legs.filter(l => l.id !== state.editingId && l.startDate && l.endDate);
+            const overlap = otherLegs.find(l => startDate < l.endDate && endDate > l.startDate);
+            if (overlap) {
+                toast(`Dates overlap with ${overlap.city} (${overlap.startDate} to ${overlap.endDate}). Adjust dates so legs don't overlap.`);
+                return;
+            }
+        }
         if (state.editingId) {
             const leg = trip.legs.find(l => l.id === state.editingId);
             if (leg) {
@@ -4311,12 +4319,15 @@
                 if (!_travelActive && filter.legId && (!_selLegForFilter || dateStr < _selLegForFilter.startDate || dateStr > _selLegForFilter.endDate)) continue;
                 const _dayNum = days.indexOf(dateStr);
                 const curCity = leg ? leg.city : null;
+                const _bannerTransportIds = new Set();
                 if (!_legFilterInbound) {
                     if (!shownStartBanner && curCity && trip.startLocation && trip.startLocation.toLowerCase() !== curCity.toLowerCase()) {
+                        findTransportBetween(trip, trip.startLocation, curCity).forEach(t => _bannerTransportIds.add(t.id));
                         dayCardsHTML += renderTravelBanner(trip, trip.startLocation, curCity, _renderDays[0]);
                         shownStartBanner = true;
                     } else if (!shownStartBanner) { shownStartBanner = true; }
                     if (prevCity && curCity && prevCity.toLowerCase() !== curCity.toLowerCase()) {
+                        findTransportBetween(trip, prevCity, curCity).forEach(t => _bannerTransportIds.add(t.id));
                         dayCardsHTML += renderTravelBanner(trip, prevCity, curCity, dateStr);
                     }
                 } else { shownStartBanner = true; }
@@ -4326,10 +4337,11 @@
                 const isToday = dateStr === today;
                 let filteredActs = _applyActivityFilters(events.activities, filter);
                 filteredActs = _sortActivitiesForDate(filteredActs, dateStr, today, events.dayPlans);
-                const nextDateStr = _renderDays[i + 1] || null;
-                const nextLeg = nextDateStr ? getLegForDate(trip, nextDateStr) : null;
-                const isTravelDay = events.transport.length > 0 || (leg && nextLeg && leg.id !== nextLeg.id);
-                const legLabel = leg ? (isTravelDay && nextLeg && nextLeg.id !== leg.id ? esc(leg.city) + ' \u2192 ' + esc(nextLeg.city) : esc(leg.city)) : '';
+                let legLabel = leg ? esc(leg.city) : '';
+                if (leg && events.transport.length > 0) {
+                    const _arrT = events.transport.find(t => t.toCity && t.toCity.toLowerCase() === leg.city.toLowerCase() && t.fromCity && t.fromCity.toLowerCase() !== leg.city.toLowerCase());
+                    if (_arrT) legLabel = esc(_arrT.fromCity) + ' \u2192 ' + esc(leg.city);
+                }
                 const todayBadge = isToday ? ' <span class="badge badge-in-progress" style="font-size:10px;margin-left:6px">Today</span>' : '';
                 const usedPlan = (trip.dayPlans || []).find(dp => dp.usedDate === dateStr);
                 const planBadge = usedPlan ? ` <span style="font-size:11px;color:var(--purple)">&middot; ${esc(usedPlan.name)}</span>` : '';
@@ -4340,7 +4352,8 @@
                     </div>`;
                 if (!collapsed) {
                     dayCardsHTML += `<div class="card-body" style="padding:8px 16px 12px" ondragover="event.preventDefault();this.style.outline='2px solid var(--purple)'" ondragleave="this.style.outline=''" ondrop="event.stopPropagation();this.style.outline='';var aid=event.dataTransfer.getData('application/x-activity-id');if(aid)moveActivityToDate(aid,'${dateStr}')">`;
-                    for (const t of events.transport) {
+                    const _visibleTransport = events.transport.filter(t => !_bannerTransportIds.has(t.id));
+                    for (const t of _visibleTransport) {
                         const icon = TRANSPORT_TYPES[t.type] || '\u{1F690}'; const timeStr = t.departure ? formatTime(t.departure.split('T')[1]?.substring(0,5)||'') : '';
                         dayCardsHTML += `<div class="item-row" style="margin-bottom:6px;cursor:pointer" onclick="openTransportModal('${t.id}')"><span class="category-icon">${icon}</span><div class="item-body"><div class="item-title">${esc(t.carrier||'')} ${esc(t.flightNumber||'')} ${esc(t.fromCity||'')} \u2192 ${esc(t.toCity||'')}</div><div class="item-meta">${timeStr ? '<span>'+timeStr+'</span>' : ''}</div></div><div class="item-actions">${t.booked ? '<span class="badge badge-ready" style="font-size:10px">Booked</span>' : '<span class="badge badge-booking" style="font-size:10px">Unbooked</span>'}</div></div>`;
                     }
@@ -4353,7 +4366,7 @@
                         dayCardsHTML += `<ul class="item-list">`;
                         for (let j = 0; j < filteredActs.length; j++) dayCardsHTML += _renderActivityRow(filteredActs[j], trip, dateStr, dayPlan ? j+1 : null);
                         dayCardsHTML += `</ul>`;
-                    } else if (events.transport.length === 0 && events.lodging.length === 0) {
+                    } else if (_visibleTransport.length === 0 && events.lodging.length === 0) {
                         dayCardsHTML += `<p style="color:var(--text-muted);font-size:13px;padding:4px 0">No events for this day.</p>`;
                     }
                     if (!_travelActive && leg && !hasBookedLodgingForNight(trip, dateStr)) {
