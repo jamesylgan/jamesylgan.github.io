@@ -209,7 +209,7 @@ public class MainActivity extends AppCompatActivity {
                 pageLoaded = true;
                 // Inject Android app flag and re-render so Android-only UI appears
                 view.evaluateJavascript(
-                    "window.__ANDROID_APP__ = true; window.__APP_VERSION__ = '1.6.0';"
+                    "window.__ANDROID_APP__ = true; window.__APP_VERSION__ = '1.6.1';"
                     + "if(typeof render==='function')render();", null);
                 injectPendingTrip();
             }
