@@ -557,9 +557,17 @@
                 </li>
                 <li><strong>Subsequent years:</strong> Only re-file if a category increases by more than &euro;20,000 from the last reported value</li>
             </ul>
-            <div class="callout callout-yellow">
-                <strong>Beckham Law &amp; Modelo 720: Gray Area</strong>
-                Because Beckham Law taxes you under IRNR rules (non-resident), some tax advisors argue Modelo 720 does not apply. However, you ARE legally a Spanish tax resident, and the 720 obligation is tied to tax residency, not the tax regime. The safer approach is to file it. Consult your asesor fiscal for your specific situation.
+            <div class="callout callout-blue">
+                <strong>Beckham Law &amp; Modelo 720: Exempt</strong>
+                If you are under the Beckham Law (Art. 93 LIRPF), you are <strong>not required</strong> to file Modelo 720. The <a href="https://sede.agenciatributaria.gob.es/Sede/todas-gestiones/impuestos-tasas/declaraciones-informativas/modelo-720-decla_____sobre-bienes-derechos-extranjero_/preguntas-frecuentes/contribuyentes-obligados-declarar.html" target="_blank">AEAT&rsquo;s own FAQ</a> confirms this: the obligation applies to taxpayers who pay tax on the <em>totality</em> of their income (&ldquo;obligados a tributar por la integridad de su renta&rdquo;), which excludes Art. 93 taxpayers who only report Spanish-source income. This is also the consensus of major Spanish tax firms (Andersen, Lawants, Kreston, etc.). <strong>However:</strong> family members who are Spanish tax residents under standard IRPF <em>are</em> still obligated. And once your Beckham regime expires, you must file Modelo 720 for that first standard-regime year if thresholds are met.
+            </div>
+            <div class="callout callout-blue">
+                <strong>Exchange Rate for Modelo 720 / 721</strong>
+                Asset values must be reported in EUR. For foreign accounts denominated in USD (e.g. Charles Schwab), convert using the <strong>official ECB rate published by the Banco de Espa&ntilde;a for December 31</strong>. The official source is the BOE resolution (e.g. <a href="https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-243" target="_blank">BOE-A-2026-243 for Dec 31, 2025</a>). You can also use the <a href="https://www.bde.es/webbe/es/estadisticas/recursos/conversor-divisas.html" target="_blank">Banco de Espa&ntilde;a currency converter</a>. Note: the Year-End Summary from Charles Schwab reports in USD &mdash; you must convert to EUR yourself using the official rate.
+            </div>
+            <div class="callout callout-green">
+                <strong>When in doubt, file it</strong>
+                There is no penalty for filing Modelo 720 when you don&rsquo;t strictly need to. But there <em>are</em> penalties if you were required to file and didn&rsquo;t. If you&rsquo;re near the &euro;50,000 threshold, file anyway.
             </div>
             <div class="callout callout-green">
                 <strong>EU Court ruling (Jan 2022)</strong>
@@ -748,7 +756,7 @@
             <ul>
                 <li><strong>Filing the wrong form:</strong> Use Modelo 151, NOT Modelo 100. This is the most common mistake.</li>
                 <li><strong>Employer withholding rate:</strong> Your employer should withhold at 24%, not the progressive IRPF rates. Verify on your n&oacute;mina.</li>
-                <li><strong>Modelo 720 confusion:</strong> Even though Beckham taxes you like a non-resident, you ARE a tax resident. Most advisors recommend filing 720 if you exceed the thresholds.</li>
+                <li><strong>Modelo 720 exemption:</strong> While under Beckham Law, you are <strong>not required</strong> to file Modelo 720 (confirmed by <a href="https://sede.agenciatributaria.gob.es/Sede/todas-gestiones/impuestos-tasas/declaraciones-informativas/modelo-720-decla_____sobre-bienes-derechos-extranjero_/preguntas-frecuentes/contribuyentes-obligados-declarar.html" target="_blank">AEAT&rsquo;s FAQ</a>). The obligation only applies to taxpayers who report on the totality of their income. Once your Beckham regime expires, the 720 obligation kicks in immediately.</li>
                 <li><strong>Forgetting Modelo 149:</strong> If you didn't file this when you first arrived, you may not be validly under Beckham Law. Check with your asesor.</li>
                 <li><strong>Capital gains classification:</strong> Gains from Spanish assets use savings rates (19&ndash;28%), not the flat 24%. These are separate categories on Modelo 151.</li>
                 <li><strong>Stock options / RSUs:</strong> Complex under Beckham Law. The taxable event timing and sourcing rules differ. Get professional advice if you have equity compensation.</li>
@@ -761,7 +769,7 @@
                     <li><strong>FBAR penalties are disproportionate:</strong> The $10,000 threshold is low. If you have a Spanish checking account and a Spanish brokerage account, you probably exceed it. File every year.</li>
                     <li><strong>PFIC trap:</strong> Non-US mutual funds (including many Spanish/European funds) are treated as PFICs (Passive Foreign Investment Companies) by the IRS, resulting in punitive taxation. Stick to US-domiciled ETFs/funds where possible.</li>
                     <li><strong>Spanish pension plan contributions:</strong> May not be deductible on your US return. Employer pension contributions may be treated as taxable income by the IRS.</li>
-                    <li><strong>Currency conversion:</strong> All amounts on US forms must be in USD. Use the IRS yearly average exchange rate or the spot rate on the transaction date (be consistent).</li>
+                    <li><strong>Currency conversion:</strong> All amounts on US forms must be in USD. Use the IRS yearly average exchange rate or the spot rate on the transaction date (be consistent). On the Spanish side, exchange rates are point-in-time: Modelo 720/721 uses the ECB rate for Dec 31; capital gains use the rate on the buy/sell date. Note that USD itself is treated as an asset &mdash; converting USD to EUR can trigger currency gains/losses (though some asesores ignore these).</li>
                     <li><strong>FEIE + FTC interaction:</strong> You cannot use both on the same income. If using FEIE, any excess Spanish tax on excluded income cannot generate FTC.</li>
                     <li><strong>Estimated tax payments:</strong> If you expect to owe US tax (e.g., on investment income not taxed by Spain), consider quarterly estimated payments to avoid penalties.</li>
                 </ul>
@@ -983,8 +991,8 @@ function getDefaultTasks(year) {
         { id: 's5', cat: 'info-gathering', title: 'Locate your Modelo 149 confirmation', detail: 'If this is your first year, confirm your Modelo 149 was accepted. Keep the resolution letter (resolución) for your records. If you never filed it, consult an asesor immediately.', section: 'beckham', done: false, notes: '' },
 
         // Spanish Q1: Modelo 720
-        { id: 's10', cat: 'spanish-q1', title: `Determine if Modelo 720 filing is required for ${year}`, detail: `Check if any foreign asset category exceeds €50,000: (1) foreign bank accounts, (2) foreign securities/investments, (3) foreign real estate. If you filed last year, only re-file if a category increased by >€20,000.`, section: 'spanish-filings', done: false, notes: '' },
-        { id: 's11', cat: 'spanish-q1', title: `Gather foreign account balances as of Dec 31, ${year}`, detail: `For each foreign bank/brokerage account: note the balance on Dec 31 and the average balance for Q4. Convert to EUR using the ECB rate for Dec 31.`, done: false, notes: '' },
+        { id: 's10', cat: 'spanish-q1', title: `Determine if Modelo 720 filing is required for ${year}`, detail: `If under Beckham Law: you are EXEMPT from Modelo 720 (confirmed by AEAT FAQ). Skip this unless your Beckham regime expired during ${year}. For non-Beckham filers: check if any foreign asset category exceeds €50,000: (1) foreign bank accounts, (2) foreign securities/investments, (3) foreign real estate. If you filed last year, only re-file if a category increased by >€20,000.`, section: 'spanish-filings', done: false, notes: '' },
+        { id: 's11', cat: 'spanish-q1', title: `Gather foreign account balances as of Dec 31, ${year}`, detail: `For each foreign bank/brokerage account: note the balance on Dec 31 and the average balance for Q4. Convert USD to EUR using the official ECB rate published by the Banco de España for Dec 31 (see BOE resolution, e.g. BOE-A-2026-243 for 2025). Do NOT use the USD amounts from broker year-end summaries directly — they must be converted to EUR. Use bde.es/webbe/es/estadisticas/recursos/conversor-divisas.html if needed.`, done: false, notes: '' },
         { id: 's12', cat: 'spanish-q1', title: `File Modelo 720 by March 31, ${fy} (if required)`, detail: `File electronically via AEAT Sede Electrónica using Cl@ve PIN or digital certificate. Or have your asesor file it. This is informative only — no tax payment.`, section: 'spanish-filings', done: false, notes: '' },
 
         // Spanish Q2: Modelo 151
