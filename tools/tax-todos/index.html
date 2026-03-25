@@ -40,25 +40,8 @@
             background: var(--bg-card); color: var(--text); font-size: 13px; cursor: pointer;
         }
 
-        /* US Person toggle */
-        .toggle-wrap { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-        .toggle-label { color: var(--text-muted); user-select: none; cursor: pointer; }
-        .toggle-label.active { color: var(--purple); font-weight: 600; }
-        .toggle {
-            position: relative; width: 40px; height: 22px; cursor: pointer;
-        }
-        .toggle input { opacity: 0; width: 0; height: 0; }
-        .toggle .slider {
-            position: absolute; inset: 0; background: var(--border); border-radius: 11px;
-            transition: .2s;
-        }
-        .toggle .slider::before {
-            content: ''; position: absolute; height: 16px; width: 16px;
-            left: 3px; bottom: 3px; background: var(--text-muted);
-            border-radius: 50%; transition: .2s;
-        }
-        .toggle input:checked + .slider { background: var(--purple); }
-        .toggle input:checked + .slider::before { transform: translateX(18px); background: white; }
+        /* US Status dropdown */
+        #us-status { border-color: var(--purple); }
 
         /* View tabs */
         .view-tabs { display: flex; gap: 2px; }
@@ -372,13 +355,11 @@
     <div class="header-right">
         <button class="settings-btn" onclick="openSettings()" title="Settings">&#9881;</button>
         <select class="year-select" id="year-select" onchange="changeYear(this.value)"></select>
-        <div class="toggle-wrap">
-            <span class="toggle-label" id="us-label">US Person</span>
-            <label class="toggle">
-                <input type="checkbox" id="us-toggle" onchange="toggleUSMode(this.checked)">
-                <span class="slider"></span>
-            </label>
-        </div>
+        <select class="year-select" id="us-status" onchange="changeUSStatus(this.value)" style="color:var(--purple)">
+            <option value="none">Not a US Person</option>
+            <option value="citizen">US Citizen</option>
+            <option value="greencard">US Green Card</option>
+        </select>
         <div class="view-tabs">
             <button class="view-tab active" onclick="switchView('doc')">Guide</button>
             <button class="view-tab" onclick="switchView('tasks')">Checklist</button>
@@ -472,11 +453,13 @@
                 <li><strong>Tax regime:</strong> IRNR-style taxation (non-resident rules applied to a resident)</li>
                 <li><strong>Income taxed:</strong> Spanish-source only (not worldwide) at a flat rate</li>
             </ul>
+            <div id="dynamic-situation"></div>
         </div>
 
         <!-- BECKHAM LAW BASICS -->
         <div class="doc-section" id="sec-beckham">
             <h2>Beckham Law Basics</h2>
+            <div id="dynamic-beckham"></div>
 
             <h3 id="sub-how-it-works">How It Works</h3>
             <p>The Beckham Law (officially: R&eacute;gimen Especial de Trabajadores Desplazados, Art. 93 LIRPF) allows qualifying workers who move to Spain to be taxed under <strong>non-resident income tax rules (IRNR)</strong> even though they are <strong>tax residents</strong> of Spain. In practice, this means:</p>
@@ -524,6 +507,7 @@
         <!-- SPANISH TAX FILINGS -->
         <div class="doc-section" id="sec-spanish-filings">
             <h2>Spanish Tax Filings</h2>
+            <div id="dynamic-spanish"></div>
 
             <h3 id="sub-modelo151">Modelo 151 &mdash; Annual Income Tax Return</h3>
             <p>This is <strong>the</strong> key annual filing under Beckham Law. It replaces the standard Modelo 100 (IRPF) for Beckham Law filers.</p>
@@ -901,7 +885,12 @@ function saveSettings() {
     });
     localStorage.setItem(SETTINGS_KEY, JSON.stringify({ residencyYear, workHistory }));
     closeSettings();
+    loadTasks();
     renderInfoBar();
+    renderDynamicGuide();
+    if (document.getElementById('tasks-view').classList.contains('active')) {
+        renderTasks();
+    }
     toast('Settings saved');
 }
 
@@ -928,31 +917,32 @@ function executeClear() {
 }
 
 function renderInfoBar() {
-    const s = loadSettings();
     const bar = document.getElementById('info-bar');
-    if (!s.residencyYear) { bar.classList.remove('visible'); return; }
-
-    const taxYear = getTaxYear();
-    const beckhamYear = taxYear - s.residencyYear + 1; // year 1 = first year
-    const beckhamTotal = 6;
-    const remaining = beckhamTotal - beckhamYear;
+    const sit = getTaxSituation(getTaxYear());
+    if (!sit.hasSettings) { bar.classList.remove('visible'); return; }
 
     let html = '';
-    html += `<div class="info-item">Tax resident since <strong>${s.residencyYear}</strong></div>`;
-    if (beckhamYear >= 1 && beckhamYear <= beckhamTotal) {
-        html += `<div class="info-item">Beckham Law year <strong>${beckhamYear}</strong> of ${beckhamTotal}`;
+    if (sit.residencyYear) {
+        html += `<div class="info-item">Tax resident since <strong>${sit.residencyYear}</strong></div>`;
+    }
+    if (sit.beckhamActive) {
+        const remaining = 6 - sit.beckhamYear;
+        html += `<div class="info-item">Beckham Law year <strong>${sit.beckhamYear}</strong> of 6`;
         if (remaining <= 1) html += ` &mdash; <span class="info-highlight">${remaining <= 0 ? 'FINAL YEAR' : remaining + ' year remaining'}</span>`;
         html += `</div>`;
-    } else if (beckhamYear > beckhamTotal) {
+    } else if (sit.beckhamExpired) {
         html += `<div class="info-item"><span class="info-highlight">Beckham Law expired for this tax year</span></div>`;
+    } else if (sit.preArrival) {
+        html += `<div class="info-item">Pre-arrival (residency starts ${sit.residencyYear})</div>`;
     }
 
-    if (s.workHistory?.length) {
-        const current = s.workHistory.filter(w => !w.toYear || w.toYear >= taxYear);
-        if (current.length) {
-            html += `<div class="info-item">Working in: ${current.map(w => w.country).join(', ')}</div>`;
-        }
+    if (sit.countriesWorkedIn.length) {
+        html += `<div class="info-item">Working in: ${sit.countriesWorkedIn.join(', ')}</div>`;
     }
+
+    const usStatus = getUSStatus();
+    if (usStatus === 'citizen') html += `<div class="info-item" style="color:var(--purple)">US Citizen</div>`;
+    else if (usStatus === 'greencard') html += `<div class="info-item" style="color:var(--purple)">US Green Card</div>`;
 
     bar.innerHTML = html;
     bar.classList.add('visible');
@@ -967,6 +957,110 @@ function storageKey(year) {
     return `${STORAGE_PREFIX}-${year}`;
 }
 
+// ── Tax situation based on settings + selected year ─────────────────────
+function getTaxSituation(year) {
+    const s = loadSettings();
+    const residencyYear = s.residencyYear || null;
+    const workHistory = s.workHistory || [];
+
+    const countriesWorkedIn = workHistory.filter(w => {
+        const from = w.fromYear || 0;
+        const to = w.toYear || 9999;
+        return year >= from && year <= to;
+    }).map(w => w.country);
+
+    const inSpain = countriesWorkedIn.some(c =>
+        /spain|espa[ñn]a/i.test(c)
+    );
+
+    let beckhamYear = 0;
+    let beckhamActive = false;
+    let beckhamExpired = false;
+    if (residencyYear) {
+        beckhamYear = year - residencyYear + 1;
+        beckhamActive = beckhamYear >= 1 && beckhamYear <= 6;
+        beckhamExpired = beckhamYear > 6;
+    }
+
+    const preArrival = residencyYear ? year < residencyYear : false;
+
+    return {
+        countriesWorkedIn,
+        inSpain,
+        beckhamActive,
+        beckhamYear,
+        beckhamExpired,
+        preArrival,
+        residencyYear,
+        hasSettings: !!(residencyYear || workHistory.length)
+    };
+}
+
+// ── Dynamic guide content ────────────────────────────────────────────────
+function renderDynamicGuide() {
+    const year = getTaxYear();
+    const sit = getTaxSituation(year);
+    const sitEl = document.getElementById('dynamic-situation');
+    const beckEl = document.getElementById('dynamic-beckham');
+    const spaEl = document.getElementById('dynamic-spanish');
+
+    // Overview: Your situation for this year
+    if (!sit.hasSettings) {
+        sitEl.innerHTML = `<div class="callout callout-yellow"><strong>Personalize this guide</strong>Open Settings (gear icon) to set your residency start year and work history. The guide and checklist will adapt to your situation for each tax year.</div>`;
+        beckEl.innerHTML = '';
+        spaEl.innerHTML = '';
+        return;
+    }
+
+    let sitHtml = `<h3>Your ${year} Tax Year Situation</h3>`;
+    if (sit.countriesWorkedIn.length) {
+        sitHtml += `<p>Based on your work history, you were working in: <strong>${sit.countriesWorkedIn.join(', ')}</strong>.</p>`;
+    } else {
+        sitHtml += `<p style="color:var(--text-muted)">No work history entry covers ${year}. Add your work history in Settings for personalized guidance.</p>`;
+    }
+
+    if (sit.preArrival) {
+        sitHtml += `<div class="callout callout-blue"><strong>Pre-arrival year</strong>You had not yet moved to Spain in ${year} (residency start: ${sit.residencyYear}). Spanish filing obligations likely did not apply unless you had Spanish-source income.</div>`;
+    } else if (sit.beckhamActive) {
+        const remaining = 6 - sit.beckhamYear;
+        sitHtml += `<div class="callout callout-green"><strong>Beckham Law &mdash; Year ${sit.beckhamYear} of 6</strong>`;
+        if (remaining <= 1) {
+            sitHtml += ` <span style="color:var(--yellow);font-weight:600">${remaining === 0 ? 'This is your FINAL Beckham year.' : '1 year remaining after this.'}</span>`;
+        }
+        sitHtml += ` You file Modelo 151 (not 100) and are taxed only on Spanish-source income at 24%.</div>`;
+    } else if (sit.beckhamExpired) {
+        sitHtml += `<div class="callout callout-red"><strong>Beckham Law expired</strong>For tax year ${year}, you are under the standard IRPF regime. Spain taxes your <strong>worldwide income</strong> at progressive rates. You must file Modelo 100 (not 151) and Modelo 720 if foreign asset thresholds are met.</div>`;
+    }
+    sitEl.innerHTML = sitHtml;
+
+    // Beckham section callout
+    let beckHtml = '';
+    if (sit.beckhamExpired) {
+        beckHtml = `<div class="callout callout-red"><strong>Not applicable for ${year}</strong>Beckham Law expired after your ${sit.residencyYear + 5} tax year. For ${year}, you are under the standard IRPF regime with worldwide taxation at progressive rates.</div>`;
+    } else if (sit.beckhamActive && sit.beckhamYear >= 5) {
+        beckHtml = `<div class="callout callout-yellow"><strong>Year ${sit.beckhamYear} of 6 &mdash; plan your transition</strong>Beckham Law expires after tax year ${sit.residencyYear + 5}. Start consulting your asesor about the switch to standard IRPF (worldwide taxation, Modelo 100, progressive rates).</div>`;
+    } else if (sit.preArrival) {
+        beckHtml = `<div class="callout callout-blue"><strong>Not yet applicable for ${year}</strong>You hadn't moved to Spain yet. Beckham Law begins in your residency start year (${sit.residencyYear}).</div>`;
+    }
+    beckEl.innerHTML = beckHtml;
+
+    // Spanish filings callout
+    let spaHtml = '';
+    if (sit.beckhamExpired) {
+        spaHtml = `<div class="callout callout-red"><strong>Post-Beckham: Key changes for ${year}</strong>
+            <ul style="margin:8px 0 0 16px">
+                <li><strong>File Modelo 100</strong> (standard IRPF) instead of Modelo 151</li>
+                <li><strong>Worldwide income</strong> is now taxable in Spain at progressive rates (19%&ndash;47%)</li>
+                <li><strong>Modelo 720</strong> is now required if foreign assets exceed &euro;50,000 per category</li>
+                <li><strong>Foreign tax credits</strong> may be available for taxes paid abroad on income Spain now taxes</li>
+            </ul>
+        </div>`;
+    } else if (sit.preArrival) {
+        spaHtml = `<div class="callout callout-blue"><strong>Pre-arrival year</strong>You were not a Spanish tax resident in ${year}. Spanish filing obligations described below apply starting from ${sit.residencyYear}.</div>`;
+    }
+    spaEl.innerHTML = spaHtml;
+}
+
 // ── Categories ──────────────────────────────────────────────────────────
 const TASK_CATEGORIES = [
     { id: 'info-gathering', label: 'Gather Documents', badge: 'soon' },
@@ -979,19 +1073,35 @@ const TASK_CATEGORIES = [
     { id: 'custom', label: 'Custom Tasks', badge: 'ongoing' }
 ];
 
-// ── Default tasks (year placeholder replaced at runtime) ────────────────
+// ── Default tasks (adapt based on tax situation) ────────────────────────
 function getDefaultTasks(year) {
     const fy = year + 1; // filing year (deadlines are in the year AFTER the tax year)
+    const sit = getTaxSituation(year);
+    const expired = sit.beckhamExpired;
+    const preArr = sit.preArrival;
+
+    // Choose form and rate labels based on Beckham status
+    const modelo = expired ? 'Modelo 100' : 'Modelo 151';
+    const rateDesc = expired ? 'progressive IRPF rates (19%–47%)' : '24% (Beckham flat rate)';
+    const m720note = expired
+        ? 'Post-Beckham: you ARE required to file Modelo 720 if any foreign asset category exceeds €50,000.'
+        : 'If under Beckham Law: you are EXEMPT from Modelo 720 (confirmed by AEAT FAQ). Skip this unless your Beckham regime expired during ' + year + '.';
+    if (preArr) return getPreArrivalTasks(year, fy, sit);
+    if (expired) return getPostBeckhamTasks(year, fy, sit, modelo, rateDesc, m720note);
+    return getBeckhamTasks(year, fy, sit, modelo, rateDesc, m720note);
+}
+
+function getBeckhamTasks(year, fy, sit, modelo, rateDesc, m720note) {
     const tasks = [
         // Info gathering
-        { id: 's1', cat: 'info-gathering', title: `Collect all ${year} nóminas (payslips) from employer`, detail: `Download all 12 monthly payslips for ${year}. Verify the retención rate is 24% (Beckham flat rate). You'll need total gross income and total withholdings for Modelo 151.`, section: 'spanish-filings', done: false, notes: '' },
-        { id: 's2', cat: 'info-gathering', title: `Get Certificado de Retenciones from employer`, detail: `Your employer issues this (usually by February). It's the official document summarizing your ${year} income and withholdings. Required for Modelo 151.`, section: 'spanish-filings', done: false, notes: '' },
+        { id: 's1', cat: 'info-gathering', title: `Collect all ${year} nóminas (payslips) from employer`, detail: `Download all 12 monthly payslips for ${year}. Verify the retención rate is ${rateDesc}. You'll need total gross income and total withholdings for ${modelo}.`, section: 'spanish-filings', done: false, notes: '' },
+        { id: 's2', cat: 'info-gathering', title: `Get Certificado de Retenciones from employer`, detail: `Your employer issues this (usually by February). It's the official document summarizing your ${year} income and withholdings. Required for ${modelo}.`, section: 'spanish-filings', done: false, notes: '' },
         { id: 's3', cat: 'info-gathering', title: 'Gather Spanish bank account statements', detail: `Download ${year} annual statements from all Spanish bank accounts. Note any interest earned (taxable in Spain). Also needed for asset declarations.`, done: false, notes: '' },
-        { id: 's4', cat: 'info-gathering', title: `Confirm you are still under Beckham Law for ${year}`, detail: 'Count your years: Beckham applies for the year you arrived + 5 more years. If this is year 6+, you may have reverted to regular IRPF. Check with your asesor.', section: 'beckham', done: false, notes: '' },
+        { id: 's4', cat: 'info-gathering', title: `Confirm you are still under Beckham Law for ${year}`, detail: `Count your years: Beckham applies for the year you arrived + 5 more years.${sit.beckhamActive ? ' You are in year ' + sit.beckhamYear + ' of 6.' : ''} If this is year 6+, you may have reverted to regular IRPF. Check with your asesor.`, section: 'beckham', done: false, notes: '' },
         { id: 's5', cat: 'info-gathering', title: 'Locate your Modelo 149 confirmation', detail: 'If this is your first year, confirm your Modelo 149 was accepted. Keep the resolution letter (resolución) for your records. If you never filed it, consult an asesor immediately.', section: 'beckham', done: false, notes: '' },
 
         // Spanish Q1: Modelo 720
-        { id: 's10', cat: 'spanish-q1', title: `Determine if Modelo 720 filing is required for ${year}`, detail: `If under Beckham Law: you are EXEMPT from Modelo 720 (confirmed by AEAT FAQ). Skip this unless your Beckham regime expired during ${year}. For non-Beckham filers: check if any foreign asset category exceeds €50,000: (1) foreign bank accounts, (2) foreign securities/investments, (3) foreign real estate. If you filed last year, only re-file if a category increased by >€20,000.`, section: 'spanish-filings', done: false, notes: '' },
+        { id: 's10', cat: 'spanish-q1', title: `Determine if Modelo 720 filing is required for ${year}`, detail: `${m720note} For non-Beckham filers: check if any foreign asset category exceeds €50,000: (1) foreign bank accounts, (2) foreign securities/investments, (3) foreign real estate. If you filed last year, only re-file if a category increased by >€20,000.`, section: 'spanish-filings', done: false, notes: '' },
         { id: 's11', cat: 'spanish-q1', title: `Gather foreign account balances as of Dec 31, ${year}`, detail: `For each foreign bank/brokerage account: note the balance on Dec 31 and the average balance for Q4. Convert USD to EUR using the official ECB rate published by the Banco de España for Dec 31 (see BOE resolution, e.g. BOE-A-2026-243 for 2025). Do NOT use the USD amounts from broker year-end summaries directly — they must be converted to EUR. Use bde.es/webbe/es/estadisticas/recursos/conversor-divisas.html if needed.`, done: false, notes: '' },
         { id: 's12', cat: 'spanish-q1', title: `File Modelo 720 by March 31, ${fy} (if required)`, detail: `File electronically via AEAT Sede Electrónica using Cl@ve PIN or digital certificate. Or have your asesor file it. This is informative only — no tax payment.`, section: 'spanish-filings', done: false, notes: '' },
 
@@ -1000,7 +1110,7 @@ function getDefaultTasks(year) {
         { id: 's21', cat: 'spanish-q2', title: `Prepare Modelo 151 data: Spanish-source income summary`, detail: `Compile: (1) employment income + withholdings from Certificado de Retenciones, (2) Spanish bank interest, (3) any Spanish capital gains, (4) any Spanish rental income. Foreign income is excluded.`, section: 'spanish-filings', done: false, notes: '' },
         { id: 's22', cat: 'spanish-q2', title: `File Modelo 151 by June 30, ${fy}`, detail: `File via AEAT Sede Electrónica or through your asesor. If you owe money, you can pay in two installments (60% at filing, 40% in November — if the renta allows it). If your withholdings exceeded the tax due, you'll receive a refund.`, section: 'spanish-filings', done: false, notes: '' },
         { id: 's23', cat: 'spanish-q2', title: 'Check if Wealth Tax (Modelo 714) applies', detail: `Only if your Spanish-located net assets exceed the applicable threshold. Madrid typically offers a 100% bonus (no wealth tax), but check the solidarity tax (>€3M). Most Beckham Law employees don't owe this.`, section: 'spanish-filings', done: false, notes: '' },
-        { id: 's24', cat: 'spanish-q2', title: `Save a copy of filed Modelo 151 and payment receipt`, detail: `Download the filed return and any payment confirmations from AEAT. Store with your tax records. You'll need the Spanish tax paid figure for your US return (if US Person).`, done: false, notes: '' },
+        { id: 's24', cat: 'spanish-q2', title: `Save a copy of filed ${modelo} and payment receipt`, detail: `Download the filed return and any payment confirmations from AEAT. Store with your tax records. You'll need the Spanish tax paid figure for your US return (if US Person).`, done: false, notes: '' },
 
         // Year-end
         { id: 's40', cat: 'year-end', title: `Verify employer withholding rate is correct for next year`, detail: 'Check with HR/payroll that your retención rate remains at 24% (Beckham flat rate). If your Beckham Law is expiring, they need to switch to progressive IRPF rates.', done: false, notes: '' },
@@ -1015,10 +1125,10 @@ function getDefaultTasks(year) {
 
         { id: 'u10', cat: 'us-q1', title: `File FBAR (FinCEN 114) for ${year} by April 15, ${fy}`, detail: `File electronically at bsaefiling.fincen.treas.gov. Report all non-US accounts. Auto-extends to Oct 15 if you miss this date, but best to file early. No payment — this is informational.`, section: 'us-filings', done: false, notes: '', usOnly: true },
         { id: 'u11', cat: 'us-q1', title: `Estimate US tax liability and pay by April 15, ${fy} if needed`, detail: `Even with the automatic June 15 extension for filing, payment is due April 15. If you expect to owe (e.g., on US investment income not taxed by Spain), pay an estimate to avoid interest.`, section: 'us-filings', done: false, notes: '', usOnly: true },
-        { id: 'u12', cat: 'us-q1', title: `File Form 4868 to extend US return to October 15, ${fy}`, detail: `File by June 15 (your automatic abroad extension date). This gives you until Oct 15 to file — important because you need your final Spanish tax figures from Modelo 151 (due June 30) for your FTC.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u12', cat: 'us-q1', title: `File Form 4868 to extend US return to October 15, ${fy}`, detail: `File by June 15 (your automatic abroad extension date). This gives you until Oct 15 to file — important because you need your final Spanish tax figures from ${modelo} (due June 30) for your FTC.`, section: 'us-filings', done: false, notes: '', usOnly: true },
 
-        { id: 'u20', cat: 'us-q2', title: `After filing Modelo 151: note total Spanish tax paid for ${year}`, detail: `You need this for Form 1116 (Foreign Tax Credit). Total = withholdings paid + any additional tax paid at filing, minus any refund received. Keep the Modelo 151 copy.`, section: 'us-spain-interplay', done: false, notes: '', usOnly: true },
-        { id: 'u21', cat: 'us-q2', title: 'Decide: FEIE (Form 2555) or FTC (Form 1116)', detail: 'For most Beckham Law filers, FTC is more advantageous. The 24% Spanish rate often generates enough credits to offset US tax on your Spanish salary. Consult your US tax preparer.', section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u20', cat: 'us-q2', title: `After filing ${modelo}: note total Spanish tax paid for ${year}`, detail: `You need this for Form 1116 (Foreign Tax Credit). Total = withholdings paid + any additional tax paid at filing, minus any refund received. Keep the ${modelo} copy.`, section: 'us-spain-interplay', done: false, notes: '', usOnly: true },
+        { id: 'u21', cat: 'us-q2', title: 'Decide: FEIE (Form 2555) or FTC (Form 1116)', detail: `For most filers in Spain, FTC is more advantageous. ${sit.beckhamActive ? 'The 24% Spanish rate often generates enough credits to offset US tax on your Spanish salary.' : 'Your Spanish tax paid can be credited against your US liability.'} Consult your US tax preparer.`, section: 'us-filings', done: false, notes: '', usOnly: true },
 
         { id: 'u30', cat: 'us-q3', title: `Prepare and file Form 1040 for ${year}`, detail: `Report all worldwide income. Attach Form 1116 (FTC) or Form 2555 (FEIE). Attach Form 8938 (FATCA) if thresholds are met. File by October 15, ${fy}.`, section: 'us-filings', done: false, notes: '', usOnly: true },
         { id: 'u31', cat: 'us-q3', title: `File Form 8938 (FATCA) if thresholds are met`, detail: `Attached to Form 1040. Required if foreign financial assets exceed $200,000 on Dec 31 or $300,000 at any time (single filer abroad). Report all foreign accounts, securities, and financial assets.`, section: 'us-filings', done: false, notes: '', usOnly: true },
@@ -1032,31 +1142,109 @@ function getDefaultTasks(year) {
     return tasks.concat(usTasks);
 }
 
+function getPostBeckhamTasks(year, fy, sit, modelo, rateDesc, m720note) {
+    const tasks = [
+        { id: 's1', cat: 'info-gathering', title: `Collect all ${year} nóminas (payslips) from employer`, detail: `Download all 12 monthly payslips for ${year}. Verify the retención rate uses ${rateDesc}. You'll need total gross income and total withholdings for ${modelo}.`, section: 'spanish-filings', done: false, notes: '' },
+        { id: 's2', cat: 'info-gathering', title: `Get Certificado de Retenciones from employer`, detail: `Your employer issues this (usually by February). It's the official document summarizing your ${year} income and withholdings. Required for ${modelo}.`, section: 'spanish-filings', done: false, notes: '' },
+        { id: 's3', cat: 'info-gathering', title: 'Gather Spanish bank account statements', detail: `Download ${year} annual statements from all Spanish bank accounts. Note any interest earned (taxable in Spain). Also needed for asset declarations.`, done: false, notes: '' },
+        { id: 's4', cat: 'info-gathering', title: `Confirm you are under standard IRPF for ${year}`, detail: `Beckham Law expired after ${sit.residencyYear + 5}. For ${year}, you file under the general IRPF regime. Spain taxes worldwide income at progressive rates. File ${modelo}, not Modelo 151.`, section: 'beckham', done: false, notes: '' },
+        { id: 's6', cat: 'info-gathering', title: 'Gather foreign income documents for worldwide taxation', detail: `Under standard IRPF, Spain taxes worldwide income. Gather documentation for all foreign income: dividends, interest, capital gains, rental income, etc. from all countries.`, section: 'spanish-filings', done: false, notes: '' },
+
+        { id: 's10', cat: 'spanish-q1', title: `File Modelo 720 for ${year} (now required post-Beckham)`, detail: `${m720note} Check if any foreign asset category exceeds €50,000: (1) foreign bank accounts, (2) foreign securities/investments, (3) foreign real estate. If you filed last year, only re-file if a category increased by >€20,000.`, section: 'spanish-filings', done: false, notes: '' },
+        { id: 's11', cat: 'spanish-q1', title: `Gather foreign account balances as of Dec 31, ${year}`, detail: `For each foreign bank/brokerage account: note the balance on Dec 31 and the average balance for Q4. Convert USD to EUR using the official ECB rate published by the Banco de España for Dec 31.`, done: false, notes: '' },
+        { id: 's12', cat: 'spanish-q1', title: `File Modelo 720 by March 31, ${fy}`, detail: `File electronically via AEAT Sede Electrónica using Cl@ve PIN or digital certificate. Or have your asesor file it. This is informative only — no tax payment.`, section: 'spanish-filings', done: false, notes: '' },
+
+        { id: 's20', cat: 'spanish-q2', title: `Check AEAT for ${year} renta campaign opening date`, detail: `Agencia Tributaria announces the exact dates each spring (usually early April). Check sede.agenciatributaria.gob.es for the campaign calendar.`, section: 'deadlines', done: false, notes: '' },
+        { id: 's21', cat: 'spanish-q2', title: `Prepare ${modelo} data: worldwide income summary`, detail: `Compile ALL income: (1) employment income + withholdings, (2) Spanish and foreign bank interest, (3) all capital gains (Spanish and foreign), (4) rental income, (5) dividends, (6) any other worldwide income. Under standard IRPF, all income is taxable at progressive rates.`, section: 'spanish-filings', done: false, notes: '' },
+        { id: 's22', cat: 'spanish-q2', title: `File ${modelo} by June 30, ${fy}`, detail: `File via AEAT Sede Electrónica or through your asesor. Under standard IRPF, progressive rates apply (19%–47%). Foreign tax credits may be available for taxes paid in other countries.`, section: 'spanish-filings', done: false, notes: '' },
+        { id: 's25', cat: 'spanish-q2', title: `Review foreign tax credit eligibility for ${year}`, detail: `Under standard IRPF, you may claim credits for taxes paid to other countries on income Spain also taxes. Gather foreign tax payment documentation.`, section: 'spanish-filings', done: false, notes: '' },
+        { id: 's23', cat: 'spanish-q2', title: 'Check if Wealth Tax (Modelo 714) applies', detail: `Post-Beckham: your worldwide net assets count toward wealth tax thresholds. Madrid typically offers a 100% bonus (no wealth tax), but check the solidarity tax (>€3M).`, section: 'spanish-filings', done: false, notes: '' },
+        { id: 's24', cat: 'spanish-q2', title: `Save a copy of filed ${modelo} and payment receipt`, detail: `Download the filed return and any payment confirmations from AEAT. Store with your tax records. You'll need the Spanish tax paid figure for your US return (if US Person).`, done: false, notes: '' },
+
+        { id: 's40', cat: 'year-end', title: `Verify employer withholding uses progressive IRPF rates`, detail: 'Under standard IRPF, your employer should withhold at the progressive rate based on your salary and personal situation (not the flat 24% Beckham rate). Verify on your nómina.', done: false, notes: '' },
+        { id: 's42', cat: 'year-end', title: 'Review foreign asset balances for next year\'s Modelo 720', detail: 'Under standard IRPF, you must file 720 if any category exceeds €50,000 or increased by >€20,000 from last reported.', section: 'spanish-filings', done: false, notes: '' },
+    ];
+
+    const usTasks = [
+        { id: 'u1', cat: 'info-gathering', title: `Gather all US income documents (1099s, W-2s, K-1s)`, detail: `Collect any US-source income documents for ${year}: 1099-DIV (dividends), 1099-INT (interest), 1099-B (capital gains), K-1s (partnerships), etc. These arrive Jan–March.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u2', cat: 'info-gathering', title: `Calculate aggregate value of all foreign accounts for FBAR`, detail: `List every non-US financial account and note the maximum balance during ${year}. If the aggregate max exceeds $10,000, you must file FBAR. Convert to USD using Treasury rates.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u10', cat: 'us-q1', title: `File FBAR (FinCEN 114) for ${year} by April 15, ${fy}`, detail: `File electronically at bsaefiling.fincen.treas.gov. Report all non-US accounts. Auto-extends to Oct 15 if you miss this date.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u11', cat: 'us-q1', title: `Estimate US tax liability and pay by April 15, ${fy} if needed`, detail: `Payment is due April 15 even if filing is extended. Post-Beckham, Spain taxes worldwide income — you may have more foreign tax credits available.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u12', cat: 'us-q1', title: `File Form 4868 to extend US return to October 15, ${fy}`, detail: `File by June 15 (your automatic abroad extension date). This gives you until Oct 15 to file — important because you need your final Spanish tax figures from ${modelo} (due June 30) for your FTC.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u20', cat: 'us-q2', title: `After filing ${modelo}: note total Spanish tax paid for ${year}`, detail: `You need this for Form 1116 (Foreign Tax Credit). Total = withholdings paid + any additional tax paid at filing, minus any refund received. Keep the ${modelo} copy.`, section: 'us-spain-interplay', done: false, notes: '', usOnly: true },
+        { id: 'u21', cat: 'us-q2', title: 'Decide: FEIE (Form 2555) or FTC (Form 1116)', detail: `Post-Beckham, Spain taxes worldwide income at progressive rates — your Spanish tax credits may now offset more of your US liability. Consult your US tax preparer.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u30', cat: 'us-q3', title: `Prepare and file Form 1040 for ${year}`, detail: `Report all worldwide income. Attach Form 1116 (FTC) or Form 2555 (FEIE). Attach Form 8938 (FATCA) if thresholds are met. File by October 15, ${fy}.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u31', cat: 'us-q3', title: `File Form 8938 (FATCA) if thresholds are met`, detail: `Attached to Form 1040. Required if foreign financial assets exceed $200,000 on Dec 31 or $300,000 at any time (single filer abroad).`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u32', cat: 'us-q3', title: `File state tax return for ${year} (if applicable)`, detail: `Depends on your last state of residence. No-income-tax states (TX, FL, WA, NV, etc.): nothing to file. Other states: check residency rules.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u33', cat: 'us-q3', title: `Verify FBAR was filed (if not done in April)`, detail: `The auto-extension runs to Oct 15. If you haven't filed FBAR yet, do it now.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u40', cat: 'year-end', title: 'Review PFIC exposure in foreign investment accounts', detail: 'If you hold non-US domiciled mutual funds or ETFs, they may be classified as PFICs by the IRS.', section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u41', cat: 'year-end', title: 'Evaluate estimated tax payments for next year', detail: 'If you owed US tax this year, consider making quarterly estimated payments next year (Form 1040-ES).', done: false, notes: '', usOnly: true },
+    ];
+    return tasks.concat(usTasks);
+}
+
+function getPreArrivalTasks(year, fy, sit) {
+    const tasks = [
+        { id: 's1', cat: 'info-gathering', title: `Gather income documents for ${year}`, detail: `You were not yet a Spanish tax resident in ${year} (residency starts ${sit.residencyYear}). Gather any income documents relevant to the country you were working/living in.`, done: false, notes: '' },
+        { id: 's3', cat: 'info-gathering', title: 'Gather bank account statements', detail: `Download ${year} annual statements from all bank accounts. You will need these for reference and future asset declarations.`, done: false, notes: '' },
+    ];
+
+    const usTasks = [
+        { id: 'u1', cat: 'info-gathering', title: `Gather all US income documents (W-2s, 1099s, K-1s)`, detail: `Collect all US income documents for ${year}: W-2 (employment), 1099-DIV (dividends), 1099-INT (interest), 1099-B (capital gains), K-1s (partnerships), etc.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u30', cat: 'us-q3', title: `Prepare and file Form 1040 for ${year}`, detail: `Standard US return for ${year}. Report all income. If you were living in the US, standard filing rules apply. File by April 15, ${fy} or extend to October 15.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+        { id: 'u32', cat: 'us-q3', title: `File state tax return for ${year} (if applicable)`, detail: `File for the state you lived/worked in during ${year}. If you moved mid-year, you may need to file part-year returns in multiple states.`, section: 'us-filings', done: false, notes: '', usOnly: true },
+    ];
+    return tasks.concat(usTasks);
+}
+
 // ── Deadline data for the dates bar and calendar table ──────────────────
 function getDeadlines(year) {
     const fy = year + 1;
+    const sit = getTaxSituation(year);
+    const modelo = sit.beckhamExpired ? 'Modelo 100' : 'Modelo 151';
+    if (sit.preArrival) {
+        // Pre-arrival: only US deadlines if applicable
+        return [
+            { date: `${fy}-04-15`, label: `US Form 1040 / payment due`, type: 'us', taskId: 'u30', section: 'us-filings', sub: 'form1040' },
+        ];
+    }
     return [
         { date: `${fy}-01-31`, label: 'Certificado de Retenciones (approx)', type: 'spanish', taskId: 's2', section: 'spanish-filings', sub: 'modelo151' },
         { date: `${fy}-03-31`, label: `Modelo 720 deadline`, type: 'spanish', taskId: 's12', section: 'spanish-filings', sub: 'modelo720' },
         { date: `${fy}-04-01`, label: `Renta campaign opens (approx)`, type: 'spanish', taskId: 's20', section: 'spanish-filings', sub: 'modelo151' },
         { date: `${fy}-04-15`, label: `FBAR deadline / US tax payment due`, type: 'us', taskId: 'u10', section: 'us-filings', sub: 'fbar' },
         { date: `${fy}-06-15`, label: `US auto-extension abroad / File Form 4868`, type: 'us', taskId: 'u12', section: 'us-filings', sub: 'form1040' },
-        { date: `${fy}-06-30`, label: `Modelo 151 deadline`, type: 'spanish', taskId: 's22', section: 'spanish-filings', sub: 'modelo151' },
+        { date: `${fy}-06-30`, label: `${modelo} deadline`, type: 'spanish', taskId: 's22', section: 'spanish-filings', sub: 'modelo151' },
         { date: `${fy}-10-15`, label: `US Form 1040 extended deadline / FBAR auto-extension`, type: 'us', taskId: 'u30', section: 'us-filings', sub: 'form1040' },
     ];
 }
 
 function getCalendarRows(year) {
     const fy = year + 1;
+    const sit = getTaxSituation(year);
+    const expired = sit.beckhamExpired;
+    const modelo = expired ? 'Modelo 100' : 'Modelo 151';
+    const modeloDesc = expired
+        ? `Spanish income tax under standard IRPF (worldwide income, progressive rates)`
+        : `Spanish income tax under Beckham Law (replaces Modelo 100)`;
+    const m720who = expired ? 'Spain (required post-Beckham)' : 'Spain (if thresholds met)';
+
+    if (sit.preArrival) {
+        return [
+            { deadline: `Apr 15, ${fy}`, filing: 'US Form 1040 / Payment', what: `US federal income tax return and payment due`, who: 'US Persons', usOnly: true },
+            { deadline: `By Oct 15, ${fy}`, filing: 'Form 1040 (extended)', what: `Extended deadline for US federal return`, who: 'US Persons', usOnly: true },
+        ];
+    }
+
     return [
         { deadline: `Jan–Feb ${fy}`, filing: 'Certificado de Retenciones', what: `Employer issues summary of your ${year} income and withholdings`, who: 'Employer → You' },
-        { deadline: `By Mar 31, ${fy}`, filing: 'Modelo 720', what: `Report foreign assets exceeding €50k per category (informative, no tax)`, who: 'Spain (if thresholds met)' },
+        { deadline: `By Mar 31, ${fy}`, filing: 'Modelo 720', what: `Report foreign assets exceeding €50k per category (informative, no tax)`, who: m720who },
         { deadline: `Apr 15, ${fy}`, filing: 'FBAR (FinCEN 114)', what: `Report foreign bank/financial accounts (aggregate >$10k)`, who: 'US Persons', usOnly: true },
         { deadline: `Apr 15, ${fy}`, filing: 'US Tax Payment', what: `Estimated tax payment due even if filing is extended`, who: 'US Persons', usOnly: true },
-        { deadline: `Apr–Jun ${fy}`, filing: 'Modelo 151', what: `Spanish income tax under Beckham Law (replaces Modelo 100)`, who: 'Spain' },
+        { deadline: `Apr–Jun ${fy}`, filing: modelo, what: modeloDesc, who: 'Spain' },
         { deadline: `Jun 15, ${fy}`, filing: 'Form 4868', what: `Extend US return to Oct 15 (auto extension for abroad filers)`, who: 'US Persons', usOnly: true },
-        { deadline: `By Jun 30, ${fy}`, filing: 'Modelo 151', what: `Hard deadline for Modelo 151 filing`, who: 'Spain' },
-        { deadline: `By Jun 30, ${fy}`, filing: 'Modelo 714', what: `Wealth Tax (if applicable — most Madrid residents exempt)`, who: 'Spain (if applicable)' },
+        { deadline: `By Jun 30, ${fy}`, filing: modelo, what: `Hard deadline for ${modelo} filing`, who: 'Spain' },
+        { deadline: `By Jun 30, ${fy}`, filing: 'Modelo 714', what: `Wealth Tax (if applicable${expired ? ' — worldwide assets count post-Beckham' : ' — most Madrid residents exempt'})`, who: 'Spain (if applicable)' },
         { deadline: `By Oct 15, ${fy}`, filing: 'Form 1040 + 1116/2555 + 8938', what: `US federal income tax return with FTC/FEIE and FATCA`, who: 'US Persons', usOnly: true },
         { deadline: `By Oct 15, ${fy}`, filing: 'FBAR auto-extension', what: `Last day for FBAR if not filed in April`, who: 'US Persons', usOnly: true },
     ];
@@ -1085,18 +1273,23 @@ function init() {
     const savedYear = localStorage.getItem(YEAR_KEY);
     sel.value = (savedYear && sel.querySelector(`option[value="${savedYear}"]`)) ? savedYear : curYear - 1;
 
-    // Load US mode
-    usMode = localStorage.getItem(US_MODE_KEY) === 'true';
-    document.getElementById('us-toggle').checked = usMode;
+    // Load US status
+    const savedUS = getUSStatus();
+    // Migrate old boolean format
+    if (savedUS === 'true') { localStorage.setItem(US_MODE_KEY, 'citizen'); }
+    const usStatus = getUSStatus();
+    document.getElementById('us-status').value = (usStatus === 'true') ? 'citizen' : usStatus;
+    usMode = usStatus !== 'none' && usStatus !== 'false';
     applyUSMode();
 
     // Load tasks
     loadTasks();
 
-    // Render dates bar, calendar, and info bar
+    // Render dates bar, calendar, info bar, and dynamic guide
     renderDatesBar();
     renderCalendar();
     renderInfoBar();
+    renderDynamicGuide();
 
     // TOC click handlers
     document.querySelectorAll('.toc-section').forEach(el => {
@@ -1127,18 +1320,25 @@ function changeYear(val) {
     renderDatesBar();
     renderCalendar();
     renderInfoBar();
+    renderDynamicGuide();
     if (document.getElementById('tasks-view').classList.contains('active')) {
         renderTasks();
     }
 }
 
-// ── US Mode ──────────────────────────────────────────────────────────────
-function toggleUSMode(checked) {
-    usMode = checked;
-    localStorage.setItem(US_MODE_KEY, usMode);
+// ── US Status ────────────────────────────────────────────────────────────
+function getUSStatus() {
+    return localStorage.getItem(US_MODE_KEY) || 'none';
+}
+
+function changeUSStatus(val) {
+    localStorage.setItem(US_MODE_KEY, val);
+    usMode = val !== 'none';
     applyUSMode();
+    loadTasks();
     renderDatesBar();
     renderCalendar();
+    renderDynamicGuide();
     if (document.getElementById('tasks-view').classList.contains('active')) {
         renderTasks();
     }
@@ -1146,7 +1346,6 @@ function toggleUSMode(checked) {
 
 function applyUSMode() {
     document.body.classList.toggle('us-mode', usMode);
-    document.getElementById('us-label').classList.toggle('active', usMode);
 }
 
 // ── Tasks persistence ────────────────────────────────────────────────────
