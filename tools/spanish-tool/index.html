@@ -405,8 +405,109 @@
 
         @media (max-width: 600px) {
             .day-grid { grid-template-columns: repeat(3, 1fr); }
-            .tabs { flex-wrap: wrap; }
-            .tab { flex: none; width: 50%; }
+            .tabs { flex-wrap: nowrap; }
+            .tab { font-size: 0.9rem; padding: 15px 8px; }
+            .tabs.four-tabs .tab { font-size: 0.82rem; padding: 15px 6px; }
+        }
+        @media (max-width: 380px) {
+            .tabs.four-tabs .tab { font-size: 0.75rem; padding: 12px 4px; }
+        }
+
+        /* Learn tab styles */
+        .learn-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px;
+        }
+        .learn-card {
+            background: var(--card);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 15px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .learn-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .learn-card.completed {
+            border-color: var(--success);
+            background: #f0fdf4;
+        }
+        .learn-card .learn-card-num {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .learn-card .learn-card-title {
+            font-size: 0.7rem;
+            margin-top: 4px;
+            color: var(--text-muted);
+            line-height: 1.3;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        .learn-card .check {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--success);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        .learn-card.completed .check { display: flex; }
+        .learn-card .learn-card-badge {
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            display: inline-block;
+            margin-top: 5px;
+            color: white;
+            background: var(--a2);
+        }
+        .learn-card .learn-card-badge.grammar { background: var(--b1); }
+        .learn-view { display: none; }
+        .learn-view.active { display: block; }
+        .learn-rule {
+            background: #f0f7ff;
+            border-left: 3px solid var(--primary);
+            padding: 10px 14px;
+            margin: 10px 0;
+            border-radius: 0 6px 6px 0;
+            font-size: 0.95rem;
+        }
+        .learn-example {
+            background: #f8faf8;
+            border-left: 3px solid var(--success);
+            padding: 8px 14px;
+            margin: 6px 0;
+            border-radius: 0 6px 6px 0;
+            font-size: 0.93rem;
+        }
+        .learn-example .es { font-weight: 600; }
+        .learn-example .en { color: var(--text-muted); font-style: italic; }
+        .learn-tip {
+            background: #fffbeb;
+            border-left: 3px solid var(--warning);
+            padding: 8px 14px;
+            margin: 10px 0;
+            border-radius: 0 6px 6px 0;
+            font-size: 0.9rem;
+        }
+        @media (max-width: 600px) {
+            .learn-grid { grid-template-columns: repeat(3, 1fr); }
         }
 
         /* Reset Confirmation Modal */
@@ -710,9 +811,10 @@
         <div class="progress-text" id="progressText">0% Complete</div>
     </header>
 
-    <div class="tabs">
+    <div class="tabs" id="mainTabs">
         <button class="tab active" data-tab="lessons" data-i18n="tabLessons">Lessons</button>
         <button class="tab" data-tab="quiz" data-i18n="tabQuiz">Quiz</button>
+        <button class="tab" data-tab="learn" data-i18n="tabLearn" id="learnTab" style="display:none">Learn</button>
         <button class="tab" data-tab="extras" data-i18n="tabExtras">Extras</button>
     </div>
 
@@ -737,12 +839,38 @@
             <div class="section" style="margin-top: 20px;">
                 <h3 style="margin-bottom: 15px;" data-i18n="conjQuizTitle">Conjugation Quiz (Anki-style)</h3>
                 <p style="color: var(--text-muted); margin-bottom: 15px;" data-i18n="conjQuizDesc">Practice verb conjugations based on your lesson progress. Wrong answers repeat until mastered.</p>
-                <div id="conjTypeSelector" style="margin-bottom:15px;"></div>
+                <div id="conjTypeSelector" style="margin-bottom:10px;"></div>
+                <div style="display:flex;gap:8px;margin-bottom:15px;">
+                    <button class="btn btn-outline" id="conjCheckAllBtn" onclick="conjCheckAllTap()" style="font-size:0.8rem;padding:6px 12px;" data-i18n="checkAll">Check All</button>
+                    <button class="btn btn-outline" id="conjUncheckAllBtn" onclick="conjUncheckAllTap()" style="font-size:0.8rem;padding:6px 12px;" data-i18n="uncheckAll">Uncheck All</button>
+                </div>
                 <div id="conjCountButtons" style="display: flex; gap: 10px; flex-wrap: wrap;">
                     <button class="btn btn-outline" data-conj-count="10" onclick="selectConjCount(this, 10)">10 <span data-i18n="questions">Questions</span></button>
                     <button class="btn btn-outline" data-conj-count="20" onclick="selectConjCount(this, 20)">20 <span data-i18n="questions">Questions</span></button>
                     <button class="btn btn-outline" data-conj-count="0" onclick="selectConjCount(this, 0)" data-i18n="allAvailable">All Available</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Learn Panel -->
+        <div class="panel" id="learn-panel">
+            <div id="learnGridContainer">
+                <div id="learnGrid" class="learn-grid"></div>
+            </div>
+        </div>
+        <div class="learn-view" id="learnView">
+            <div class="lesson-header">
+                <div class="lesson-nav">
+                    <button class="btn btn-outline" id="prevLearnBtn" onclick="prevLearnLesson()" data-i18n="previous">← Previous</button>
+                    <button class="btn btn-outline" onclick="closeLearnView()" data-i18n="backToDays">Back</button>
+                    <button class="btn btn-outline" id="nextLearnBtn" onclick="nextLearnLesson()" data-i18n="next">Next →</button>
+                </div>
+                <h2 class="lesson-title" id="learnTitle"></h2>
+                <p class="lesson-subtitle" id="learnSubtitle"></p>
+            </div>
+            <div id="learnContent"></div>
+            <div style="margin-top: 20px; text-align: center;">
+                <button class="btn btn-success" id="markLearnCompleteBtn" onclick="markLearnComplete()" data-i18n="markComplete">Mark as Done</button>
             </div>
         </div>
 
@@ -780,8 +908,17 @@
                     <select id="defaultTabSelect" onchange="changeDefaultTab(this.value)" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); font-size: 1rem;">
                         <option value="lessons" data-i18n="tabLessons">Lessons</option>
                         <option value="quiz" data-i18n="tabQuiz">Quiz</option>
+                        <option value="learn" data-i18n="tabLearn" id="defaultTabLearnOption" style="display:none">Learn</option>
                         <option value="extras" data-i18n="tabExtras">Extras</option>
                     </select>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px; margin-bottom: 8px;">
+                    <input type="checkbox" id="showLearnTabCheckbox" onchange="toggleLearnTab(this.checked)" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="showLearnTabCheckbox" style="cursor: pointer;" data-i18n="showLearnTab">Show Learn tab (conjugation quick reference)</label>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <input type="checkbox" id="unlockAllConjCheckbox" onchange="toggleUnlockAllConj(this.checked)" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="unlockAllConjCheckbox" style="cursor: pointer;" data-i18n="unlockAllConj">Unlock all quiz &amp; lookup conjugations without completing lessons</label>
                 </div>
                 <!-- Made for Mobile Section -->
                 <div class="settings-group" id="mobileSettingsGroup" style="margin-top: 15px;">
@@ -830,7 +967,7 @@
             </div>
             <div id="lessonContent"></div>
             <div style="margin-top: 20px; text-align: center;">
-                <button class="btn btn-success" onclick="markDayComplete()" data-i18n="markComplete">Mark Day as Complete</button>
+                <button class="btn btn-success" id="markDayCompleteBtn" onclick="markDayComplete()" data-i18n="markComplete">Mark Day as Complete</button>
             </div>
         </div>
     </div>
@@ -1249,7 +1386,7 @@
 
     // Storage schema with version control
     const spanishProgressSchema = StorageVersionManager.defineSchema('spanishProgress', {
-        version: 8,
+        version: 9,
         default: {
             completedDays: [],
             sectionChecks: {}, // { "1-phrases": true, "1-vocab": false, ... }
@@ -1303,6 +1440,15 @@
             8: (data) => ({
                 ...data,
                 practiceChecks: {}
+            }),
+            // v9: Add showLearnTab, completedLearnLessons, conjQuizTypes, unlockAllConj, lookupConjTenses
+            9: (data) => ({
+                ...data,
+                showLearnTab: false,
+                completedLearnLessons: [],
+                conjQuizTypes: {},
+                unlockAllConj: false,
+                lookupConjTenses: data.lookupConjTenses || {}
             })
         }
     });
@@ -1319,6 +1465,11 @@
         showLanguageFlags: true,
         compactHeader: false,
         defaultTab: 'lessons',
+        showLearnTab: false,
+        completedLearnLessons: [],
+        conjQuizTypes: {},
+        unlockAllConj: false,
+        lookupConjTenses: {},
         practiceChecks: {},
         lastSaved: null
     };
@@ -1396,6 +1547,7 @@
             backToDays: 'Back to Days',
             next: 'Next →',
             markComplete: 'Mark Day as Complete',
+            markLearnComplete: 'Mark as Done',
             keyPhrases: 'Key Phrases',
             grammarBite: 'Grammar Bite',
             speakFirstWords: 'Speak-First Words',
@@ -1434,6 +1586,21 @@
             form: 'Form',
             verb: 'verb',
             conjNotAvailable: 'Conjugation data not available for this verb.',
+
+            // Learn tab
+            tabLearn: 'Learn',
+            showLearnTab: 'Show Learn tab (conjugation quick reference)',
+            unlockAllConj: 'Unlock all quiz & lookup conjugations without completing lessons',
+            learnTitle: 'Conjugation Quick Reference',
+            learnDesc: 'One-page lessons for each conjugation pattern. Tap to expand.',
+            learnEndings: 'Endings',
+            learnExamples: 'Examples',
+            learnTip: 'Tip',
+
+            // Check All / Uncheck All
+            checkAll: 'Check All',
+            uncheckAll: 'Uncheck All',
+            areYouSure: 'Are you sure?',
         }
     };
 
@@ -1590,14 +1757,648 @@
         autoSave();
     }
 
+    // ==================== LEARN TAB ====================
+    function toggleLearnTab(show) {
+        progress.showLearnTab = show;
+        autoSave();
+        applyLearnTabVisibility();
+    }
+
+    function toggleUnlockAllConj(unlock) {
+        progress.unlockAllConj = unlock;
+        // When unlocking, snapshot current lookup visibility so unchecks while unlocked persist
+        if (unlock) {
+            if (!progress.lookupConjTenses) progress.lookupConjTenses = {};
+            lookupTenseOrder.forEach(tense => {
+                if (progress.lookupConjTenses[tense] === undefined) {
+                    progress.lookupConjTenses[tense] = true;
+                }
+            });
+        }
+        autoSave();
+        renderConjTypeSelector();
+        renderLookupConjSettings();
+    }
+
+    function applyLearnTabVisibility() {
+        const show = progress.showLearnTab === true;
+        const learnTab = document.getElementById('learnTab');
+        const tabsContainer = document.getElementById('mainTabs');
+        const learnOption = document.getElementById('defaultTabLearnOption');
+        const checkbox = document.getElementById('showLearnTabCheckbox');
+        if (learnTab) learnTab.style.display = show ? '' : 'none';
+        if (tabsContainer) tabsContainer.classList.toggle('four-tabs', show);
+        if (learnOption) learnOption.style.display = show ? '' : 'none';
+        if (checkbox) checkbox.checked = show;
+        // If learn tab was default but now hidden, reset default
+        if (!show && progress.defaultTab === 'learn') {
+            progress.defaultTab = 'lessons';
+            const sel = document.getElementById('defaultTabSelect');
+            if (sel) sel.value = 'lessons';
+            autoSave();
+        }
+        if (show) renderLearnGrid();
+    }
+
+    // Learn lesson content data
+    const learnLessons = [
+        {
+            id: 'present_ser_estar',
+            title: 'Ser vs Estar (Present)',
+            intro: 'Both mean "to be," but <strong>ser</strong> is for permanent traits (identity, origin, profession) and <strong>estar</strong> is for temporary states (location, mood, condition).',
+            rule: 'Ser = who/what you ARE. Estar = how/where you ARE right now.',
+            endings: null,
+            verbs: ['ser', 'estar'],
+            examples: [
+                { es: 'Yo soy estudiante.', en: 'I am a student. (permanent identity)' },
+                { es: 'Yo estoy cansado.', en: 'I am tired. (temporary state)' },
+                { es: 'Ella es de Mexico.', en: 'She is from Mexico. (origin)' },
+                { es: 'Ella esta en la oficina.', en: 'She is in the office. (location)' },
+            ],
+            tip: 'Remember: "Ser" for DOCTOR (Description, Occupation, Characteristic, Time, Origin, Relationship). "Estar" for PLACE (Position, Location, Action, Condition, Emotion).',
+        },
+        {
+            id: 'present_ar',
+            title: '-AR Verbs (Present)',
+            intro: 'The most common verb group in Spanish. Drop the <strong>-ar</strong> ending and add the present tense endings.',
+            rule: 'hablar → habl- + endings',
+            endings: { yo: '-o', tu: '-as', el: '-a', nosotros: '-amos', vosotros: '-áis', ellos: '-an' },
+            verbs: ['hablar', 'trabajar', 'estudiar'],
+            examples: [
+                { es: 'Yo hablo español.', en: 'I speak Spanish.' },
+                { es: 'Ella trabaja en un banco.', en: 'She works in a bank.' },
+                { es: 'Nosotros estudiamos juntos.', en: 'We study together.' },
+            ],
+            tip: '-AR verbs are the largest group. Master these endings and you can conjugate hundreds of verbs!',
+        },
+        {
+            id: 'present_er_ir',
+            title: '-ER/-IR Verbs (Present)',
+            intro: 'The second and third verb groups share very similar endings. Drop <strong>-er</strong> or <strong>-ir</strong> and add the endings.',
+            rule: 'comer → com- + endings / vivir → viv- + endings',
+            endings: { yo: '-o', tu: '-es', el: '-e', nosotros: '-emos/-imos', vosotros: '-éis/-ís', ellos: '-en' },
+            verbs: ['comer', 'vivir', 'escribir'],
+            examples: [
+                { es: 'Yo como a las dos.', en: 'I eat at two.' },
+                { es: 'Ellos viven en Madrid.', en: 'They live in Madrid.' },
+                { es: 'Tu escribes muy bien.', en: 'You write very well.' },
+            ],
+            tip: 'The only difference between -ER and -IR: nosotros (-emos vs -imos) and vosotros (-éis vs -ís). Everything else is identical.',
+        },
+        {
+            id: 'present_irregular',
+            title: 'Irregular Verbs (Present)',
+            intro: 'These common verbs have unpredictable changes. Most are only irregular in the <strong>yo</strong> form or have stem changes (e→ie, o→ue, e→i).',
+            rule: 'Stem changes: querer → quiero, poder → puedo, decir → digo. Yo-irregulars: tener → tengo, hacer → hago, saber → sé.',
+            endings: null,
+            verbs: ['tener', 'ir', 'poder'],
+            examples: [
+                { es: 'Yo tengo dos hermanos.', en: 'I have two siblings.' },
+                { es: 'Nosotros vamos al cine.', en: 'We go to the cinema.' },
+                { es: 'Ella puede hablar tres idiomas.', en: 'She can speak three languages.' },
+            ],
+            tip: 'Stem changes follow a "boot pattern" — they affect all forms EXCEPT nosotros and vosotros (which keep the original stem).',
+        },
+        {
+            id: 'preterite_ar',
+            title: '-AR Verbs (Preterite)',
+            intro: 'The preterite describes <strong>completed actions in the past</strong>. For -AR verbs, drop -ar and add preterite endings.',
+            rule: 'hablar → habl- + preterite endings',
+            endings: { yo: '-é', tu: '-aste', el: '-ó', nosotros: '-amos', vosotros: '-asteis', ellos: '-aron' },
+            verbs: ['hablar', 'trabajar', 'comprar'],
+            examples: [
+                { es: 'Yo hablé con ella ayer.', en: 'I spoke with her yesterday.' },
+                { es: 'Ella compró un vestido nuevo.', en: 'She bought a new dress.' },
+                { es: 'Ellos trabajaron todo el dia.', en: 'They worked all day.' },
+            ],
+            tip: 'Notice: the nosotros form (-amos) is the same as present tense! Context tells you which one is meant.',
+        },
+        {
+            id: 'preterite_er_ir',
+            title: '-ER/-IR Verbs (Preterite)',
+            intro: 'In the preterite, -ER and -IR verbs share <strong>identical</strong> endings.',
+            rule: 'comer → com- + endings / vivir → viv- + endings',
+            endings: { yo: '-í', tu: '-iste', el: '-ió', nosotros: '-imos', vosotros: '-isteis', ellos: '-ieron' },
+            verbs: ['comer', 'vivir', 'escribir'],
+            examples: [
+                { es: 'Yo comí paella en Valencia.', en: 'I ate paella in Valencia.' },
+                { es: 'El vivió en Barcelona dos años.', en: 'He lived in Barcelona for two years.' },
+                { es: 'Ella escribió una carta.', en: 'She wrote a letter.' },
+            ],
+            tip: 'Unlike present tense where -ER and -IR differ slightly, in preterite they are 100% the same!',
+        },
+        {
+            id: 'preterite_irregular',
+            title: 'Irregular Verbs (Preterite)',
+            intro: 'Several common verbs have completely irregular preterite stems. They share a unique set of <strong>unstressed</strong> endings.',
+            rule: 'tener → tuv-, hacer → hic-/hiz-, poder → pud-, decir → dij-, ir/ser → fu-',
+            endings: { yo: '-e', tu: '-iste', el: '-o', nosotros: '-imos', vosotros: '-isteis', ellos: '-ieron' },
+            verbs: ['ser/ir', 'tener', 'hacer'],
+            examples: [
+                { es: 'Yo fui al supermercado.', en: 'I went to the supermarket.' },
+                { es: 'El tuvo un accidente.', en: 'He had an accident.' },
+                { es: 'Ellos hicieron la tarea.', en: 'They did the homework.' },
+            ],
+            tip: 'Ser and ir share the SAME preterite forms (fui, fuiste, fue...). Context makes it clear which verb is meant.',
+        },
+        {
+            id: 'imperfect',
+            title: 'Imperfect Tense',
+            intro: 'The imperfect describes <strong>ongoing, habitual, or background actions</strong> in the past. Only 3 verbs are irregular (ser, ir, ver).',
+            rule: '-AR: -aba, -abas, -aba, -ábamos, -abais, -aban. -ER/-IR: -ía, -ías, -ía, -íamos, -íais, -ían.',
+            endings: { yo: '-aba/-ía', tu: '-abas/-ías', el: '-aba/-ía', nosotros: '-ábamos/-íamos', vosotros: '-abais/-íais', ellos: '-aban/-ían' },
+            verbs: ['hablar', 'comer', 'ser'],
+            examples: [
+                { es: 'Cuando era niño, jugaba en el parque.', en: 'When I was a child, I used to play in the park.' },
+                { es: 'Ella siempre comía a las tres.', en: 'She always ate at three.' },
+                { es: 'Habia mucha gente en la fiesta.', en: 'There were many people at the party.' },
+            ],
+            tip: 'Preterite = "what happened" (completed). Imperfect = "what was happening / used to happen" (background/habit).',
+        },
+        {
+            id: 'future',
+            title: 'Future Simple',
+            intro: 'The easiest tense to form! Add endings to the <strong>full infinitive</strong> (don\'t remove -ar/-er/-ir).',
+            rule: 'hablar + endings = hablaré, hablarás, hablará...',
+            endings: { yo: '-é', tu: '-ás', el: '-á', nosotros: '-emos', vosotros: '-éis', ellos: '-án' },
+            verbs: ['hablar', 'comer', 'tener'],
+            examples: [
+                { es: 'Mañana hablaré con el jefe.', en: 'Tomorrow I will speak with the boss.' },
+                { es: 'Comeremos a las ocho.', en: 'We will eat at eight.' },
+                { es: 'Ella tendrá un bebe en mayo.', en: 'She will have a baby in May.' },
+            ],
+            tip: 'Irregular futures change the STEM but keep the same endings: tener→tendr-, poder→podr-, hacer→har-, decir→dir-, salir→saldr-.',
+        },
+        {
+            id: 'conditional',
+            title: 'Conditional',
+            intro: 'Expresses "would" actions. Like the future, add endings to the <strong>full infinitive</strong>. Same irregular stems as future.',
+            rule: 'hablar + endings = hablaría, hablarías, hablaría...',
+            endings: { yo: '-ía', tu: '-ías', el: '-ía', nosotros: '-íamos', vosotros: '-íais', ellos: '-ían' },
+            verbs: ['hablar', 'comer', 'poder'],
+            examples: [
+                { es: 'Yo hablaría con ella, pero no tengo tiempo.', en: 'I would speak with her, but I don\'t have time.' },
+                { es: 'Me gustaría un café, por favor.', en: 'I would like a coffee, please.' },
+                { es: 'Podríamos ir al cine esta noche.', en: 'We could go to the cinema tonight.' },
+            ],
+            tip: 'The conditional endings are identical to the imperfect -ER/-IR endings (-ía, -ías...), but attached to the full infinitive.',
+        },
+        {
+            id: 'subjunctive_present',
+            title: 'Subjunctive (Present)',
+            intro: 'Used after triggers of doubt, desire, emotion, or necessity. The subjunctive "flips" the vowel: -AR verbs get -e endings, -ER/-IR verbs get -a endings.',
+            rule: 'Trigger + que + subjunctive. -AR: -e, -es, -e, -emos, -éis, -en. -ER/-IR: -a, -as, -a, -amos, -áis, -an.',
+            endings: { yo: '-e/-a', tu: '-es/-as', el: '-e/-a', nosotros: '-emos/-amos', vosotros: '-éis/-áis', ellos: '-en/-an' },
+            verbs: ['hablar', 'comer', 'ser'],
+            examples: [
+                { es: 'Quiero que hables más despacio.', en: 'I want you to speak more slowly.' },
+                { es: 'Es importante que comas bien.', en: 'It\'s important that you eat well.' },
+                { es: 'Dudo que sea verdad.', en: 'I doubt it\'s true.' },
+            ],
+            tip: 'WEIRDO triggers: Wishes, Emotions, Impersonal expressions, Recommendations, Doubt/Denial, Ojalá.',
+        },
+        {
+            id: 'present_perfect',
+            title: 'Present Perfect',
+            intro: 'Describes actions that <strong>have happened</strong>. Formed with <strong>haber</strong> (present) + past participle (-ado/-ido).',
+            rule: 'he/has/ha/hemos/habéis/han + hablado/comido/vivido',
+            endings: null,
+            verbs: ['hablar', 'comer', 'vivir'],
+            examples: [
+                { es: 'Yo he hablado con ella hoy.', en: 'I have spoken with her today.' },
+                { es: 'Ellos han comido ya.', en: 'They have already eaten.' },
+                { es: 'Nunca he vivido en el extranjero.', en: 'I have never lived abroad.' },
+            ],
+            tip: 'Irregular participles: hecho (hacer), dicho (decir), escrito (escribir), visto (ver), puesto (poner), vuelto (volver), abierto (abrir).',
+        },
+        {
+            id: 'past_perfect',
+            title: 'Past Perfect (Pluperfect)',
+            intro: 'Describes what <strong>had happened</strong> before another past event. Formed with <strong>haber</strong> (imperfect) + past participle.',
+            rule: 'había/habías/había/habíamos/habíais/habían + hablado/comido',
+            endings: null,
+            verbs: ['hablar', 'comer', 'vivir'],
+            examples: [
+                { es: 'Yo ya habia comido cuando llegaste.', en: 'I had already eaten when you arrived.' },
+                { es: 'Ella nunca habia vivido sola.', en: 'She had never lived alone.' },
+                { es: 'Habiamos hablado antes de la reunion.', en: 'We had spoken before the meeting.' },
+            ],
+            tip: 'Think of it as "the past of the past" — something completed before another past action.',
+        },
+        {
+            id: 'future_perfect',
+            title: 'Future Perfect',
+            intro: 'Describes what <strong>will have happened</strong> by a future point. Also used for speculation about the past. Formed with <strong>haber</strong> (future) + past participle.',
+            rule: 'habré/habrás/habrá/habremos/habréis/habrán + hablado/comido',
+            endings: null,
+            verbs: ['hablar', 'comer'],
+            examples: [
+                { es: 'Para las cinco, habre terminado.', en: 'By five, I will have finished.' },
+                { es: 'Habran llegado ya.', en: 'They will have arrived by now. (speculation)' },
+            ],
+            tip: 'This tense is often used to speculate: "Habrá salido ya" = "He must have left already."',
+        },
+        {
+            id: 'conditional_perfect',
+            title: 'Conditional Perfect',
+            intro: 'Describes what <strong>would have happened</strong>. Formed with <strong>haber</strong> (conditional) + past participle.',
+            rule: 'habría/habrías/habría/habríamos/habríais/habrían + hablado/comido',
+            endings: null,
+            verbs: ['hablar', 'comer'],
+            examples: [
+                { es: 'Yo habria ido, pero estaba enfermo.', en: 'I would have gone, but I was sick.' },
+                { es: 'Ella habria hablado, pero tenia miedo.', en: 'She would have spoken, but she was afraid.' },
+            ],
+            tip: 'Used in "if" clauses about the past: "Si hubiera sabido, habría ido." (If I had known, I would have gone.)',
+        },
+        {
+            id: 'subjunctive_imperfect',
+            title: 'Subjunctive (Imperfect)',
+            intro: 'Used when the subjunctive trigger is in the past. Has two forms (-ra and -se), but -ra is more common.',
+            rule: 'Take the ellos preterite form, remove -ron, add: -ra, -ras, -ra, -ramos, -rais, -ran.',
+            endings: { yo: '-ra', tu: '-ras', el: '-ra', nosotros: '-ramos', vosotros: '-rais', ellos: '-ran' },
+            verbs: ['hablar', 'comer', 'ser'],
+            examples: [
+                { es: 'Quería que hablaras con ella.', en: 'I wanted you to talk with her.' },
+                { es: 'Si yo fuera rico, viajaría mucho.', en: 'If I were rich, I would travel a lot.' },
+                { es: 'Dudaba que fuera verdad.', en: 'I doubted it was true.' },
+            ],
+            tip: 'The "si + imperfect subjunctive + conditional" pattern is the key to Spanish "if" clauses: "Si tuviera tiempo, iría."',
+        },
+        {
+            id: 'subjunctive_present_perfect',
+            title: 'Subjunctive (Present Perfect)',
+            intro: 'Used when a subjunctive trigger relates to something that <strong>has happened</strong>. Formed with <strong>haber</strong> (present subjunctive) + past participle.',
+            rule: 'haya/hayas/haya/hayamos/hayáis/hayan + hablado/comido',
+            endings: null,
+            verbs: ['hablar', 'comer'],
+            examples: [
+                { es: 'Espero que hayas comido.', en: 'I hope you have eaten.' },
+                { es: 'Dudo que hayan llegado.', en: 'I doubt they have arrived.' },
+            ],
+            tip: 'Just pair present subjunctive of "haber" (haya, hayas...) with the past participle.',
+        },
+        {
+            id: 'subjunctive_pluperfect',
+            title: 'Subjunctive (Pluperfect)',
+            intro: 'Used in past unreal conditions ("if I had..."). Formed with <strong>haber</strong> (imperfect subjunctive) + past participle.',
+            rule: 'hubiera/hubieras/hubiera/hubiéramos/hubierais/hubieran + hablado/comido',
+            endings: null,
+            verbs: ['hablar', 'comer'],
+            examples: [
+                { es: 'Si hubiera estudiado, habría aprobado.', en: 'If I had studied, I would have passed.' },
+                { es: 'Ojalá hubieras venido a la fiesta.', en: 'I wish you had come to the party.' },
+            ],
+            tip: 'This is the "regret" tense — things that didn\'t happen but you wish had.',
+        },
+        {
+            id: 'imperative_affirmative',
+            title: 'Imperative (Affirmative)',
+            intro: 'Used for <strong>commands and requests</strong>. Tú form: use the present tense él/ella form. Usted: use present subjunctive.',
+            rule: 'Tú: habla, come, vive. Usted: hable, coma, viva. Nosotros: hablemos, comamos.',
+            endings: null,
+            verbs: ['hablar', 'comer', 'vivir'],
+            examples: [
+                { es: 'Habla más despacio, por favor.', en: 'Speak more slowly, please.' },
+                { es: 'Come tus verduras.', en: 'Eat your vegetables.' },
+                { es: 'Vamos a la playa.', en: 'Let\'s go to the beach.' },
+            ],
+            tip: '8 common irregular tú imperatives: di (decir), haz (hacer), ve (ir), pon (poner), sal (salir), sé (ser), ten (tener), ven (venir).',
+        },
+        {
+            id: 'imperative_negative',
+            title: 'Imperative (Negative)',
+            intro: 'To say "don\'t do something," use <strong>no</strong> + present subjunctive forms for all persons.',
+            rule: 'No + subjunctive: No hables, No comas, No vivas. (Same subjunctive forms for all persons.)',
+            endings: null,
+            verbs: ['hablar', 'comer', 'vivir'],
+            examples: [
+                { es: 'No hables tan rápido.', en: 'Don\'t speak so fast.' },
+                { es: 'No comas eso.', en: 'Don\'t eat that.' },
+                { es: 'No se preocupe, señor.', en: 'Don\'t worry, sir.' },
+            ],
+            tip: 'Unlike affirmative commands, negative commands are ALWAYS subjunctive — even for tú. No irregulars to memorize!',
+        },
+        {
+            id: 'pronoun_placement',
+            title: 'Pronoun Placement: "Quiero que tú..." vs "Te lo quiero..."',
+            intro: 'One of the trickiest patterns in Spanish: when pronouns go BEFORE the verb vs AFTER (attached). The key is whether there are <strong>two clauses</strong> or <strong>one clause with an infinitive/gerund</strong>.',
+            rule: null,
+            endings: null,
+            verbs: [],
+            customContent: true,
+            examples: [],
+            tip: null,
+        },
+    ];
+
+    let currentLearnIdx = null;
+
+    function renderLearnGrid() {
+        const grid = document.getElementById('learnGrid');
+        if (!grid) return;
+
+        const completedIds = progress.completedLearnLessons || [];
+        const renderCard = (lesson, idx) => {
+            const completed = completedIds.includes(lesson.id);
+            const isGrammar = lesson.id === 'pronoun_placement';
+            return `
+                <div class="learn-card ${completed ? 'completed' : ''}" onclick="openLearnLesson(${idx})">
+                    <span class="check">✓</span>
+                    <div class="learn-card-num">${idx + 1}</div>
+                    <div class="learn-card-title">${lesson.title}</div>
+                    <div class="learn-card-badge ${isGrammar ? 'grammar' : ''}">${isGrammar ? 'Grammar' : 'Conj.'}</div>
+                </div>
+            `;
+        };
+
+        if (progress.moveCompletedToBottom) {
+            const indexed = learnLessons.map((l, i) => ({ lesson: l, idx: i }));
+            const incomplete = indexed.filter(x => !completedIds.includes(x.lesson.id));
+            const completed = indexed.filter(x => completedIds.includes(x.lesson.id));
+            let html = incomplete.map(x => renderCard(x.lesson, x.idx)).join('');
+            if (completed.length > 0) {
+                html += `<div class="section-divider">${t('completedLessons')}</div>`;
+                html += completed.map(x => renderCard(x.lesson, x.idx)).join('');
+            }
+            grid.innerHTML = html;
+        } else {
+            grid.innerHTML = learnLessons.map((l, i) => renderCard(l, i)).join('');
+        }
+    }
+
+    function openLearnLesson(idx) {
+        currentLearnIdx = idx;
+        const lesson = learnLessons[idx];
+        if (!lesson) return;
+
+        document.getElementById('learnGridContainer').style.display = 'none';
+        document.getElementById('learnView').classList.add('active');
+
+        document.getElementById('learnTitle').textContent = lesson.title;
+        document.getElementById('learnSubtitle').textContent = lesson.id === 'pronoun_placement' ? 'Grammar Pattern' : 'Conjugation';
+
+        document.getElementById('prevLearnBtn').style.visibility = idx === 0 ? 'hidden' : 'visible';
+        document.getElementById('nextLearnBtn').style.visibility = idx === learnLessons.length - 1 ? 'hidden' : 'visible';
+
+        const completed = (progress.completedLearnLessons || []).includes(lesson.id);
+        const btn = document.getElementById('markLearnCompleteBtn');
+        if (completed) {
+            btn.textContent = '✓ ' + t('markLearnComplete');
+            btn.className = 'btn btn-outline';
+        } else {
+            btn.textContent = t('markLearnComplete');
+            btn.className = 'btn btn-success';
+        }
+
+        const content = document.getElementById('learnContent');
+        content.innerHTML = renderLearnContent(lesson);
+    }
+
+    function closeLearnView() {
+        document.getElementById('learnView').classList.remove('active');
+        document.getElementById('learnGridContainer').style.display = '';
+        currentLearnIdx = null;
+        renderLearnGrid();
+    }
+
+    function prevLearnLesson() {
+        if (currentLearnIdx > 0) openLearnLesson(currentLearnIdx - 1);
+    }
+
+    function nextLearnLesson() {
+        if (currentLearnIdx < learnLessons.length - 1) openLearnLesson(currentLearnIdx + 1);
+    }
+
+    function markLearnComplete() {
+        const lesson = learnLessons[currentLearnIdx];
+        if (!lesson) return;
+        if (!progress.completedLearnLessons) progress.completedLearnLessons = [];
+        const idx = progress.completedLearnLessons.indexOf(lesson.id);
+        const btn = document.getElementById('markLearnCompleteBtn');
+        if (idx === -1) {
+            progress.completedLearnLessons.push(lesson.id);
+            btn.textContent = '✓ ' + t('markLearnComplete');
+            btn.className = 'btn btn-outline';
+        } else {
+            progress.completedLearnLessons.splice(idx, 1);
+            btn.textContent = t('markLearnComplete');
+            btn.className = 'btn btn-success';
+        }
+        autoSave();
+    }
+
+    function renderLearnContent(lesson) {
+        let html = '';
+        if (lesson.customContent) {
+            html += renderPronounPlacementLesson();
+        } else {
+            html += `<div class="section"><p style="line-height:1.7">${lesson.intro}</p>`;
+
+            if (lesson.rule) {
+                html += `<div class="learn-rule">${escapeHtml(lesson.rule)}</div>`;
+            }
+
+            if (lesson.endings) {
+                html += `<p style="font-weight:600;margin-top:12px;">${t('learnEndings')}</p>`;
+                html += `<table class="conj-table"><tr><th>${t('pronoun')}</th><th>${t('form')}</th></tr>`;
+                const pronounMap = { yo: 'yo', tu: 'tú', el: 'él/ella', nosotros: 'nosotros', vosotros: 'vosotros', ellos: 'ellos' };
+                Object.entries(lesson.endings).forEach(([p, ending]) => {
+                    html += `<tr><td>${pronounMap[p] || p}</td><td>${escapeHtml(ending)}</td></tr>`;
+                });
+                html += `</table>`;
+            }
+
+            // Show conjugation tables from existing verb data
+            if (lesson.verbs.length > 0) {
+                html += `<p style="font-weight:600;margin-top:12px;">${t('learnExamples')}</p>`;
+                const typeVerbs = conjugationVerbs[lesson.id] || [];
+                lesson.verbs.forEach(verbName => {
+                    const verbData = typeVerbs.find(v => v.verb === verbName);
+                    if (verbData) {
+                        html += `<p style="margin:8px 0 4px;font-weight:500;font-style:italic;">${escapeHtml(verbData.verb)}</p>`;
+                        html += `<table class="conj-table">`;
+                        const isImperative = lesson.id.startsWith('imperative_');
+                        Object.entries(verbData.forms).forEach(([pKey, form]) => {
+                            html += `<tr><td>${escapeHtml(getPronounLabel(pKey, isImperative ? lesson.id : null))}</td><td>${escapeHtml(form)}</td></tr>`;
+                        });
+                        html += `</table>`;
+                    }
+                });
+            }
+            html += `</div>`;
+
+            if (lesson.examples.length > 0) {
+                html += `<div class="section">`;
+                lesson.examples.forEach(ex => {
+                    html += `<div class="learn-example"><span class="es">${escapeHtml(ex.es)}</span><br><span class="en">${escapeHtml(ex.en)}</span></div>`;
+                });
+                html += `</div>`;
+            }
+
+            if (lesson.tip) {
+                html += `<div class="section"><div class="learn-tip"><strong>${t('learnTip')}:</strong> ${escapeHtml(lesson.tip)}</div></div>`;
+            }
+        }
+
+        return html;
+    }
+
+    function renderPronounPlacementLesson() {
+        return `
+            <div class="section">
+            <p style="line-height:1.7">One of the trickiest patterns in Spanish: when pronouns go <strong>before</strong> the verb vs <strong>after</strong> (attached). The key is whether there are <strong>two clauses</strong> or <strong>one clause with an infinitive/gerund</strong>.</p>
+
+            <div class="learn-rule"><strong>Pattern 1: Two clauses with "que" (different subjects)</strong><br>
+            When you want someone ELSE to do something, you need two clauses connected by "que." The second verb must be in the <strong>subjunctive</strong>.</div>
+            <div class="learn-example"><span class="es">Quiero que tú hables español.</span><br><span class="en">I want you to speak Spanish.</span></div>
+            <div class="learn-example"><span class="es">Necesito que ella me ayude.</span><br><span class="en">I need her to help me.</span></div>
+            <div class="learn-example"><span class="es">Prefiero que ellos lo hagan.</span><br><span class="en">I prefer that they do it.</span></div>
+            <div class="learn-example"><span class="es">Espero que vengas a la fiesta.</span><br><span class="en">I hope you come to the party.</span></div>
+            <p style="color:var(--text-muted)">Structure: [Subject1] + [verb1] + <strong>que</strong> + [Subject2] + [subjunctive verb2]</p>
+            </div>
+
+            <div class="section">
+            <div class="learn-rule"><strong>Pattern 2: Same subject + infinitive (pronouns can move)</strong><br>
+            When YOU are doing both actions, there is no "que." Object pronouns can go <strong>before</strong> the conjugated verb OR <strong>attached after</strong> the infinitive.</div>
+            <div class="learn-example"><span class="es">Te lo quiero dar. = Quiero dártelo.</span><br><span class="en">I want to give it to you.</span></div>
+            <div class="learn-example"><span class="es">Se lo puedo explicar. = Puedo explicárselo.</span><br><span class="en">I can explain it to him/her.</span></div>
+            <div class="learn-example"><span class="es">Me lo estoy comiendo. = Estoy comiéndomelo.</span><br><span class="en">I am eating it up.</span></div>
+            <div class="learn-example"><span class="es">Voy a comprarlo. = Lo voy a comprar.</span><br><span class="en">I'm going to buy it.</span></div>
+            <p style="color:var(--text-muted)">Both positions are equally correct. Placing pronouns BEFORE the conjugated verb is more common in everyday speech.</p>
+            </div>
+
+            <div class="section">
+            <div class="learn-rule"><strong>Pattern 3: With gerunds (-ando/-iendo)</strong><br>
+            Pronouns attach to the end of the gerund OR go before the helper verb (estar/seguir/etc.).</div>
+            <div class="learn-example"><span class="es">Estoy haciéndolo. = Lo estoy haciendo.</span><br><span class="en">I'm doing it.</span></div>
+            <div class="learn-example"><span class="es">Sigue explicándome. = Me sigue explicando.</span><br><span class="en">He/She keeps explaining to me.</span></div>
+            <p style="color:var(--text-muted)">When attaching, add an accent to preserve the original stress: haciéndo + lo = haciéndolo.</p>
+            </div>
+
+            <div class="section">
+            <div class="learn-rule"><strong>Pattern 4: With affirmative commands</strong><br>
+            Pronouns MUST attach to the end of affirmative commands. They go BEFORE negative commands.</div>
+            <div class="learn-example"><span class="es">Dímelo. (Tell it to me.)</span><br><span class="en">Affirmative: pronouns attach.</span></div>
+            <div class="learn-example"><span class="es">No me lo digas. (Don't tell it to me.)</span><br><span class="en">Negative: pronouns go before.</span></div>
+            <div class="learn-example"><span class="es">Cómpralo. → No lo compres.</span><br><span class="en">Buy it. → Don't buy it.</span></div>
+            </div>
+
+            <div class="section">
+            <div class="learn-rule"><strong>Pronoun order: when stacking two pronouns</strong><br>
+            When combining indirect (IO) + direct (DO) object pronouns, IO always comes first. "Le/les" becomes "se" before "lo/la/los/las."</div>
+            <table class="conj-table" style="table-layout:auto">
+                <tr><th style="width:auto;white-space:nowrap">IO</th><th style="width:auto;white-space:nowrap">DO</th><th style="width:auto;white-space:nowrap">Combined</th><th style="width:100%">Example</th></tr>
+                <tr><td>me</td><td>lo</td><td>me lo</td><td>Me lo da. (He gives it to me.)</td></tr>
+                <tr><td>te</td><td>la</td><td>te la</td><td>Te la envío. (I send it to you.)</td></tr>
+                <tr><td>le</td><td>lo</td><td><strong>se</strong> lo</td><td>Se lo dije. (I told it to him/her.)</td></tr>
+                <tr><td>nos</td><td>los</td><td>nos los</td><td>Nos los trae. (He brings them to us.)</td></tr>
+            </table>
+            </div>
+
+            <div class="section">
+            <div class="learn-rule"><strong>Quick comparison: que + subjunctive vs infinitive</strong></div>
+            <table class="conj-table">
+                <tr><th>Pattern</th><th>Example</th><th>Why?</th></tr>
+                <tr><td>que + subjunctive</td><td>Quiero <strong>que tú</strong> lo hagas</td><td>Two different subjects</td></tr>
+                <tr><td>infinitive</td><td><strong>Te lo</strong> quiero hacer</td><td>Same subject does both</td></tr>
+                <tr><td>que + subjunctive</td><td>Espero <strong>que ella</strong> venga</td><td>I hope SHE comes</td></tr>
+                <tr><td>infinitive</td><td>Espero poder<strong>lo</strong> hacer</td><td>I hope to do it (myself)</td></tr>
+                <tr><td>gerund</td><td><strong>Se lo</strong> estoy diciendo</td><td>Pronoun before helper</td></tr>
+                <tr><td>command (+)</td><td>Dá<strong>melo</strong></td><td>Attached to affirmative</td></tr>
+                <tr><td>command (-)</td><td>No <strong>me lo</strong> des</td><td>Before negative command</td></tr>
+            </table>
+
+            <div class="learn-tip"><strong>Key test:</strong> Ask "who does the second action?" If it's a DIFFERENT person → use "que" + subjunctive. If it's the SAME person → use infinitive, and pronouns can move. For commands: attach to affirmative, before negative.</div>
+            </div>
+        `;
+    }
+
+    // ==================== CHECK ALL / UNCHECK ALL ====================
+    let conjCheckAllState = 'idle'; // 'idle' | 'confirming'
+    let conjUncheckAllState = 'idle';
+    let conjCheckAllTimer = null;
+    let conjUncheckAllTimer = null;
+
+    function conjCheckAllTap() {
+        const btn = document.getElementById('conjCheckAllBtn');
+        if (conjCheckAllState === 'idle') {
+            conjCheckAllState = 'confirming';
+            btn.textContent = t('areYouSure');
+            btn.style.background = 'var(--warning)';
+            btn.style.color = 'white';
+            btn.style.borderColor = 'var(--warning)';
+            conjCheckAllTimer = setTimeout(() => {
+                conjCheckAllState = 'idle';
+                btn.textContent = t('checkAll');
+                btn.style.background = '';
+                btn.style.color = '';
+                btn.style.borderColor = '';
+            }, 3000);
+        } else {
+            clearTimeout(conjCheckAllTimer);
+            conjCheckAllState = 'idle';
+            btn.textContent = t('checkAll');
+            btn.style.background = '';
+            btn.style.color = '';
+            btn.style.borderColor = '';
+            // Perform check all
+            if (!progress.conjQuizTypes) progress.conjQuizTypes = {};
+            document.querySelectorAll('[data-conj-type]').forEach(cb => {
+                if (!cb.disabled) {
+                    cb.checked = true;
+                    progress.conjQuizTypes[cb.dataset.conjType] = true;
+                }
+            });
+            autoSave();
+        }
+    }
+
+    function conjUncheckAllTap() {
+        const btn = document.getElementById('conjUncheckAllBtn');
+        if (conjUncheckAllState === 'idle') {
+            conjUncheckAllState = 'confirming';
+            btn.textContent = t('areYouSure');
+            btn.style.background = 'var(--warning)';
+            btn.style.color = 'white';
+            btn.style.borderColor = 'var(--warning)';
+            conjUncheckAllTimer = setTimeout(() => {
+                conjUncheckAllState = 'idle';
+                btn.textContent = t('uncheckAll');
+                btn.style.background = '';
+                btn.style.color = '';
+                btn.style.borderColor = '';
+            }, 3000);
+        } else {
+            clearTimeout(conjUncheckAllTimer);
+            conjUncheckAllState = 'idle';
+            btn.textContent = t('uncheckAll');
+            btn.style.background = '';
+            btn.style.color = '';
+            btn.style.borderColor = '';
+            // Perform uncheck all
+            if (!progress.conjQuizTypes) progress.conjQuizTypes = {};
+            document.querySelectorAll('[data-conj-type]').forEach(cb => {
+                if (!cb.disabled) {
+                    cb.checked = false;
+                    progress.conjQuizTypes[cb.dataset.conjType] = false;
+                }
+            });
+            autoSave();
+        }
+    }
+
     // Unique tenses in display order, derived from conjugationTypes
     const lookupTenseOrder = ['present', 'present_perfect', 'preterite', 'imperfect', 'past_perfect', 'future', 'future_perfect', 'conditional', 'conditional_perfect', 'subjunctive', 'subjunctive_imperfect', 'subjunctive_present_perfect', 'subjunctive_pluperfect', 'imperative_affirmative', 'imperative_negative'];
 
     function isLookupTenseVisible(tense) {
+        // Must be unlocked first — locked tenses never show
+        const unlocked = conjugationTypes.some(ct => ct.tense === tense && isConjTypeUnlocked(ct));
+        if (!unlocked) return false;
         const setting = (progress.lookupConjTenses || {})[tense];
         if (setting !== undefined) return setting;
-        // Default: show if any conjugation type with this tense is unlocked
-        return conjugationTypes.some(ct => ct.tense === tense && isConjTypeUnlocked(ct));
+        // Default: show unlocked tenses that have no explicit setting
+        return true;
     }
 
     function toggleLookupConjTense(tense, checked) {
@@ -1606,13 +2407,26 @@
         autoSave();
     }
 
+    function lookupConjCheckAll(checked) {
+        if (!progress.lookupConjTenses) progress.lookupConjTenses = {};
+        lookupTenseOrder.forEach(tense => {
+            const unlocked = conjugationTypes.some(ct => ct.tense === tense && isConjTypeUnlocked(ct));
+            if (unlocked) progress.lookupConjTenses[tense] = checked;
+        });
+        autoSave();
+        renderLookupConjSettings();
+    }
+
     function renderLookupConjSettings() {
         const container = document.getElementById('lookupConjTensesContainer');
         if (!container) return;
-        let html = '';
+        let html = `<div style="display:flex;gap:8px;margin-bottom:10px;">
+            <button class="btn btn-outline" onclick="lookupConjCheckAll(true)" style="font-size:0.8rem;padding:4px 10px;">${t('checkAll')}</button>
+            <button class="btn btn-outline" onclick="lookupConjCheckAll(false)" style="font-size:0.8rem;padding:4px 10px;">${t('uncheckAll')}</button>
+        </div>`;
         lookupTenseOrder.forEach(tense => {
             const unlocked = conjugationTypes.some(ct => ct.tense === tense && isConjTypeUnlocked(ct));
-            const checked = isLookupTenseVisible(tense);
+            const checked = unlocked && isLookupTenseVisible(tense);
             const label = tenseLabels[tense] || tense;
             const unlocksAt = conjugationTypes.find(ct => ct.tense === tense)?.unlocksAt;
             html += `
@@ -1647,6 +2461,9 @@
         updateProgressUI();
         renderConjTypeSelector();
         renderLookupConjSettings();
+        applyLearnTabVisibility();
+        const unlockAllConjCb = document.getElementById('unlockAllConjCheckbox');
+        if (unlockAllConjCb) unlockAllConjCb.checked = progress.unlockAllConj === true;
         setInterval(autoSave, 30000); // Auto-save every 30 seconds
     }
 
@@ -1659,10 +2476,14 @@
                 tab.classList.add('active');
                 document.getElementById(tab.dataset.tab + '-panel').classList.add('active');
                 document.getElementById('lessonView').classList.remove('active');
+                // Close learn view if open
+                document.getElementById('learnView').classList.remove('active');
+                document.getElementById('learnGridContainer').style.display = '';
             });
         });
         // Apply default tab from settings
-        const defaultTab = progress.defaultTab || 'lessons';
+        let defaultTab = progress.defaultTab || 'lessons';
+        if (defaultTab === 'learn' && !progress.showLearnTab) defaultTab = 'lessons';
         const targetTab = document.querySelector(`.tab[data-tab="${defaultTab}"]`);
         if (targetTab) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -1757,6 +2578,19 @@
                 togglePracticeCheck(parseInt(check.dataset.day), parseInt(check.dataset.idx));
             });
         });
+
+        // Update mark complete button state
+        const dayBtn = document.getElementById('markDayCompleteBtn');
+        if (dayBtn) {
+            const dayCompleted = progress.completedDays.includes(day);
+            if (dayCompleted) {
+                dayBtn.textContent = '✓ ' + t('markComplete');
+                dayBtn.className = 'btn btn-outline';
+            } else {
+                dayBtn.textContent = t('markComplete');
+                dayBtn.className = 'btn btn-success';
+            }
+        }
     }
 
     function renderSection(day, key, title, content) {
@@ -1826,7 +2660,8 @@
     }
 
     function markDayComplete() {
-        if (!progress.completedDays.includes(currentDay)) {
+        const idx = progress.completedDays.indexOf(currentDay);
+        if (idx === -1) {
             progress.completedDays.push(currentDay);
             // Also check all sections
             ['phrases', 'grammar', 'vocab', 'dialogue', 'practice'].forEach(section => {
@@ -1839,11 +2674,13 @@
                     progress.practiceChecks[`${currentDay}-${i}`] = true;
                 });
             }
-            renderDayGrid();
-            updateProgressUI();
-            autoSave();
-            alert(`Day ${currentDay} marked as complete!`);
+        } else {
+            progress.completedDays.splice(idx, 1);
         }
+        renderDayGrid();
+        updateProgressUI();
+        autoSave();
+        openLesson(currentDay);
     }
 
     function closeLessonView() {
@@ -2176,6 +3013,10 @@
             { verb: 'poner', forms: { yo: 'puse', tu: 'pusiste', el: 'puso', nosotros: 'pusimos', vosotros: 'pusisteis', ellos: 'pusieron' }},
             { verb: 'preferir', forms: { yo: 'preferi', tu: 'preferiste', el: 'prefirio', nosotros: 'preferimos', vosotros: 'preferisteis', ellos: 'prefirieron' }},
             { verb: 'traer', forms: { yo: 'traje', tu: 'trajiste', el: 'trajo', nosotros: 'trajimos', vosotros: 'trajisteis', ellos: 'trajeron' }},
+            { verb: 'querer', forms: { yo: 'quise', tu: 'quisiste', el: 'quiso', nosotros: 'quisimos', vosotros: 'quisisteis', ellos: 'quisieron' }},
+            { verb: 'saber', forms: { yo: 'supe', tu: 'supiste', el: 'supo', nosotros: 'supimos', vosotros: 'supisteis', ellos: 'supieron' }},
+            { verb: 'salir', forms: { yo: 'sali', tu: 'saliste', el: 'salio', nosotros: 'salimos', vosotros: 'salisteis', ellos: 'salieron' }},
+            { verb: 'conocer', forms: { yo: 'conoci', tu: 'conociste', el: 'conocio', nosotros: 'conocimos', vosotros: 'conocisteis', ellos: 'conocieron' }},
         ],
         imperfect: [
             { verb: 'ser', forms: { yo: 'era', tu: 'eras', el: 'era', nosotros: 'eramos', vosotros: 'erais', ellos: 'eran' }},
@@ -2185,6 +3026,17 @@
             { verb: 'comer', forms: { yo: 'comia', tu: 'comias', el: 'comia', nosotros: 'comiamos', vosotros: 'comiais', ellos: 'comian' }},
             { verb: 'vivir', forms: { yo: 'vivia', tu: 'vivias', el: 'vivia', nosotros: 'viviamos', vosotros: 'viviais', ellos: 'vivian' }},
             { verb: 'tener', forms: { yo: 'tenia', tu: 'tenias', el: 'tenia', nosotros: 'teniamos', vosotros: 'teniais', ellos: 'tenian' }},
+            { verb: 'estar', forms: { yo: 'estaba', tu: 'estabas', el: 'estaba', nosotros: 'estabamos', vosotros: 'estabais', ellos: 'estaban' }},
+            { verb: 'hacer', forms: { yo: 'hacia', tu: 'hacias', el: 'hacia', nosotros: 'haciamos', vosotros: 'haciais', ellos: 'hacian' }},
+            { verb: 'querer', forms: { yo: 'queria', tu: 'querias', el: 'queria', nosotros: 'queriamos', vosotros: 'queriais', ellos: 'querian' }},
+            { verb: 'poder', forms: { yo: 'podia', tu: 'podias', el: 'podia', nosotros: 'podiamos', vosotros: 'podiais', ellos: 'podian' }},
+            { verb: 'decir', forms: { yo: 'decia', tu: 'decias', el: 'decia', nosotros: 'deciamos', vosotros: 'deciais', ellos: 'decian' }},
+            { verb: 'saber', forms: { yo: 'sabia', tu: 'sabias', el: 'sabia', nosotros: 'sabiamos', vosotros: 'sabiais', ellos: 'sabian' }},
+            { verb: 'venir', forms: { yo: 'venia', tu: 'venias', el: 'venia', nosotros: 'veniamos', vosotros: 'veniais', ellos: 'venian' }},
+            { verb: 'dar', forms: { yo: 'daba', tu: 'dabas', el: 'daba', nosotros: 'dabamos', vosotros: 'dabais', ellos: 'daban' }},
+            { verb: 'poner', forms: { yo: 'ponia', tu: 'ponias', el: 'ponia', nosotros: 'poniamos', vosotros: 'poniais', ellos: 'ponian' }},
+            { verb: 'salir', forms: { yo: 'salia', tu: 'salias', el: 'salia', nosotros: 'saliamos', vosotros: 'saliais', ellos: 'salian' }},
+            { verb: 'conocer', forms: { yo: 'conocia', tu: 'conocias', el: 'conocia', nosotros: 'conociamos', vosotros: 'conociais', ellos: 'conocian' }},
         ],
         future: [
             { verb: 'hablar', forms: { yo: 'hablare', tu: 'hablaras', el: 'hablara', nosotros: 'hablaremos', vosotros: 'hablareis', ellos: 'hablaran' }},
@@ -2193,6 +3045,17 @@
             { verb: 'tener', forms: { yo: 'tendre', tu: 'tendras', el: 'tendra', nosotros: 'tendremos', vosotros: 'tendreis', ellos: 'tendran' }},
             { verb: 'poder', forms: { yo: 'podre', tu: 'podras', el: 'podra', nosotros: 'podremos', vosotros: 'podreis', ellos: 'podran' }},
             { verb: 'hacer', forms: { yo: 'hare', tu: 'haras', el: 'hara', nosotros: 'haremos', vosotros: 'hareis', ellos: 'haran' }},
+            { verb: 'ser', forms: { yo: 'sere', tu: 'seras', el: 'sera', nosotros: 'seremos', vosotros: 'sereis', ellos: 'seran' }},
+            { verb: 'estar', forms: { yo: 'estare', tu: 'estaras', el: 'estara', nosotros: 'estaremos', vosotros: 'estareis', ellos: 'estaran' }},
+            { verb: 'ir', forms: { yo: 'ire', tu: 'iras', el: 'ira', nosotros: 'iremos', vosotros: 'ireis', ellos: 'iran' }},
+            { verb: 'querer', forms: { yo: 'querre', tu: 'querras', el: 'querra', nosotros: 'querremos', vosotros: 'querreis', ellos: 'querran' }},
+            { verb: 'decir', forms: { yo: 'dire', tu: 'diras', el: 'dira', nosotros: 'diremos', vosotros: 'direis', ellos: 'diran' }},
+            { verb: 'venir', forms: { yo: 'vendre', tu: 'vendras', el: 'vendra', nosotros: 'vendremos', vosotros: 'vendreis', ellos: 'vendran' }},
+            { verb: 'saber', forms: { yo: 'sabre', tu: 'sabras', el: 'sabra', nosotros: 'sabremos', vosotros: 'sabreis', ellos: 'sabran' }},
+            { verb: 'salir', forms: { yo: 'saldre', tu: 'saldras', el: 'saldra', nosotros: 'saldremos', vosotros: 'saldreis', ellos: 'saldran' }},
+            { verb: 'poner', forms: { yo: 'pondre', tu: 'pondras', el: 'pondra', nosotros: 'pondremos', vosotros: 'pondreis', ellos: 'pondran' }},
+            { verb: 'dar', forms: { yo: 'dare', tu: 'daras', el: 'dara', nosotros: 'daremos', vosotros: 'dareis', ellos: 'daran' }},
+            { verb: 'conocer', forms: { yo: 'conocere', tu: 'conoceras', el: 'conocera', nosotros: 'conoceremos', vosotros: 'conocereis', ellos: 'conoceran' }},
         ],
         conditional: [
             { verb: 'hablar', forms: { yo: 'hablaria', tu: 'hablarias', el: 'hablaria', nosotros: 'hablariamos', vosotros: 'hablariais', ellos: 'hablarian' }},
@@ -2201,6 +3064,18 @@
             { verb: 'tener', forms: { yo: 'tendria', tu: 'tendrias', el: 'tendria', nosotros: 'tendriamos', vosotros: 'tendriais', ellos: 'tendrian' }},
             { verb: 'poder', forms: { yo: 'podria', tu: 'podrias', el: 'podria', nosotros: 'podriamos', vosotros: 'podriais', ellos: 'podrian' }},
             { verb: 'gustar', forms: { yo: 'gustaria', tu: 'gustarias', el: 'gustaria', nosotros: 'gustariamos', vosotros: 'gustariais', ellos: 'gustarian' }},
+            { verb: 'ser', forms: { yo: 'seria', tu: 'serias', el: 'seria', nosotros: 'seriamos', vosotros: 'seriais', ellos: 'serian' }},
+            { verb: 'estar', forms: { yo: 'estaria', tu: 'estarias', el: 'estaria', nosotros: 'estariamos', vosotros: 'estariais', ellos: 'estarian' }},
+            { verb: 'ir', forms: { yo: 'iria', tu: 'irias', el: 'iria', nosotros: 'iriamos', vosotros: 'iriais', ellos: 'irian' }},
+            { verb: 'hacer', forms: { yo: 'haria', tu: 'harias', el: 'haria', nosotros: 'hariamos', vosotros: 'hariais', ellos: 'harian' }},
+            { verb: 'querer', forms: { yo: 'querria', tu: 'querrias', el: 'querria', nosotros: 'querriamos', vosotros: 'querriais', ellos: 'querrian' }},
+            { verb: 'decir', forms: { yo: 'diria', tu: 'dirias', el: 'diria', nosotros: 'diriamos', vosotros: 'diriais', ellos: 'dirian' }},
+            { verb: 'venir', forms: { yo: 'vendria', tu: 'vendrias', el: 'vendria', nosotros: 'vendriamos', vosotros: 'vendriais', ellos: 'vendrian' }},
+            { verb: 'saber', forms: { yo: 'sabria', tu: 'sabrias', el: 'sabria', nosotros: 'sabriamos', vosotros: 'sabriais', ellos: 'sabrian' }},
+            { verb: 'salir', forms: { yo: 'saldria', tu: 'saldrias', el: 'saldria', nosotros: 'saldriamos', vosotros: 'saldriais', ellos: 'saldrian' }},
+            { verb: 'poner', forms: { yo: 'pondria', tu: 'pondrias', el: 'pondria', nosotros: 'pondriamos', vosotros: 'pondriais', ellos: 'pondrian' }},
+            { verb: 'dar', forms: { yo: 'daria', tu: 'darias', el: 'daria', nosotros: 'dariamos', vosotros: 'dariais', ellos: 'darian' }},
+            { verb: 'conocer', forms: { yo: 'conoceria', tu: 'conocerias', el: 'conoceria', nosotros: 'conoceriamos', vosotros: 'conoceriais', ellos: 'conocerian' }},
         ],
         subjunctive_present: [
             { verb: 'hablar', forms: { yo: 'hable', tu: 'hables', el: 'hable', nosotros: 'hablemos', vosotros: 'hableis', ellos: 'hablen' }},
@@ -2209,6 +3084,17 @@
             { verb: 'ser', forms: { yo: 'sea', tu: 'seas', el: 'sea', nosotros: 'seamos', vosotros: 'seais', ellos: 'sean' }},
             { verb: 'ir', forms: { yo: 'vaya', tu: 'vayas', el: 'vaya', nosotros: 'vayamos', vosotros: 'vayais', ellos: 'vayan' }},
             { verb: 'tener', forms: { yo: 'tenga', tu: 'tengas', el: 'tenga', nosotros: 'tengamos', vosotros: 'tengais', ellos: 'tengan' }},
+            { verb: 'estar', forms: { yo: 'este', tu: 'estes', el: 'este', nosotros: 'estemos', vosotros: 'esteis', ellos: 'esten' }},
+            { verb: 'hacer', forms: { yo: 'haga', tu: 'hagas', el: 'haga', nosotros: 'hagamos', vosotros: 'hagais', ellos: 'hagan' }},
+            { verb: 'poder', forms: { yo: 'pueda', tu: 'puedas', el: 'pueda', nosotros: 'podamos', vosotros: 'podais', ellos: 'puedan' }},
+            { verb: 'querer', forms: { yo: 'quiera', tu: 'quieras', el: 'quiera', nosotros: 'queramos', vosotros: 'querais', ellos: 'quieran' }},
+            { verb: 'decir', forms: { yo: 'diga', tu: 'digas', el: 'diga', nosotros: 'digamos', vosotros: 'digais', ellos: 'digan' }},
+            { verb: 'venir', forms: { yo: 'venga', tu: 'vengas', el: 'venga', nosotros: 'vengamos', vosotros: 'vengais', ellos: 'vengan' }},
+            { verb: 'saber', forms: { yo: 'sepa', tu: 'sepas', el: 'sepa', nosotros: 'sepamos', vosotros: 'sepais', ellos: 'sepan' }},
+            { verb: 'dar', forms: { yo: 'de', tu: 'des', el: 'de', nosotros: 'demos', vosotros: 'deis', ellos: 'den' }},
+            { verb: 'poner', forms: { yo: 'ponga', tu: 'pongas', el: 'ponga', nosotros: 'pongamos', vosotros: 'pongais', ellos: 'pongan' }},
+            { verb: 'salir', forms: { yo: 'salga', tu: 'salgas', el: 'salga', nosotros: 'salgamos', vosotros: 'salgais', ellos: 'salgan' }},
+            { verb: 'conocer', forms: { yo: 'conozca', tu: 'conozcas', el: 'conozca', nosotros: 'conozcamos', vosotros: 'conozcais', ellos: 'conozcan' }},
         ],
         // Compound tenses (haber + past participle)
         present_perfect: [
@@ -2219,6 +3105,18 @@
             { verb: 'escribir', forms: { yo: 'he escrito', tu: 'has escrito', el: 'ha escrito', nosotros: 'hemos escrito', vosotros: 'habeis escrito', ellos: 'han escrito' }},
             { verb: 'ver', forms: { yo: 'he visto', tu: 'has visto', el: 'ha visto', nosotros: 'hemos visto', vosotros: 'habeis visto', ellos: 'han visto' }},
             { verb: 'decir', forms: { yo: 'he dicho', tu: 'has dicho', el: 'ha dicho', nosotros: 'hemos dicho', vosotros: 'habeis dicho', ellos: 'han dicho' }},
+            { verb: 'ser', forms: { yo: 'he sido', tu: 'has sido', el: 'ha sido', nosotros: 'hemos sido', vosotros: 'habeis sido', ellos: 'han sido' }},
+            { verb: 'estar', forms: { yo: 'he estado', tu: 'has estado', el: 'ha estado', nosotros: 'hemos estado', vosotros: 'habeis estado', ellos: 'han estado' }},
+            { verb: 'ir', forms: { yo: 'he ido', tu: 'has ido', el: 'ha ido', nosotros: 'hemos ido', vosotros: 'habeis ido', ellos: 'han ido' }},
+            { verb: 'tener', forms: { yo: 'he tenido', tu: 'has tenido', el: 'ha tenido', nosotros: 'hemos tenido', vosotros: 'habeis tenido', ellos: 'han tenido' }},
+            { verb: 'querer', forms: { yo: 'he querido', tu: 'has querido', el: 'ha querido', nosotros: 'hemos querido', vosotros: 'habeis querido', ellos: 'han querido' }},
+            { verb: 'poder', forms: { yo: 'he podido', tu: 'has podido', el: 'ha podido', nosotros: 'hemos podido', vosotros: 'habeis podido', ellos: 'han podido' }},
+            { verb: 'venir', forms: { yo: 'he venido', tu: 'has venido', el: 'ha venido', nosotros: 'hemos venido', vosotros: 'habeis venido', ellos: 'han venido' }},
+            { verb: 'saber', forms: { yo: 'he sabido', tu: 'has sabido', el: 'ha sabido', nosotros: 'hemos sabido', vosotros: 'habeis sabido', ellos: 'han sabido' }},
+            { verb: 'dar', forms: { yo: 'he dado', tu: 'has dado', el: 'ha dado', nosotros: 'hemos dado', vosotros: 'habeis dado', ellos: 'han dado' }},
+            { verb: 'poner', forms: { yo: 'he puesto', tu: 'has puesto', el: 'ha puesto', nosotros: 'hemos puesto', vosotros: 'habeis puesto', ellos: 'han puesto' }},
+            { verb: 'salir', forms: { yo: 'he salido', tu: 'has salido', el: 'ha salido', nosotros: 'hemos salido', vosotros: 'habeis salido', ellos: 'han salido' }},
+            { verb: 'conocer', forms: { yo: 'he conocido', tu: 'has conocido', el: 'ha conocido', nosotros: 'hemos conocido', vosotros: 'habeis conocido', ellos: 'han conocido' }},
         ],
         past_perfect: [
             { verb: 'hablar', forms: { yo: 'habia hablado', tu: 'habias hablado', el: 'habia hablado', nosotros: 'habiamos hablado', vosotros: 'habiais hablado', ellos: 'habian hablado' }},
@@ -2227,6 +3125,18 @@
             { verb: 'hacer', forms: { yo: 'habia hecho', tu: 'habias hecho', el: 'habia hecho', nosotros: 'habiamos hecho', vosotros: 'habiais hecho', ellos: 'habian hecho' }},
             { verb: 'decir', forms: { yo: 'habia dicho', tu: 'habias dicho', el: 'habia dicho', nosotros: 'habiamos dicho', vosotros: 'habiais dicho', ellos: 'habian dicho' }},
             { verb: 'escribir', forms: { yo: 'habia escrito', tu: 'habias escrito', el: 'habia escrito', nosotros: 'habiamos escrito', vosotros: 'habiais escrito', ellos: 'habian escrito' }},
+            { verb: 'ser', forms: { yo: 'habia sido', tu: 'habias sido', el: 'habia sido', nosotros: 'habiamos sido', vosotros: 'habiais sido', ellos: 'habian sido' }},
+            { verb: 'estar', forms: { yo: 'habia estado', tu: 'habias estado', el: 'habia estado', nosotros: 'habiamos estado', vosotros: 'habiais estado', ellos: 'habian estado' }},
+            { verb: 'ir', forms: { yo: 'habia ido', tu: 'habias ido', el: 'habia ido', nosotros: 'habiamos ido', vosotros: 'habiais ido', ellos: 'habian ido' }},
+            { verb: 'tener', forms: { yo: 'habia tenido', tu: 'habias tenido', el: 'habia tenido', nosotros: 'habiamos tenido', vosotros: 'habiais tenido', ellos: 'habian tenido' }},
+            { verb: 'querer', forms: { yo: 'habia querido', tu: 'habias querido', el: 'habia querido', nosotros: 'habiamos querido', vosotros: 'habiais querido', ellos: 'habian querido' }},
+            { verb: 'poder', forms: { yo: 'habia podido', tu: 'habias podido', el: 'habia podido', nosotros: 'habiamos podido', vosotros: 'habiais podido', ellos: 'habian podido' }},
+            { verb: 'venir', forms: { yo: 'habia venido', tu: 'habias venido', el: 'habia venido', nosotros: 'habiamos venido', vosotros: 'habiais venido', ellos: 'habian venido' }},
+            { verb: 'saber', forms: { yo: 'habia sabido', tu: 'habias sabido', el: 'habia sabido', nosotros: 'habiamos sabido', vosotros: 'habiais sabido', ellos: 'habian sabido' }},
+            { verb: 'poner', forms: { yo: 'habia puesto', tu: 'habias puesto', el: 'habia puesto', nosotros: 'habiamos puesto', vosotros: 'habiais puesto', ellos: 'habian puesto' }},
+            { verb: 'dar', forms: { yo: 'habia dado', tu: 'habias dado', el: 'habia dado', nosotros: 'habiamos dado', vosotros: 'habiais dado', ellos: 'habian dado' }},
+            { verb: 'salir', forms: { yo: 'habia salido', tu: 'habias salido', el: 'habia salido', nosotros: 'habiamos salido', vosotros: 'habiais salido', ellos: 'habian salido' }},
+            { verb: 'conocer', forms: { yo: 'habia conocido', tu: 'habias conocido', el: 'habia conocido', nosotros: 'habiamos conocido', vosotros: 'habiais conocido', ellos: 'habian conocido' }},
         ],
         future_perfect: [
             { verb: 'hablar', forms: { yo: 'habre hablado', tu: 'habras hablado', el: 'habra hablado', nosotros: 'habremos hablado', vosotros: 'habreis hablado', ellos: 'habran hablado' }},
@@ -2234,6 +3144,18 @@
             { verb: 'vivir', forms: { yo: 'habre vivido', tu: 'habras vivido', el: 'habra vivido', nosotros: 'habremos vivido', vosotros: 'habreis vivido', ellos: 'habran vivido' }},
             { verb: 'hacer', forms: { yo: 'habre hecho', tu: 'habras hecho', el: 'habra hecho', nosotros: 'habremos hecho', vosotros: 'habreis hecho', ellos: 'habran hecho' }},
             { verb: 'escribir', forms: { yo: 'habre escrito', tu: 'habras escrito', el: 'habra escrito', nosotros: 'habremos escrito', vosotros: 'habreis escrito', ellos: 'habran escrito' }},
+            { verb: 'ser', forms: { yo: 'habre sido', tu: 'habras sido', el: 'habra sido', nosotros: 'habremos sido', vosotros: 'habreis sido', ellos: 'habran sido' }},
+            { verb: 'estar', forms: { yo: 'habre estado', tu: 'habras estado', el: 'habra estado', nosotros: 'habremos estado', vosotros: 'habreis estado', ellos: 'habran estado' }},
+            { verb: 'ir', forms: { yo: 'habre ido', tu: 'habras ido', el: 'habra ido', nosotros: 'habremos ido', vosotros: 'habreis ido', ellos: 'habran ido' }},
+            { verb: 'tener', forms: { yo: 'habre tenido', tu: 'habras tenido', el: 'habra tenido', nosotros: 'habremos tenido', vosotros: 'habreis tenido', ellos: 'habran tenido' }},
+            { verb: 'querer', forms: { yo: 'habre querido', tu: 'habras querido', el: 'habra querido', nosotros: 'habremos querido', vosotros: 'habreis querido', ellos: 'habran querido' }},
+            { verb: 'poder', forms: { yo: 'habre podido', tu: 'habras podido', el: 'habra podido', nosotros: 'habremos podido', vosotros: 'habreis podido', ellos: 'habran podido' }},
+            { verb: 'venir', forms: { yo: 'habre venido', tu: 'habras venido', el: 'habra venido', nosotros: 'habremos venido', vosotros: 'habreis venido', ellos: 'habran venido' }},
+            { verb: 'saber', forms: { yo: 'habre sabido', tu: 'habras sabido', el: 'habra sabido', nosotros: 'habremos sabido', vosotros: 'habreis sabido', ellos: 'habran sabido' }},
+            { verb: 'poner', forms: { yo: 'habre puesto', tu: 'habras puesto', el: 'habra puesto', nosotros: 'habremos puesto', vosotros: 'habreis puesto', ellos: 'habran puesto' }},
+            { verb: 'dar', forms: { yo: 'habre dado', tu: 'habras dado', el: 'habra dado', nosotros: 'habremos dado', vosotros: 'habreis dado', ellos: 'habran dado' }},
+            { verb: 'salir', forms: { yo: 'habre salido', tu: 'habras salido', el: 'habra salido', nosotros: 'habremos salido', vosotros: 'habreis salido', ellos: 'habran salido' }},
+            { verb: 'conocer', forms: { yo: 'habre conocido', tu: 'habras conocido', el: 'habra conocido', nosotros: 'habremos conocido', vosotros: 'habreis conocido', ellos: 'habran conocido' }},
         ],
         conditional_perfect: [
             { verb: 'hablar', forms: { yo: 'habria hablado', tu: 'habrias hablado', el: 'habria hablado', nosotros: 'habriamos hablado', vosotros: 'habriais hablado', ellos: 'habrian hablado' }},
@@ -2241,6 +3163,17 @@
             { verb: 'vivir', forms: { yo: 'habria vivido', tu: 'habrias vivido', el: 'habria vivido', nosotros: 'habriamos vivido', vosotros: 'habriais vivido', ellos: 'habrian vivido' }},
             { verb: 'hacer', forms: { yo: 'habria hecho', tu: 'habrias hecho', el: 'habria hecho', nosotros: 'habriamos hecho', vosotros: 'habriais hecho', ellos: 'habrian hecho' }},
             { verb: 'poder', forms: { yo: 'habria podido', tu: 'habrias podido', el: 'habria podido', nosotros: 'habriamos podido', vosotros: 'habriais podido', ellos: 'habrian podido' }},
+            { verb: 'ser', forms: { yo: 'habria sido', tu: 'habrias sido', el: 'habria sido', nosotros: 'habriamos sido', vosotros: 'habriais sido', ellos: 'habrian sido' }},
+            { verb: 'estar', forms: { yo: 'habria estado', tu: 'habrias estado', el: 'habria estado', nosotros: 'habriamos estado', vosotros: 'habriais estado', ellos: 'habrian estado' }},
+            { verb: 'ir', forms: { yo: 'habria ido', tu: 'habrias ido', el: 'habria ido', nosotros: 'habriamos ido', vosotros: 'habriais ido', ellos: 'habrian ido' }},
+            { verb: 'tener', forms: { yo: 'habria tenido', tu: 'habrias tenido', el: 'habria tenido', nosotros: 'habriamos tenido', vosotros: 'habriais tenido', ellos: 'habrian tenido' }},
+            { verb: 'querer', forms: { yo: 'habria querido', tu: 'habrias querido', el: 'habria querido', nosotros: 'habriamos querido', vosotros: 'habriais querido', ellos: 'habrian querido' }},
+            { verb: 'venir', forms: { yo: 'habria venido', tu: 'habrias venido', el: 'habria venido', nosotros: 'habriamos venido', vosotros: 'habriais venido', ellos: 'habrian venido' }},
+            { verb: 'saber', forms: { yo: 'habria sabido', tu: 'habrias sabido', el: 'habria sabido', nosotros: 'habriamos sabido', vosotros: 'habriais sabido', ellos: 'habrian sabido' }},
+            { verb: 'poner', forms: { yo: 'habria puesto', tu: 'habrias puesto', el: 'habria puesto', nosotros: 'habriamos puesto', vosotros: 'habriais puesto', ellos: 'habrian puesto' }},
+            { verb: 'dar', forms: { yo: 'habria dado', tu: 'habrias dado', el: 'habria dado', nosotros: 'habriamos dado', vosotros: 'habriais dado', ellos: 'habrian dado' }},
+            { verb: 'salir', forms: { yo: 'habria salido', tu: 'habrias salido', el: 'habria salido', nosotros: 'habriamos salido', vosotros: 'habriais salido', ellos: 'habrian salido' }},
+            { verb: 'conocer', forms: { yo: 'habria conocido', tu: 'habrias conocido', el: 'habria conocido', nosotros: 'habriamos conocido', vosotros: 'habriais conocido', ellos: 'habrian conocido' }},
         ],
         // Subjunctive mood
         subjunctive_imperfect: [
@@ -2251,6 +3184,16 @@
             { verb: 'tener', forms: { yo: 'tuviera', tu: 'tuvieras', el: 'tuviera', nosotros: 'tuvieramos', vosotros: 'tuvierais', ellos: 'tuvieran' }},
             { verb: 'poder', forms: { yo: 'pudiera', tu: 'pudieras', el: 'pudiera', nosotros: 'pudieramos', vosotros: 'pudierais', ellos: 'pudieran' }},
             { verb: 'hacer', forms: { yo: 'hiciera', tu: 'hicieras', el: 'hiciera', nosotros: 'hicieramos', vosotros: 'hicierais', ellos: 'hicieran' }},
+            { verb: 'estar', forms: { yo: 'estuviera', tu: 'estuvieras', el: 'estuviera', nosotros: 'estuvieramos', vosotros: 'estuvierais', ellos: 'estuvieran' }},
+            { verb: 'ir', forms: { yo: 'fuera', tu: 'fueras', el: 'fuera', nosotros: 'fueramos', vosotros: 'fuerais', ellos: 'fueran' }},
+            { verb: 'querer', forms: { yo: 'quisiera', tu: 'quisieras', el: 'quisiera', nosotros: 'quisieramos', vosotros: 'quisierais', ellos: 'quisieran' }},
+            { verb: 'decir', forms: { yo: 'dijera', tu: 'dijeras', el: 'dijera', nosotros: 'dijeramos', vosotros: 'dijerais', ellos: 'dijeran' }},
+            { verb: 'venir', forms: { yo: 'viniera', tu: 'vinieras', el: 'viniera', nosotros: 'vinieramos', vosotros: 'vinierais', ellos: 'vinieran' }},
+            { verb: 'saber', forms: { yo: 'supiera', tu: 'supieras', el: 'supiera', nosotros: 'supieramos', vosotros: 'supierais', ellos: 'supieran' }},
+            { verb: 'dar', forms: { yo: 'diera', tu: 'dieras', el: 'diera', nosotros: 'dieramos', vosotros: 'dierais', ellos: 'dieran' }},
+            { verb: 'poner', forms: { yo: 'pusiera', tu: 'pusieras', el: 'pusiera', nosotros: 'pusieramos', vosotros: 'pusierais', ellos: 'pusieran' }},
+            { verb: 'salir', forms: { yo: 'saliera', tu: 'salieras', el: 'saliera', nosotros: 'salieramos', vosotros: 'salierais', ellos: 'salieran' }},
+            { verb: 'conocer', forms: { yo: 'conociera', tu: 'conocieras', el: 'conociera', nosotros: 'conocieramos', vosotros: 'conocierais', ellos: 'conocieran' }},
         ],
         subjunctive_present_perfect: [
             { verb: 'hablar', forms: { yo: 'haya hablado', tu: 'hayas hablado', el: 'haya hablado', nosotros: 'hayamos hablado', vosotros: 'hayais hablado', ellos: 'hayan hablado' }},
@@ -2258,6 +3201,18 @@
             { verb: 'vivir', forms: { yo: 'haya vivido', tu: 'hayas vivido', el: 'haya vivido', nosotros: 'hayamos vivido', vosotros: 'hayais vivido', ellos: 'hayan vivido' }},
             { verb: 'hacer', forms: { yo: 'haya hecho', tu: 'hayas hecho', el: 'haya hecho', nosotros: 'hayamos hecho', vosotros: 'hayais hecho', ellos: 'hayan hecho' }},
             { verb: 'escribir', forms: { yo: 'haya escrito', tu: 'hayas escrito', el: 'haya escrito', nosotros: 'hayamos escrito', vosotros: 'hayais escrito', ellos: 'hayan escrito' }},
+            { verb: 'ser', forms: { yo: 'haya sido', tu: 'hayas sido', el: 'haya sido', nosotros: 'hayamos sido', vosotros: 'hayais sido', ellos: 'hayan sido' }},
+            { verb: 'estar', forms: { yo: 'haya estado', tu: 'hayas estado', el: 'haya estado', nosotros: 'hayamos estado', vosotros: 'hayais estado', ellos: 'hayan estado' }},
+            { verb: 'ir', forms: { yo: 'haya ido', tu: 'hayas ido', el: 'haya ido', nosotros: 'hayamos ido', vosotros: 'hayais ido', ellos: 'hayan ido' }},
+            { verb: 'tener', forms: { yo: 'haya tenido', tu: 'hayas tenido', el: 'haya tenido', nosotros: 'hayamos tenido', vosotros: 'hayais tenido', ellos: 'hayan tenido' }},
+            { verb: 'querer', forms: { yo: 'haya querido', tu: 'hayas querido', el: 'haya querido', nosotros: 'hayamos querido', vosotros: 'hayais querido', ellos: 'hayan querido' }},
+            { verb: 'poder', forms: { yo: 'haya podido', tu: 'hayas podido', el: 'haya podido', nosotros: 'hayamos podido', vosotros: 'hayais podido', ellos: 'hayan podido' }},
+            { verb: 'venir', forms: { yo: 'haya venido', tu: 'hayas venido', el: 'haya venido', nosotros: 'hayamos venido', vosotros: 'hayais venido', ellos: 'hayan venido' }},
+            { verb: 'saber', forms: { yo: 'haya sabido', tu: 'hayas sabido', el: 'haya sabido', nosotros: 'hayamos sabido', vosotros: 'hayais sabido', ellos: 'hayan sabido' }},
+            { verb: 'poner', forms: { yo: 'haya puesto', tu: 'hayas puesto', el: 'haya puesto', nosotros: 'hayamos puesto', vosotros: 'hayais puesto', ellos: 'hayan puesto' }},
+            { verb: 'dar', forms: { yo: 'haya dado', tu: 'hayas dado', el: 'haya dado', nosotros: 'hayamos dado', vosotros: 'hayais dado', ellos: 'hayan dado' }},
+            { verb: 'salir', forms: { yo: 'haya salido', tu: 'hayas salido', el: 'haya salido', nosotros: 'hayamos salido', vosotros: 'hayais salido', ellos: 'hayan salido' }},
+            { verb: 'conocer', forms: { yo: 'haya conocido', tu: 'hayas conocido', el: 'haya conocido', nosotros: 'hayamos conocido', vosotros: 'hayais conocido', ellos: 'hayan conocido' }},
         ],
         subjunctive_pluperfect: [
             { verb: 'hablar', forms: { yo: 'hubiera hablado', tu: 'hubieras hablado', el: 'hubiera hablado', nosotros: 'hubieramos hablado', vosotros: 'hubierais hablado', ellos: 'hubieran hablado' }},
@@ -2265,6 +3220,18 @@
             { verb: 'vivir', forms: { yo: 'hubiera vivido', tu: 'hubieras vivido', el: 'hubiera vivido', nosotros: 'hubieramos vivido', vosotros: 'hubierais vivido', ellos: 'hubieran vivido' }},
             { verb: 'hacer', forms: { yo: 'hubiera hecho', tu: 'hubieras hecho', el: 'hubiera hecho', nosotros: 'hubieramos hecho', vosotros: 'hubierais hecho', ellos: 'hubieran hecho' }},
             { verb: 'decir', forms: { yo: 'hubiera dicho', tu: 'hubieras dicho', el: 'hubiera dicho', nosotros: 'hubieramos dicho', vosotros: 'hubierais dicho', ellos: 'hubieran dicho' }},
+            { verb: 'ser', forms: { yo: 'hubiera sido', tu: 'hubieras sido', el: 'hubiera sido', nosotros: 'hubieramos sido', vosotros: 'hubierais sido', ellos: 'hubieran sido' }},
+            { verb: 'estar', forms: { yo: 'hubiera estado', tu: 'hubieras estado', el: 'hubiera estado', nosotros: 'hubieramos estado', vosotros: 'hubierais estado', ellos: 'hubieran estado' }},
+            { verb: 'ir', forms: { yo: 'hubiera ido', tu: 'hubieras ido', el: 'hubiera ido', nosotros: 'hubieramos ido', vosotros: 'hubierais ido', ellos: 'hubieran ido' }},
+            { verb: 'tener', forms: { yo: 'hubiera tenido', tu: 'hubieras tenido', el: 'hubiera tenido', nosotros: 'hubieramos tenido', vosotros: 'hubierais tenido', ellos: 'hubieran tenido' }},
+            { verb: 'querer', forms: { yo: 'hubiera querido', tu: 'hubieras querido', el: 'hubiera querido', nosotros: 'hubieramos querido', vosotros: 'hubierais querido', ellos: 'hubieran querido' }},
+            { verb: 'poder', forms: { yo: 'hubiera podido', tu: 'hubieras podido', el: 'hubiera podido', nosotros: 'hubieramos podido', vosotros: 'hubierais podido', ellos: 'hubieran podido' }},
+            { verb: 'venir', forms: { yo: 'hubiera venido', tu: 'hubieras venido', el: 'hubiera venido', nosotros: 'hubieramos venido', vosotros: 'hubierais venido', ellos: 'hubieran venido' }},
+            { verb: 'saber', forms: { yo: 'hubiera sabido', tu: 'hubieras sabido', el: 'hubiera sabido', nosotros: 'hubieramos sabido', vosotros: 'hubierais sabido', ellos: 'hubieran sabido' }},
+            { verb: 'poner', forms: { yo: 'hubiera puesto', tu: 'hubieras puesto', el: 'hubiera puesto', nosotros: 'hubieramos puesto', vosotros: 'hubierais puesto', ellos: 'hubieran puesto' }},
+            { verb: 'dar', forms: { yo: 'hubiera dado', tu: 'hubieras dado', el: 'hubiera dado', nosotros: 'hubieramos dado', vosotros: 'hubierais dado', ellos: 'hubieran dado' }},
+            { verb: 'salir', forms: { yo: 'hubiera salido', tu: 'hubieras salido', el: 'hubiera salido', nosotros: 'hubieramos salido', vosotros: 'hubierais salido', ellos: 'hubieran salido' }},
+            { verb: 'conocer', forms: { yo: 'hubiera conocido', tu: 'hubieras conocido', el: 'hubiera conocido', nosotros: 'hubieramos conocido', vosotros: 'hubierais conocido', ellos: 'hubieran conocido' }},
         ],
         // Imperative (no yo form; el=usted, ellos=ustedes)
         imperative_affirmative: [
@@ -2314,6 +3281,7 @@
 
     // Check if a conjugation type is unlocked
     function isConjTypeUnlocked(type) {
+        if (progress.unlockAllConj) return true;
         const maxDay = getMaxCompletedDay();
         return maxDay >= type.unlocksAt || progress.completedDays.includes(type.unlocksAt);
     }
@@ -2323,17 +3291,18 @@
         const container = document.getElementById('conjTypeSelector');
         if (!container) return;
 
-        const maxDay = getMaxCompletedDay();
+        const saved = progress.conjQuizTypes || {};
         let html = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">';
 
         conjugationTypes.forEach(type => {
             const unlocked = isConjTypeUnlocked(type);
-            const defaultChecked = unlocked; // Auto-check if unlocked
             const disabled = !unlocked;
+            // Use saved preference if set, otherwise default to checked if unlocked
+            const checked = unlocked && (saved[type.id] !== undefined ? saved[type.id] : true);
 
             html += `
                 <label style="display:flex;align-items:center;gap:5px;padding:6px 10px;background:${unlocked ? 'var(--card)' : '#f3f4f6'};border:1px solid var(--border);border-radius:6px;cursor:${unlocked ? 'pointer' : 'not-allowed'};opacity:${unlocked ? '1' : '0.5'};font-size:0.85rem">
-                    <input type="checkbox" data-conj-type="${type.id}" ${defaultChecked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
+                    <input type="checkbox" data-conj-type="${type.id}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''} onchange="saveConjQuizType('${type.id}', this.checked)">
                     ${type.label}
                     ${!unlocked ? `<span style="font-size:0.75rem;color:var(--text-muted)">(${t('day')} ${type.unlocksAt})</span>` : ''}
                 </label>
@@ -2344,6 +3313,12 @@
         html += `<p style="font-size:0.8rem;color:var(--text-muted);margin:0">${t('completeToUnlock')}</p>`;
 
         container.innerHTML = html;
+    }
+
+    function saveConjQuizType(typeId, checked) {
+        if (!progress.conjQuizTypes) progress.conjQuizTypes = {};
+        progress.conjQuizTypes[typeId] = checked;
+        autoSave();
     }
 
     function selectConjCount(btn, count) {
@@ -2979,10 +3954,23 @@
                 matchedKeys.add(es);
             }
         });
-        // Also match conjugated forms / clitic forms → show the infinitive verb
+        // Also match conjugated forms → show the infinitive verb
+        // Exact resolution (handles clitics, accent stripping, etc.)
         const resolved = resolveWord(q);
         if (resolved && !matchedKeys.has(resolved) && wordDictionary.has(resolved)) {
             matches.push({ entry: wordDictionary.get(resolved), score: 2.5 });
+            matchedKeys.add(resolved);
+        }
+        // Partial matching against all conjugated forms (e.g., "quier" → "quiero" → "querer")
+        if (q.length >= 3) {
+            conjugatedFormIndex.forEach((infinitive, form) => {
+                if (!matchedKeys.has(infinitive) && form.startsWith(q)) {
+                    if (wordDictionary.has(infinitive)) {
+                        matches.push({ entry: wordDictionary.get(infinitive), score: 2 });
+                        matchedKeys.add(infinitive);
+                    }
+                }
+            });
         }
 
         matches.sort((a, b) => b.score - a.score);
@@ -3053,6 +4041,17 @@
     window.closeWordModal = closeWordModal;
     window.filterWordLookup = filterWordLookup;
     window.toggleLookupConjTense = toggleLookupConjTense;
+    window.toggleLearnTab = toggleLearnTab;
+    window.toggleUnlockAllConj = toggleUnlockAllConj;
+    window.lookupConjCheckAll = lookupConjCheckAll;
+    window.openLearnLesson = openLearnLesson;
+    window.closeLearnView = closeLearnView;
+    window.prevLearnLesson = prevLearnLesson;
+    window.nextLearnLesson = nextLearnLesson;
+    window.markLearnComplete = markLearnComplete;
+    window.conjCheckAllTap = conjCheckAllTap;
+    window.conjUncheckAllTap = conjUncheckAllTap;
+    window.saveConjQuizType = saveConjQuizType;
 
     init();
     </script>

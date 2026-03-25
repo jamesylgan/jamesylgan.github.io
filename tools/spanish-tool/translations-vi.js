@@ -74,6 +74,7 @@ const translationsVI = {
     backToDays: 'Quay lại danh sách',
     next: 'Tiếp →',
     markComplete: 'Đánh dấu hoàn thành',
+    markLearnComplete: 'Đánh dấu xong',
     keyPhrases: 'Cụm từ chính',
     grammarBite: 'Ngữ pháp cơ bản',
     speakFirstWords: 'Từ vựng nói đầu tiên',
@@ -112,6 +113,21 @@ const translationsVI = {
     form: 'Dạng',
     verb: 'động từ',
     conjNotAvailable: 'Chưa có dữ liệu chia động từ cho từ này.',
+
+    // Learn tab
+    tabLearn: 'Học',
+    showLearnTab: 'Hiện tab Học (tham khảo nhanh chia động từ)',
+    unlockAllConj: 'Mở khóa tất cả chia động từ cho quiz & tra cứu mà không cần hoàn thành bài học',
+    learnTitle: 'Tham khảo nhanh chia động từ',
+    learnDesc: 'Bài học một trang cho mỗi dạng chia động từ. Nhấn để mở.',
+    learnEndings: 'Đuôi động từ',
+    learnExamples: 'Ví dụ',
+    learnTip: 'Mẹo',
+
+    // Check All / Uncheck All
+    checkAll: 'Chọn tất cả',
+    uncheckAll: 'Bỏ chọn tất cả',
+    areYouSure: 'Bạn chắc chứ?',
   },
 
   // Lesson content translations (Days 1-45)
