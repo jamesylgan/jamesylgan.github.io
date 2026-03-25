@@ -1362,8 +1362,8 @@ function loadTasks() {
                 const st = savedMap.get(dt.id);
                 return st ? { ...dt, done: st.done, notes: st.notes } : { ...dt };
             });
-            // Preserve custom tasks
-            parsed.filter(t => !defaults.find(d => d.id === t.id)).forEach(t => {
+            // Preserve user-created custom tasks only (IDs start with 'tc')
+            parsed.filter(t => t.id.startsWith('tc') && !defaults.find(d => d.id === t.id)).forEach(t => {
                 tasks.push({ ...t });
             });
         } catch(e) {
