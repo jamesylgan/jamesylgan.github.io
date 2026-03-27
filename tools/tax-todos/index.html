@@ -340,6 +340,99 @@
         }
         .toast.show { opacity: 1; }
 
+        /* Account worksheet */
+        .acct-summary { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+        .acct-card {
+            flex: 1; min-width: 180px; padding: 14px 16px; border-radius: 8px;
+            border: 1px solid var(--border); background: var(--bg-card);
+        }
+        .acct-card-title {
+            font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+            color: var(--text-dim); margin-bottom: 6px; font-weight: 600;
+        }
+        .acct-card-status { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+        .acct-card-detail { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+        .acct-card.required { border-color: var(--red); }
+        .acct-card.required .acct-card-status { color: var(--red); }
+        .acct-card.not-required { border-color: var(--green); }
+        .acct-card.not-required .acct-card-status { color: var(--green); }
+        .acct-card.na { opacity: 0.5; }
+        .acct-card.na .acct-card-status { color: var(--text-dim); }
+        .acct-card.us-card { display: none; }
+        .us-mode .acct-card.us-card { display: block; }
+
+        .acct-section-title {
+            font-size: 15px; font-weight: 600; margin: 24px 0 12px; color: var(--text);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .acct-add-btn {
+            padding: 5px 14px; border-radius: 6px; border: 1px dashed var(--border);
+            background: transparent; color: var(--text-muted); cursor: pointer; font-size: 12px;
+        }
+        .acct-add-btn:hover { background: var(--border-light); color: var(--text); }
+
+        .acct-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 8px; }
+        .acct-table th {
+            background: var(--bg-surface); padding: 8px 10px; text-align: left;
+            border-bottom: 2px solid var(--accent); font-weight: 600; font-size: 12px;
+            color: var(--text-muted); white-space: nowrap;
+        }
+        .acct-table td {
+            padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: middle;
+        }
+        .acct-table tr:hover td { background: rgba(59,130,246,.04); }
+        .acct-table input[type="number"] {
+            width: 110px; padding: 4px 8px; border: 1px solid var(--border);
+            border-radius: 4px; background: var(--bg-surface); color: var(--text);
+            font-size: 13px; text-align: right;
+        }
+        .acct-table input[type="number"]:focus { border-color: var(--accent); outline: none; }
+        .acct-actions { display: flex; gap: 4px; }
+        .acct-actions button {
+            padding: 3px 8px; border: none; border-radius: 4px;
+            background: transparent; cursor: pointer; font-size: 12px; color: var(--text-dim);
+        }
+        .acct-actions button:hover { background: var(--border-light); color: var(--text); }
+        .acct-actions .del-btn:hover { color: var(--red); background: rgba(248,113,113,.1); }
+
+        .acct-rate-row {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+            font-size: 13px; color: var(--text-muted); flex-wrap: wrap;
+        }
+        .acct-rate-row input {
+            width: 90px; padding: 4px 8px; border: 1px solid var(--border);
+            border-radius: 4px; background: var(--bg-surface); color: var(--text);
+            font-size: 13px; text-align: center;
+        }
+        .acct-rate-row input:focus { border-color: var(--accent); outline: none; }
+
+        .acct-empty {
+            text-align: center; padding: 32px; color: var(--text-dim);
+            border: 1px dashed var(--border); border-radius: 8px; margin: 12px 0;
+        }
+        .matrix-check { color: var(--red); font-weight: 600; }
+        .matrix-dash { color: var(--text-dim); }
+
+        .acct-modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100;
+        }
+        .acct-modal-overlay.open { display: flex; align-items: center; justify-content: center; }
+        .acct-modal {
+            background: var(--bg-card); border-radius: 12px; padding: 24px;
+            width: 90%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+        .acct-modal h2 { font-size: 1.1rem; margin-bottom: 16px; }
+        .acct-modal .field { padding: 10px 0; border-bottom: 1px solid var(--border-light); }
+        .acct-modal .field:last-of-type { border-bottom: none; }
+        .acct-modal .field label {
+            display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: var(--text);
+        }
+        .acct-modal .field input,
+        .acct-modal .field select {
+            padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px;
+            font-size: 13px; background: var(--bg-surface); color: var(--text); width: 100%;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .sidebar { width: 200px; min-width: 200px; }
@@ -363,6 +456,7 @@
         <div class="view-tabs">
             <button class="view-tab active" onclick="switchView('doc')">Guide</button>
             <button class="view-tab" onclick="switchView('tasks')">Checklist</button>
+            <button class="view-tab" onclick="switchView('accounts')">Accounts</button>
         </div>
     </div>
 </div>
@@ -400,6 +494,45 @@
         <div class="settings-actions">
             <button class="btn-settings-cancel" onclick="closeSettings()">Cancel</button>
             <button class="btn-settings-save" onclick="saveSettings()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Account modal -->
+<div class="acct-modal-overlay" id="acct-modal-overlay" onclick="if(event.target===this)closeAcctModal()">
+    <div class="acct-modal">
+        <h2 id="acct-modal-title">Add Account</h2>
+        <input type="hidden" id="acct-edit-id" value="">
+        <div class="field">
+            <label>Account Name</label>
+            <input type="text" id="acct-name" placeholder="e.g. CaixaBank Checking">
+        </div>
+        <div class="field">
+            <label>Country</label>
+            <input type="text" id="acct-country" placeholder="e.g. Spain, US, UK">
+        </div>
+        <div class="field">
+            <label>Account Type</label>
+            <select id="acct-type">
+                <option value="bank">Bank Account</option>
+                <option value="securities">Brokerage / Securities</option>
+                <option value="pension">Pension / Retirement</option>
+                <option value="real-estate">Real Estate</option>
+                <option value="other">Other Financial</option>
+            </select>
+        </div>
+        <div class="field">
+            <label>Currency</label>
+            <select id="acct-currency">
+                <option value="EUR">EUR</option>
+                <option value="USD">USD</option>
+                <option value="GBP">GBP</option>
+                <option value="OTHER">Other</option>
+            </select>
+        </div>
+        <div class="settings-actions">
+            <button class="btn-settings-cancel" onclick="closeAcctModal()">Cancel</button>
+            <button class="btn-settings-save" onclick="saveAcctModal()">Save</button>
         </div>
     </div>
 </div>
@@ -815,6 +948,11 @@
     <div class="content content-wide" id="tasks-content"></div>
 </div>
 
+<!-- ===== ACCOUNTS VIEW ===== -->
+<div class="tasks-container" id="accounts-view">
+    <div class="content content-wide" id="accounts-content" style="max-width:950px"></div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -827,6 +965,12 @@
         const tabs = document.querySelectorAll('.view-tab');
         tabs[0].classList.remove('active');
         tabs[1].classList.add('active');
+    } else if (v === 'accounts') {
+        document.getElementById('doc-view').style.display = 'none';
+        document.getElementById('accounts-view').style.display = 'flex';
+        const tabs = document.querySelectorAll('.view-tab');
+        tabs[0].classList.remove('active');
+        tabs[2].classList.add('active');
     }
 })();
 </script>
@@ -839,6 +983,7 @@ const VIEW_KEY = 'tax-todos-view';
 const SECTION_KEY = 'tax-todos-section';
 const TASK_CAT_KEY = 'tax-todos-task-cat';
 const SETTINGS_KEY = 'tax-todos-settings';
+const ACCOUNTS_KEY = 'tax-todos-accounts';
 
 // ── Settings ────────────────────────────────────────────────────────────
 function loadSettings() {
@@ -890,6 +1035,9 @@ function saveSettings() {
     renderDynamicGuide();
     if (document.getElementById('tasks-view').classList.contains('active')) {
         renderTasks();
+    }
+    if (document.getElementById('accounts-view').classList.contains('active')) {
+        renderAccounts();
     }
     toast('Settings saved');
 }
@@ -1256,6 +1404,349 @@ let usMode = false;
 let activeSection = 'overview';
 let activeCategory = 'all';
 
+// ── Account worksheet ────────────────────────────────────────────────────
+const ACCT_TYPE_LABELS = {
+    bank: 'Bank Account',
+    securities: 'Brokerage / Securities',
+    pension: 'Pension / Retirement',
+    'real-estate': 'Real Estate',
+    other: 'Other Financial'
+};
+
+function loadAccountsData() {
+    try { return JSON.parse(localStorage.getItem(ACCOUNTS_KEY)) || { accounts: [], yearRates: {} }; }
+    catch(e) { return { accounts: [], yearRates: {} }; }
+}
+
+function saveAccountsData(data) {
+    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(data));
+}
+
+function isUSCountry(country) {
+    return /^(us|usa|united\s*states|u\.s\.?a?\.?)$/i.test((country || '').trim());
+}
+
+function isSpanishCountry(country) {
+    return /^(spain|espa[ñn]a|es)$/i.test((country || '').trim());
+}
+
+function convertToUSD(amount, currency, rates) {
+    if (!amount) return 0;
+    const c = (currency || 'USD').toUpperCase();
+    if (c === 'USD') return amount;
+    if (c === 'EUR') return rates.usdEur ? amount / rates.usdEur : amount;
+    if (c === 'GBP') return rates.usdEur ? amount / (rates.usdEur * 0.86) : amount; // approx
+    return amount;
+}
+
+function convertToEUR(amount, currency, rates) {
+    if (!amount) return 0;
+    const c = (currency || 'EUR').toUpperCase();
+    if (c === 'EUR') return amount;
+    if (c === 'USD') return rates.usdEur ? amount * rates.usdEur : amount;
+    if (c === 'GBP') return amount * 1.16; // approx
+    return amount;
+}
+
+function fmtUSD(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
+function fmtEUR(n) { return '\u20AC' + Math.round(n).toLocaleString('en-US'); }
+
+function getAccountFilings(account, year) {
+    const sit = getTaxSituation(year);
+    const nonUS = !isUSCountry(account.country);
+    const nonSpanish = !isSpanishCountry(account.country);
+    const isFinancial = account.type !== 'real-estate';
+    const m720Applies = !sit.beckhamActive && !sit.preArrival;
+
+    return {
+        fbar: nonUS && isFinancial,
+        fatca: nonUS && isFinancial,
+        m720cat1: m720Applies && nonSpanish && account.type === 'bank',
+        m720cat2: m720Applies && nonSpanish && (account.type === 'securities' || account.type === 'pension'),
+        m720cat3: m720Applies && nonSpanish && account.type === 'real-estate',
+    };
+}
+
+function calculateFilingReqs(year, data) {
+    const accounts = data.accounts || [];
+    const rates = data.yearRates?.[year] || {};
+
+    // FBAR: aggregate max of non-US financial accounts
+    let fbarAggregate = 0, fbarCount = 0;
+    accounts.forEach(a => {
+        if (!isUSCountry(a.country) && a.type !== 'real-estate') {
+            fbarCount++;
+            fbarAggregate += convertToUSD(a.balances?.[year]?.max || 0, a.currency, rates);
+        }
+    });
+
+    // FATCA: total foreign financial assets
+    let fatcaDec31 = 0, fatcaMax = 0;
+    accounts.forEach(a => {
+        if (!isUSCountry(a.country) && a.type !== 'real-estate') {
+            fatcaDec31 += convertToUSD(a.balances?.[year]?.dec31 || 0, a.currency, rates);
+            fatcaMax += convertToUSD(a.balances?.[year]?.max || 0, a.currency, rates);
+        }
+    });
+
+    // Modelo 720: per category, non-Spanish accounts
+    let cat1Total = 0, cat2Total = 0, cat3Total = 0;
+    accounts.forEach(a => {
+        if (isSpanishCountry(a.country)) return;
+        const dec31 = a.balances?.[year]?.dec31 || 0;
+        const eur = convertToEUR(dec31, a.currency, rates);
+        if (a.type === 'bank') cat1Total += eur;
+        else if (a.type === 'securities' || a.type === 'pension') cat2Total += eur;
+        else if (a.type === 'real-estate') cat3Total += eur;
+    });
+
+    return {
+        fbar: { required: fbarAggregate > 10000, aggregate: fbarAggregate, accountCount: fbarCount },
+        fatca: { required: fatcaDec31 > 200000 || fatcaMax > 300000, dec31Total: fatcaDec31, maxTotal: fatcaMax },
+        m720: {
+            cat1: { total: cat1Total, required: cat1Total > 50000 },
+            cat2: { total: cat2Total, required: cat2Total > 50000 },
+            cat3: { total: cat3Total, required: cat3Total > 50000 },
+        }
+    };
+}
+
+function openAcctModal(editId) {
+    const data = loadAccountsData();
+    const existing = editId ? data.accounts.find(a => a.id === editId) : null;
+    document.getElementById('acct-modal-title').textContent = existing ? 'Edit Account' : 'Add Account';
+    document.getElementById('acct-edit-id').value = editId || '';
+    document.getElementById('acct-name').value = existing ? existing.name : '';
+    document.getElementById('acct-country').value = existing ? existing.country : '';
+    document.getElementById('acct-type').value = existing ? existing.type : 'bank';
+    document.getElementById('acct-currency').value = existing ? existing.currency : 'EUR';
+    document.getElementById('acct-modal-overlay').classList.add('open');
+    document.getElementById('acct-name').focus();
+}
+
+function closeAcctModal() {
+    document.getElementById('acct-modal-overlay').classList.remove('open');
+}
+
+function saveAcctModal() {
+    const name = document.getElementById('acct-name').value.trim();
+    if (!name) { toast('Account name is required'); return; }
+    const country = document.getElementById('acct-country').value.trim() || 'Unknown';
+    const type = document.getElementById('acct-type').value;
+    const currency = document.getElementById('acct-currency').value;
+    const editId = document.getElementById('acct-edit-id').value;
+
+    const data = loadAccountsData();
+    if (editId) {
+        const acct = data.accounts.find(a => a.id === editId);
+        if (acct) { acct.name = name; acct.country = country; acct.type = type; acct.currency = currency; }
+    } else {
+        data.accounts.push({
+            id: 'acc_' + Date.now(),
+            name, country, type, currency,
+            balances: {}
+        });
+    }
+    saveAccountsData(data);
+    closeAcctModal();
+    renderAccounts();
+    toast(editId ? 'Account updated' : 'Account added');
+}
+
+function removeAccount(id) {
+    if (!confirm('Remove this account?')) return;
+    const data = loadAccountsData();
+    data.accounts = data.accounts.filter(a => a.id !== id);
+    saveAccountsData(data);
+    renderAccounts();
+    toast('Account removed');
+}
+
+function saveAcctBalance(acctId, year, field, value) {
+    const data = loadAccountsData();
+    const acct = data.accounts.find(a => a.id === acctId);
+    if (!acct) return;
+    if (!acct.balances) acct.balances = {};
+    if (!acct.balances[year]) acct.balances[year] = {};
+    acct.balances[year][field] = parseFloat(value) || 0;
+    saveAccountsData(data);
+    renderAccounts();
+}
+
+function saveYearRate(year, field, value) {
+    const data = loadAccountsData();
+    if (!data.yearRates) data.yearRates = {};
+    if (!data.yearRates[year]) data.yearRates[year] = {};
+    data.yearRates[year][field] = parseFloat(value) || 0;
+    saveAccountsData(data);
+    renderAccounts();
+}
+
+function renderAccounts() {
+    const content = document.getElementById('accounts-content');
+    const year = getTaxYear();
+    const data = loadAccountsData();
+    const accounts = data.accounts || [];
+    const rates = data.yearRates?.[year] || {};
+    const sit = getTaxSituation(year);
+    const isUSPerson = usMode;
+    const m720Applies = !sit.beckhamActive && !sit.preArrival;
+    const hasAccounts = accounts.length > 0;
+
+    let html = '';
+    html += `<div style="font-size:13px;color:var(--text-muted);margin-bottom:12px">Account worksheet for <strong>Tax Year ${year}</strong> (filings due in ${year + 1})</div>`;
+
+    // Exchange rate
+    html += `<div class="acct-rate-row">
+        <span>Exchange rate (Dec 31, ${year}):</span>
+        <span>1 USD =</span>
+        <input type="number" step="0.0001" value="${rates.usdEur || ''}" placeholder="e.g. 0.9250"
+            onchange="saveYearRate(${year}, 'usdEur', this.value)" id="rate-input">
+        <span>EUR</span>
+        <span style="font-size:11px;color:var(--text-dim)">(Official ECB rate for Modelo 720; Treasury rate for FBAR)</span>
+    </div>`;
+
+    // Filing requirements summary cards
+    const reqs = calculateFilingReqs(year, data);
+    html += `<div class="acct-summary">`;
+
+    // FBAR card
+    if (isUSPerson) {
+        const fbar = reqs.fbar;
+        const cls = !hasAccounts ? 'na' : (fbar.required ? 'required' : 'not-required');
+        html += `<div class="acct-card us-card ${cls}">
+            <div class="acct-card-title">FBAR (FinCEN 114)</div>
+            <div class="acct-card-status">${!hasAccounts ? 'No accounts' : (fbar.required ? 'Required' : 'Not Required')}</div>
+            <div class="acct-card-detail">
+                Aggregate max: ${fmtUSD(fbar.aggregate)}<br>
+                Threshold: $10,000<br>
+                ${fbar.accountCount} non-US financial account${fbar.accountCount !== 1 ? 's' : ''}
+            </div>
+        </div>`;
+
+        // FATCA card
+        const fatca = reqs.fatca;
+        const fcls = !hasAccounts ? 'na' : (fatca.required ? 'required' : 'not-required');
+        html += `<div class="acct-card us-card ${fcls}">
+            <div class="acct-card-title">FATCA (Form 8938)</div>
+            <div class="acct-card-status">${!hasAccounts ? 'No accounts' : (fatca.required ? 'Required' : 'Not Required')}</div>
+            <div class="acct-card-detail">
+                Dec 31 total: ${fmtUSD(fatca.dec31Total)}<br>
+                Max total: ${fmtUSD(fatca.maxTotal)}<br>
+                Thresholds: $200k (Dec 31) / $300k (any time)
+            </div>
+        </div>`;
+    }
+
+    // Modelo 720 card
+    if (m720Applies) {
+        const m720 = reqs.m720;
+        const anyReq = m720.cat1.required || m720.cat2.required || m720.cat3.required;
+        const mcls = !hasAccounts ? 'na' : (anyReq ? 'required' : 'not-required');
+        html += `<div class="acct-card ${mcls}">
+            <div class="acct-card-title">Modelo 720</div>
+            <div class="acct-card-status">${!hasAccounts ? 'No accounts' : (anyReq ? 'Required' : 'Not Required')}</div>
+            <div class="acct-card-detail">
+                Cat 1 (Banks): ${fmtEUR(m720.cat1.total)}${m720.cat1.required ? ' &mdash; exceeds &euro;50k' : ''}<br>
+                Cat 2 (Securities): ${fmtEUR(m720.cat2.total)}${m720.cat2.required ? ' &mdash; exceeds &euro;50k' : ''}<br>
+                Cat 3 (Real Estate): ${fmtEUR(m720.cat3.total)}${m720.cat3.required ? ' &mdash; exceeds &euro;50k' : ''}
+            </div>
+        </div>`;
+    } else if (sit.beckhamActive) {
+        html += `<div class="acct-card na">
+            <div class="acct-card-title">Modelo 720</div>
+            <div class="acct-card-status">Exempt (Beckham Law)</div>
+            <div class="acct-card-detail">Not required while under Beckham Law. Will apply once Beckham expires.</div>
+        </div>`;
+    }
+
+    if (!isUSPerson && !m720Applies && !sit.beckhamActive) {
+        html += `<div class="acct-card na">
+            <div class="acct-card-title">Filing Requirements</div>
+            <div class="acct-card-status">Configure settings</div>
+            <div class="acct-card-detail">Set your US Person status and/or residency year to see filing requirements.</div>
+        </div>`;
+    }
+
+    html += `</div>`;
+
+    // Account table
+    html += `<div class="acct-section-title">
+        <span>Your Accounts</span>
+        <button class="acct-add-btn" onclick="openAcctModal()">+ Add Account</button>
+    </div>`;
+
+    if (!hasAccounts) {
+        html += `<div class="acct-empty">No accounts added yet. Add your financial accounts to see what needs to be reported where.</div>`;
+    } else {
+        html += `<table class="acct-table"><thead><tr>
+            <th>Account</th><th>Country</th><th>Type</th><th>Currency</th>
+            <th style="text-align:right">Max Balance (${year})</th>
+            <th style="text-align:right">Dec 31 Balance</th><th></th>
+        </tr></thead><tbody>`;
+
+        accounts.forEach(a => {
+            const bal = a.balances?.[year] || {};
+            html += `<tr>
+                <td><strong>${esc(a.name)}</strong></td>
+                <td>${esc(a.country)}</td>
+                <td>${ACCT_TYPE_LABELS[a.type] || a.type}</td>
+                <td>${esc(a.currency)}</td>
+                <td><input type="number" value="${bal.max || ''}" placeholder="0"
+                    onchange="saveAcctBalance('${a.id}', ${year}, 'max', this.value)"></td>
+                <td><input type="number" value="${bal.dec31 || ''}" placeholder="0"
+                    onchange="saveAcctBalance('${a.id}', ${year}, 'dec31', this.value)"></td>
+                <td class="acct-actions">
+                    <button onclick="openAcctModal('${a.id}')" title="Edit">&#9998;</button>
+                    <button class="del-btn" onclick="removeAccount('${a.id}')" title="Delete">&times;</button>
+                </td>
+            </tr>`;
+        });
+        html += `</tbody></table>`;
+    }
+
+    // What to report where matrix
+    if (hasAccounts && (isUSPerson || m720Applies)) {
+        html += `<div class="acct-section-title"><span>What to Report Where</span></div>`;
+        html += `<table class="acct-table"><thead><tr><th>Account</th><th>Country</th>`;
+        if (isUSPerson) html += `<th>FBAR</th><th>FATCA</th>`;
+        if (m720Applies) {
+            html += `<th>720 Cat 1<br><span style="font-weight:400;font-size:10px">Banks</span></th>`;
+            html += `<th>720 Cat 2<br><span style="font-weight:400;font-size:10px">Securities</span></th>`;
+            html += `<th>720 Cat 3<br><span style="font-weight:400;font-size:10px">Real Estate</span></th>`;
+        }
+        html += `</tr></thead><tbody>`;
+
+        accounts.forEach(a => {
+            const f = getAccountFilings(a, year);
+            html += `<tr><td><strong>${esc(a.name)}</strong></td><td>${esc(a.country)}</td>`;
+            if (isUSPerson) {
+                html += `<td>${f.fbar ? '<span class="matrix-check">&#10003;</span>' : '<span class="matrix-dash">&mdash;</span>'}</td>`;
+                html += `<td>${f.fatca ? '<span class="matrix-check">&#10003;</span>' : '<span class="matrix-dash">&mdash;</span>'}</td>`;
+            }
+            if (m720Applies) {
+                html += `<td>${f.m720cat1 ? '<span class="matrix-check">&#10003;</span>' : '<span class="matrix-dash">&mdash;</span>'}</td>`;
+                html += `<td>${f.m720cat2 ? '<span class="matrix-check">&#10003;</span>' : '<span class="matrix-dash">&mdash;</span>'}</td>`;
+                html += `<td>${f.m720cat3 ? '<span class="matrix-check">&#10003;</span>' : '<span class="matrix-dash">&mdash;</span>'}</td>`;
+            }
+            html += `</tr>`;
+        });
+        html += `</tbody></table>`;
+
+        // Legend
+        html += `<div style="font-size:11px;color:var(--text-dim);margin-top:8px;line-height:1.6">`;
+        if (isUSPerson) {
+            html += `<strong>FBAR:</strong> Report all non-US financial accounts if aggregate max balance exceeds $10,000 during the year. <strong>FATCA:</strong> Report non-US financial assets with Form 1040 if total exceeds $200k on Dec 31 or $300k at any time (single filer abroad).<br>`;
+        }
+        if (m720Applies) {
+            html += `<strong>Modelo 720:</strong> Report non-Spanish assets by category if any category exceeds &euro;50,000 on Dec 31. Only re-file if a category increased by &gt;&euro;20,000 from last reported value.`;
+        }
+        html += `</div>`;
+    }
+
+    content.innerHTML = html;
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────
 function init() {
     // Populate year selector (current year - 3 through current year)
@@ -1311,6 +1802,7 @@ function init() {
     const [secId, subId] = savedSection.split(':');
     navigateToSection(secId, subId || null);
     if (savedView === 'tasks') switchView('tasks');
+    else if (savedView === 'accounts') switchView('accounts');
 }
 
 // ── Year change ──────────────────────────────────────────────────────────
@@ -1323,6 +1815,9 @@ function changeYear(val) {
     renderDynamicGuide();
     if (document.getElementById('tasks-view').classList.contains('active')) {
         renderTasks();
+    }
+    if (document.getElementById('accounts-view').classList.contains('active')) {
+        renderAccounts();
     }
 }
 
@@ -1341,6 +1836,9 @@ function changeUSStatus(val) {
     renderDynamicGuide();
     if (document.getElementById('tasks-view').classList.contains('active')) {
         renderTasks();
+    }
+    if (document.getElementById('accounts-view').classList.contains('active')) {
+        renderAccounts();
     }
 }
 
@@ -1482,11 +1980,13 @@ function renderCalendar() {
 function switchView(view) {
     localStorage.setItem(VIEW_KEY, view);
     document.querySelectorAll('.view-tab').forEach((t, i) => {
-        t.classList.toggle('active', (view === 'doc' && i === 0) || (view === 'tasks' && i === 1));
+        t.classList.toggle('active', (view === 'doc' && i === 0) || (view === 'tasks' && i === 1) || (view === 'accounts' && i === 2));
     });
     document.getElementById('doc-view').style.display = view === 'doc' ? 'flex' : 'none';
     document.getElementById('tasks-view').classList.toggle('active', view === 'tasks');
+    document.getElementById('accounts-view').classList.toggle('active', view === 'accounts');
     if (view === 'tasks') renderTasks();
+    if (view === 'accounts') renderAccounts();
 }
 
 // ── Document navigation ──────────────────────────────────────────────────
