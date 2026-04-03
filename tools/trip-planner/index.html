@@ -3086,7 +3086,8 @@
         const hasLegs = legs.length > 0;
         phases.push({ title:'Plan Cities', icon:'\u{1F4CD}', done:hasLegs, items:hasLegs ? [] : allActions.filter(a => a.type === 'leg') });
         const lodgingActions = allActions.filter(a => a.type === 'lodging');
-        phases.push({ title:'Book Lodging', icon:'\u{1F3E8}', done:hasLegs && progress.totalLodging > 0 && progress.bookedLodging === progress.totalLodging, items:lodgingActions });
+        const nonHomeLegCount = legs.filter(l => l.legType !== 'home' && l.legType !== 'stayingWithFriend').length;
+        phases.push({ title:'Book Lodging', icon:'\u{1F3E8}', done:hasLegs && lodgingActions.length === 0 && (nonHomeLegCount === 0 || progress.bookedNights > 0), items:lodgingActions });
         const transportActions = allActions.filter(a => a.type === 'transport');
         phases.push({ title:'Book Transport', icon:'\u2708\uFE0F', done:hasLegs && transportActions.length === 0 && progress.totalTransport > 0 && progress.bookedTransport === progress.totalTransport, items:transportActions });
         const activityActions = allActions.filter(a => a.type === 'activity');
