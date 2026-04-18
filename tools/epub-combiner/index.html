@@ -2453,14 +2453,13 @@
         const paired = chapterPairs.filter(p => p.ch1 !== null && p.ch2 !== null);
 
         // Toolbar with undo, re-run, cache restore, and merge buttons
-        const hasCachedAlignments = hasStoredAlignments();
         const loadedCount = Object.keys(paragraphAlignments).length;
         let html = `<div class="chapter-edit-toolbar">
             <button class="btn btn-sm btn-secondary" onclick="undoChapterEdit()" ${chapterEditHistory.length === 0 ? 'disabled' : ''}>
                 &#8617; Undo${chapterEditHistory.length > 0 ? ' (' + chapterEditHistory.length + ')' : ''}
             </button>
             <button class="btn btn-sm btn-primary" onclick="rerunAutoPairing()">&#8635; Re-run Auto-Pairing</button>
-            ${hasCachedAlignments ? `<button class="btn btn-sm btn-secondary" onclick="restoreAlignmentsFromCache()">&#128190; Restore cache (${loadedCount} loaded)</button>` : ''}
+            <button class="btn btn-sm btn-secondary" onclick="restoreAlignmentsFromCache()">&#128190; Restore cache${loadedCount > 0 ? ' (' + loadedCount + ' loaded)' : ''}</button>
             <span style="flex:1;"></span>
             <button class="btn btn-sm btn-secondary" id="mergeBtn1" onclick="mergeSelectedChapters(1)" disabled>Merge ${lang1}</button>
             <button class="btn btn-sm btn-secondary" id="mergeBtn2" onclick="mergeSelectedChapters(2)" disabled>Merge ${lang2}</button>
