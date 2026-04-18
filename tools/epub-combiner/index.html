@@ -2484,6 +2484,7 @@
             </button>
             <button class="btn btn-sm btn-primary" onclick="rerunAutoPairing()">&#8635; Re-run Auto-Pairing</button>
             <button class="btn btn-sm btn-secondary" onclick="restoreAlignmentsFromCache()">&#128190; Restore cache${loadedCount > 0 ? ' (' + loadedCount + ' loaded)' : ''}</button>
+            <button class="btn btn-sm btn-secondary" onclick="saveSession();renderChapterAlignment();alert('Saved to cache.');">&#128190; Save to cache</button>
             <span style="flex:1;"></span>
             <button class="btn btn-sm btn-secondary" id="mergeBtn1" onclick="mergeSelectedChapters(1)" disabled>Merge ${lang1}</button>
             <button class="btn btn-sm btn-secondary" id="mergeBtn2" onclick="mergeSelectedChapters(2)" disabled>Merge ${lang2}</button>
@@ -2811,7 +2812,6 @@
         } finally {
             hideAlignmentOverlay();
             renderChapterAlignment();
-            saveSession();
         }
     }
 
@@ -2842,7 +2842,6 @@
         delete reviewedChapters[key];
         delete reviewedRows[key];
         renderChapterAlignment();
-        saveSession();
     }
 
     function manualPairChapter(globalIdx, fromLang) {
@@ -2879,7 +2878,6 @@
         // Remove the now-merged unpaired entry
         chapterPairs.splice(targetPairIdx, 1);
         renderChapterAlignment();
-        saveSession();
     }
 
     // ========== Paragraph Alignment ==========
