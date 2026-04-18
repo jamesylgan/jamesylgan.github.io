@@ -122,7 +122,7 @@ window.__testExports = {
   buildChapterPairsFromResult, splitChapterFrontMatter,
   repairGapCascades, flattenChapterNumbers,
   detectFrontMatter, isBookOrPartHeading,
-  autoSplitChapters, autoMergeFragments, titleFromBlocks,
+  autoSplitChapters, autoMergeFragments, isFragmentChapter, smartMergeFragments, titleFromBlocks,
   mergeChapters, splitChapter, reindexChapterPairs, reindexChapterPairsForSplit,
   deepCloneChapters, invalidateAlignments,
   get epub1() { return epub1; }, set epub1(v) { epub1 = v; },
@@ -874,7 +874,88 @@ async function runTests() {
     console.log('  SKIP: Don Quixote EPUBs not found in testdata/');
   }
 
-  // ── 23b. Manual Chapter Merge (unequal chapter counts) ──
+  // ── 23b. Fragment detection ──
+  section('Fragment Detection (isFragmentChapter)');
+  {
+    function mkCh(title, blocks) { return { id: 'x', href: 'x.xhtml', title, blocks }; }
+    function mkBlocks(n) { return Array.from({ length: n }, (_, i) => ({ type: 'paragraph', text: `Text ${i} `.repeat(10) })); }
+
+    // ── English fragments ──
+    const enFragments = [
+      ['Cover',              [{ type: 'heading', text: 'Cover' }]],
+      ['Title Page',         mkBlocks(2)],
+      ['Dedication',         mkBlocks(1)],
+      ['Table of Contents',  mkBlocks(5)],
+      ['Contents',           mkBlocks(4)],
+      ['Copyright',          mkBlocks(3)],
+      ['Colophon',           mkBlocks(2)],
+      ['Acknowledgements',   mkBlocks(2)],
+      ['About the Author',   mkBlocks(4)],
+      ['Epilogue',           mkBlocks(3)],
+      ['Foreword',           mkBlocks(2)],
+      ['Preface',            mkBlocks(3)],
+      ['Introduction',       mkBlocks(4)],
+      ['Afterword',          mkBlocks(3)],
+      ['Appendix',           mkBlocks(5)],
+      ['Bibliography',       mkBlocks(4)],
+      ['Glossary',           mkBlocks(5)],
+      ['Notes',              mkBlocks(3)],
+      ['Index',              mkBlocks(5)],
+      ['About',              mkBlocks(2)],
+      ['Also By',            mkBlocks(3)],
+    ];
+    for (const [title, blocks] of enFragments) {
+      assert(T.isFragmentChapter(mkCh(title, blocks)), `EN fragment: "${title}"`);
+    }
+
+    // ── Spanish fragments ──
+    const esFragments = [
+      ['Portada',              mkBlocks(1)],
+      ['Dedicatoria',          mkBlocks(1)],
+      ['Tabla de contenidos',  mkBlocks(5)],
+      ['Tabla de materias',    mkBlocks(4)],
+      ['Prólogo',              mkBlocks(3)],
+      ['Prefacio',             mkBlocks(2)],
+      ['Epílogo',              mkBlocks(2)],
+      ['Introducción',         mkBlocks(4)],
+      ['Agradecimientos',      mkBlocks(2)],
+      ['Sobre el autor',       mkBlocks(3)],
+      ['Índice',               mkBlocks(5)],
+      ['Apéndice',             mkBlocks(4)],
+      ['Bibliografía',         mkBlocks(3)],
+      ['Glosario',             mkBlocks(4)],
+      ['Notas',                mkBlocks(3)],
+      ['Aviso legal',          mkBlocks(2)],
+      ['Contraportada',        mkBlocks(1)],
+    ];
+    for (const [title, blocks] of esFragments) {
+      assert(T.isFragmentChapter(mkCh(title, blocks)), `ES fragment: "${title}"`);
+    }
+
+    // ── German fragments (for future support) ──
+    // TODO: Add German fragment patterns when Kapitel support is expanded
+
+    // ── French fragments (for future support) ──
+    // TODO: Add French fragment patterns when Chapitre support is expanded
+
+    // ── Detection by heading (not title) ──
+    assert(T.isFragmentChapter(mkCh('(empty)', [{ type: 'heading', text: 'Dedication' }, { type: 'paragraph', text: 'For my family.' }])), 'Heading-based detection');
+
+    // ── Short content = fragment regardless of title ──
+    assert(T.isFragmentChapter(mkCh('Unknown Section', mkBlocks(2))), '2-block = fragment');
+    assert(T.isFragmentChapter(mkCh('Mystery', [{ type: 'paragraph', text: 'Short.' }])), '1-block = fragment');
+
+    // ── NOT fragments — real chapters ──
+    assert(!T.isFragmentChapter(mkCh('The Storm', mkBlocks(30))), 'EN 30-block NOT fragment');
+    assert(!T.isFragmentChapter(mkCh('La Tormenta', mkBlocks(25))), 'ES 25-block NOT fragment');
+    assert(!T.isFragmentChapter(mkCh('Chapter without number', mkBlocks(15))), '15-block unnumbered NOT fragment');
+
+    // Edge: substantial paragraph text in ≤10 blocks = NOT fragment
+    const longParas = Array.from({ length: 8 }, (_, i) => ({ type: 'paragraph', text: 'This is a fairly long paragraph with real content. '.repeat(5) }));
+    assert(!T.isFragmentChapter(mkCh('Interlude', [{ type: 'heading', text: 'Interlude' }, ...longParas])), '8 long paragraphs NOT fragment');
+  }
+
+  // ── 23c. Manual Chapter Merge (unequal chapter counts) ──
   section('Manual Chapter Merge (unequal chapters)');
   {
     // Simulate: Language 1 has 5 numbered chapters, Language 2 has 4
@@ -1202,11 +1283,12 @@ async function runTests() {
   // ── 33. DQ alignment quality (detailed) ──
   section('DQ alignment quality');
   if (dqEn && dqEs) {
-    const chPairs = [[5, 2, 'EN ch5 vs ES ch2'], [6, 3, 'EN ch6 vs ES ch3'], [7, 4, 'EN ch7 vs ES ch4'], [11, 7, 'EN ch11 vs ES ch7']];
-    for (const [enIdx, esIdx, label] of chPairs) {
-      const enCh = dqEn.chapters[enIdx];
-      const esCh = dqEs.chapters[esIdx];
-      if (!enCh || !esCh) continue;
+    // Use chapter numbers instead of hardcoded indices (auto-merge shifts indices)
+    const chPairs = [[5, 2, 'EN chV vs ES chII'], [6, 3, 'EN chVI vs ES chIII'], [7, 4, 'EN chVII vs ES chIV'], [2, 6, 'EN chII vs ES chVI']];
+    for (const [enNum, esNum, label] of chPairs) {
+      const enCh = findDqChapter(dqEn, enNum);
+      const esCh = findDqChapter(dqEs, esNum);
+      if (!enCh || !esCh) { console.log(`  Skipping ${label}: not found`); continue; }
       const enBlocks = enCh.blocks;
       const esBlocks = esCh.blocks;
 
