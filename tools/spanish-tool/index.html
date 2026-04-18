@@ -1013,6 +1013,7 @@
 
     <script src="../lib/storage-version-manager.js"></script>
     <script src="es-en-dict.js"></script>
+    <script src="../lib/en-es-reverse.js"></script>
     <script src="common-words.js"></script>
     <script>
     // Lesson Data (extracted from PDF)
@@ -4027,6 +4028,13 @@
     }
 
     function setDictSize(size) {
+        // Vietnamese mode: expanded/full dicts are Spanish-English only
+        if (progress.uiLanguage === 'vi' && size !== 'light') {
+            alert('Expanded/Full dictionaries are Spanish↔English only. Switch to English mode to use them.');
+            const radio = document.querySelector('input[name="dictSize"][value="light"]');
+            if (radio) radio.checked = true;
+            return;
+        }
         progress.dictSize = size;
         autoSave();
         if (size !== 'light') loadExternalDict(size);
@@ -4116,8 +4124,19 @@
             if (extResult) {
                 matches.push({
                     entry: { spanish: q, english: extResult, days: [], isVerb: false, gender: null, _fromDict: true },
-                    score: matches.length === 0 ? 3 : 0.5 // top result if no lesson matches
+                    score: matches.length === 0 ? 3 : 0.5
                 });
+            }
+            // Also try English→Spanish reverse lookup
+            if (typeof enToEsLookup === 'function') {
+                const esWord = enToEsLookup(q);
+                if (esWord && !matchedKeys.has(esWord)) {
+                    const esDef = externalDictLookup(esWord);
+                    matches.push({
+                        entry: { spanish: esWord, english: esDef || q, days: [], isVerb: false, gender: null, _fromDict: true },
+                        score: matches.length === 0 ? 3 : 0.4
+                    });
+                }
             }
         }
 
