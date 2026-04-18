@@ -10,6 +10,7 @@
     <meta name="GPTBot" content="nofollow">
     <title>EPUB Combiner</title>
     <script src="../lib/jszip.min.js"></script>
+    <script src="../spanish-tool/es-en-dict.js"></script>
     <style>
         :root {
             --primary: #007bff;
@@ -3591,11 +3592,9 @@
 
         // 5. Cognate/shared word detection (15% weight)
         let cognateMatches = 0, cognateChecks = 0;
-        // Only check words of 4+ characters to avoid noise
         const longWords1 = [...feat1.allWords].filter(w => w.length >= 3);
         const longWords2 = [...feat2.allWords].filter(w => w.length >= 3);
         if (longWords1.length > 0 && longWords2.length > 0) {
-            // Sample up to 15 words from each side to keep it fast
             const sample1 = longWords1.length > 15 ? longWords1.slice(0, 15) : longWords1;
             for (const w1 of sample1) {
                 for (const w2 of longWords2) {
@@ -3605,6 +3604,31 @@
             }
         }
         const cognateScore = cognateChecks > 0 ? cognateMatches / cognateChecks : 0.3;
+
+        // 5b. Dictionary-based word matching (ES↔EN)
+        let dictScore = 0.5; // neutral default
+        if (typeof lookupSpanish === 'function' && longWords1.length > 0 && longWords2.length > 0) {
+            let dictMatches = 0, dictChecks = 0;
+            const words1Set = new Set(longWords1);
+            const words2Set = new Set(longWords2);
+            // Try Spanish→English: stem Spanish words and check if translation words appear in English text
+            const sample = longWords1.length > longWords2.length ? longWords2 : longWords1;
+            const target = longWords1.length > longWords2.length ? words1Set : words2Set;
+            const sampleLimit = Math.min(sample.length, 12);
+            for (let si = 0; si < sampleLimit; si++) {
+                const w = sample[si];
+                const translation = lookupSpanish(w);
+                if (translation) {
+                    dictChecks++;
+                    // Translation can be "word1/word2" or "to verb" — extract individual words
+                    const transWords = translation.toLowerCase().replace(/\(.*?\)/g, '').split(/[\s\/,]+/).filter(tw => tw.length >= 3);
+                    for (const tw of transWords) {
+                        if (target.has(tw)) { dictMatches++; break; }
+                    }
+                }
+            }
+            if (dictChecks > 0) dictScore = dictMatches / dictChecks;
+        }
 
         // 6. Translation match — words whose API translations appear in the other text
         let transMatches = 0, transChecks = 0;
@@ -3635,11 +3659,17 @@
         }
         const transScore = transChecks > 0 ? transMatches / transChecks : 0.5;
 
-        // Weighted combination (with translation signal when available)
+        // Weighted combination
         const hasTranslations = transChecks > 0;
-        let score = hasTranslations
-            ? lenRatio * 0.20 + nameScore * 0.20 + numScore * 0.10 + punctScore * 0.10 + cognateScore * 0.15 + transScore * 0.25
-            : lenRatio * 0.30 + nameScore * 0.25 + numScore * 0.15 + punctScore * 0.15 + cognateScore * 0.15;
+        const hasDict = dictScore !== 0.5; // dict produced a real score
+        let score;
+        if (hasTranslations) {
+            score = lenRatio * 0.15 + nameScore * 0.15 + numScore * 0.10 + punctScore * 0.10 + cognateScore * 0.10 + transScore * 0.20 + dictScore * 0.20;
+        } else if (hasDict) {
+            score = lenRatio * 0.20 + nameScore * 0.20 + numScore * 0.10 + punctScore * 0.10 + cognateScore * 0.15 + dictScore * 0.25;
+        } else {
+            score = lenRatio * 0.30 + nameScore * 0.25 + numScore * 0.15 + punctScore * 0.15 + cognateScore * 0.15;
+        }
         // Short blocks matching short blocks is a strong structural signal
         if (feat1.length < 40 && feat2.length < 40 && lenRatio > 0.4) {
             score += 0.08;
