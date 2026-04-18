@@ -1127,6 +1127,40 @@
             }
         });
 
+        // Parse TOC for chapter titles (NCX or EPUB3 nav)
+        const tocTitles = {}; // href → title from TOC
+        try {
+            // Try NCX first
+            const ncxItem = Object.values(manifest).find(m => m.mediaType === 'application/x-dtbncx+xml');
+            if (ncxItem) {
+                const ncxXml = await zip.file(opfDir + ncxItem.href).async('text');
+                const ncxDoc = new DOMParser().parseFromString(ncxXml, 'application/xml');
+                ncxDoc.querySelectorAll('navPoint').forEach(np => {
+                    const label = np.querySelector('navLabel text');
+                    const content = np.querySelector('content');
+                    if (label && content) {
+                        const href = content.getAttribute('src').split('#')[0]; // strip fragment
+                        const title = label.textContent.trim();
+                        if (title && !tocTitles[href]) tocTitles[href] = title;
+                    }
+                });
+            }
+            // Also try EPUB3 nav
+            const navItem = Object.values(manifest).find(m => (m.properties || '').includes('nav'));
+            if (navItem) {
+                const navXml = await zip.file(opfDir + navItem.href).async('text');
+                const navDoc = new DOMParser().parseFromString(navXml, 'application/xhtml+xml');
+                navDoc.querySelectorAll('nav[*|type="toc"] a, nav#toc a').forEach(a => {
+                    const href = a.getAttribute('href');
+                    if (href) {
+                        const clean = href.split('#')[0];
+                        const title = a.textContent.trim();
+                        if (title && !tocTitles[clean]) tocTitles[clean] = title;
+                    }
+                });
+            }
+        } catch (e) { /* TOC parsing is best-effort */ }
+
         // Parse chapters (spine XHTML items)
         let chapters = [];
         for (const item of spineItems) {
@@ -1136,7 +1170,11 @@
             const xhtml = await file.async('text');
             const doc = new DOMParser().parseFromString(xhtml, 'application/xhtml+xml');
             const blocks = extractBlocks(doc.body);
-            const title = extractChapterTitle(doc, blocks);
+            let title = extractChapterTitle(doc, blocks);
+            // Fallback: use TOC title if we got a generic/empty title
+            if ((!title || title === '(empty)' || title === '[image]' || title === '[figure]') && tocTitles[item.href]) {
+                title = tocTitles[item.href];
+            }
             chapters.push({
                 id: item.id,
                 href: item.href,
@@ -1219,20 +1257,19 @@
     }
 
     function extractChapterTitle(doc, blocks) {
-        // Try <title>, then first heading, then first paragraph
+        // 1. First heading in content (most reliable)
+        const heading = blocks.find(b => b.type === 'heading');
+        if (heading && heading.text) return heading.text.substring(0, 80);
+        // 2. <title> tag (may be generic filename like "part0000" — still better than nothing)
         if (doc) {
             const titleEl = doc.querySelector('title');
-            if (titleEl) {
-                const t = titleEl.textContent.trim();
-                // Skip generic/filename-like titles (e.g., "part0000", "ch01.xhtml", "Section0003")
-                if (t && !/^(?:part|chapter|section|ch|seg|split|item|text)\d+(?:\.x?html?)?$/i.test(t)) {
-                    return t;
-                }
-            }
+            if (titleEl && titleEl.textContent.trim()) return titleEl.textContent.trim();
         }
-        const heading = blocks.find(b => b.type === 'heading');
-        if (heading) return heading.text.substring(0, 80);
-        if (blocks.length > 0) return blocks[0].text.substring(0, 60) + '...';
+        // 3. First text block
+        const textBlock = blocks.find(b => b.text && b.text !== '[image]' && b.text !== '[figure]' && b.text !== '[svg]');
+        if (textBlock) return textBlock.text.substring(0, 60) + (textBlock.text.length > 60 ? '...' : '');
+        // 4. Fallback
+        if (blocks.length > 0) return blocks[0].text.substring(0, 60);
         return '(empty)';
     }
 
@@ -2563,6 +2600,8 @@
             <button class="btn btn-sm btn-secondary" onclick="saveSession();renderChapterAlignment();alert('Saved to cache.');">&#128190; Save to cache</button>
             <span style="flex:1;"></span>
             <button class="btn btn-sm btn-secondary" id="mergeBtn1" onclick="mergeSelectedChapters(1)" disabled>Merge ${lang1}</button>
+            <button class="btn btn-sm btn-secondary" onclick="showAutoNumberDialog(1)">Auto# ${lang1}</button>
+            <button class="btn btn-sm btn-secondary" onclick="showAutoNumberDialog(2)">Auto# ${lang2}</button>
             <button class="btn btn-sm btn-secondary" id="mergeBtn2" onclick="mergeSelectedChapters(2)" disabled>Merge ${lang2}</button>
         </div>`;
 
@@ -2810,6 +2849,66 @@
         }
 
         invalidateAlignments();
+        renderChapterAlignment();
+    }
+
+    function showAutoNumberDialog(bookNum) {
+        const epub = bookNum === 1 ? epub1 : epub2;
+        const langLabel = document.getElementById('lang' + bookNum + 'Label').value || 'Language ' + bookNum;
+        let html = `<div class="disclaimer-overlay" id="autoNumOverlay" onclick="if(event.target===this)this.remove()">
+            <div class="disclaimer-modal" style="max-width:500px;">
+                <h2 style="color:var(--text);font-size:16px;">Auto-Number Chapters (${escapeHtml(langLabel)})</h2>
+                <p style="font-size:13px;color:var(--text-muted);">Rename a range of chapters with sequential "Chapter N" titles.</p>
+                <div style="display:flex;gap:10px;margin:10px 0;align-items:center;">
+                    <label style="font-size:13px;">From chapter:</label>
+                    <select id="autoNumFrom" style="padding:4px;border:1px solid var(--border);border-radius:4px;">
+                        ${epub.chapters.map((ch, i) => `<option value="${i}">${i + 1}. ${escapeHtml(ch.title.substring(0, 40))}</option>`).join('')}
+                    </select>
+                </div>
+                <div style="display:flex;gap:10px;margin:10px 0;align-items:center;">
+                    <label style="font-size:13px;">To chapter:</label>
+                    <select id="autoNumTo" style="padding:4px;border:1px solid var(--border);border-radius:4px;">
+                        ${epub.chapters.map((ch, i) => `<option value="${i}" ${i === epub.chapters.length - 1 ? 'selected' : ''}>${i + 1}. ${escapeHtml(ch.title.substring(0, 40))}</option>`).join('')}
+                    </select>
+                </div>
+                <div style="display:flex;gap:10px;margin:10px 0;align-items:center;">
+                    <label style="font-size:13px;">Starting number:</label>
+                    <input type="number" id="autoNumStart" value="1" min="1" style="width:60px;padding:4px;border:1px solid var(--border);border-radius:4px;">
+                </div>
+                <div style="display:flex;gap:10px;margin:10px 0;align-items:center;">
+                    <label style="font-size:13px;">Prefix:</label>
+                    <input type="text" id="autoNumPrefix" value="Chapter " style="width:120px;padding:4px;border:1px solid var(--border);border-radius:4px;">
+                </div>
+                <div style="display:flex;gap:10px;margin-top:15px;">
+                    <button class="btn btn-primary" onclick="doAutoNumber(${bookNum})">Apply</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('autoNumOverlay').remove()">Cancel</button>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    function doAutoNumber(bookNum) {
+        const from = parseInt(document.getElementById('autoNumFrom').value);
+        const to = parseInt(document.getElementById('autoNumTo').value);
+        const start = parseInt(document.getElementById('autoNumStart').value) || 1;
+        const prefix = document.getElementById('autoNumPrefix').value;
+        if (from > to) { alert('From must be <= To'); return; }
+
+        pushUndoSnapshot('Auto-number chapters');
+        const epub = bookNum === 1 ? epub1 : epub2;
+        let num = start;
+        for (let i = from; i <= to && i < epub.chapters.length; i++) {
+            epub.chapters[i].title = prefix + num;
+            // Also update the first heading block if it exists
+            const heading = epub.chapters[i].blocks.find(b => b.type === 'heading');
+            if (heading) {
+                heading.text = prefix + num;
+                heading.html = escapeHtml(prefix + num);
+            }
+            num++;
+        }
+        document.getElementById('autoNumOverlay').remove();
         renderChapterAlignment();
     }
 
