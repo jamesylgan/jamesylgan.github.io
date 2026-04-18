@@ -1269,25 +1269,28 @@
 
     // Auto-merge adjacent unnumbered (non-chapter) spine entries into single front/back matter entries
     function autoMergeFragments(chapters) {
+        const FRAGMENT_MAX_BLOCKS = 10; // Only merge small unnumbered entries (front/back matter fragments)
+
         function hasChapterNum(ch) {
+            // Check heading blocks AND the chapter title (from EPUB <title> tag)
+            if (ch.title && extractBlockChapterNum(ch.title) !== null) return true;
             return ch.blocks.some(b => b.type === 'heading' && extractBlockChapterNum(b.text) !== null);
         }
 
         const result = [];
-        let pendingGroup = null; // accumulates consecutive unnumbered chapters
+        let pendingGroup = null; // accumulates consecutive small unnumbered chapters
 
         for (const ch of chapters) {
-            if (hasChapterNum(ch)) {
-                // Flush any pending unnumbered group
+            if (hasChapterNum(ch) || ch.blocks.length > FRAGMENT_MAX_BLOCKS) {
+                // Numbered chapter or substantial unnumbered chapter — flush and keep separate
                 if (pendingGroup) { result.push(pendingGroup); pendingGroup = null; }
                 result.push(ch);
             } else {
-                // Unnumbered — accumulate into group
+                // Small unnumbered — accumulate into fragment group
                 if (!pendingGroup) {
                     pendingGroup = { id: ch.id, href: ch.href, title: ch.title, blocks: [...ch.blocks] };
                 } else {
                     pendingGroup.blocks.push(...ch.blocks);
-                    // Keep first non-empty title
                     if (pendingGroup.title === '(empty)' && ch.title !== '(empty)') {
                         pendingGroup.title = ch.title;
                     }
@@ -1613,6 +1616,12 @@
         const numbers = new Set();
         let part = 0; // 0 = unknown, 1 = part 1, 2 = part 2, etc.
         let book = 0; // 0 = unknown, 1 = book 1, etc.
+
+        // Also check the chapter title (from EPUB <title> tag or TOC) for chapter numbers
+        if (chapter.title) {
+            const titleNum = extractBlockChapterNum(chapter.title);
+            if (titleNum !== null) numbers.add(titleNum);
+        }
 
         for (const block of chapter.blocks) {
             if (block.type !== 'heading') continue;
@@ -2158,8 +2167,14 @@
                 blocks2 = blocks2.slice(cs2);
             }
 
-            // Run alignment on content portion
-            const aligned = await alignParagraphs(blocks1, blocks2);
+            // Run alignment on content portion with block-level progress
+            const chBaseBlocks = blocksProcessed;
+            const aligned = await alignParagraphs(blocks1, blocks2, (frac) => {
+                const curBlocks = chBaseBlocks + Math.round(frac * bc);
+                const pctNow = totalBlocks > 0 ? (curBlocks / totalBlocks) * 100 : 0;
+                updateAlignPhase('Aligning paragraphs...', pctNow);
+                updateAlignDetail(`Chapter ${i + 1} of ${total} · ${curBlocks.toLocaleString()} / ${totalBlocks.toLocaleString()} blocks`);
+            });
             paragraphAlignments[key] = frontMatterPairs.length > 0
                 ? [...frontMatterPairs, ...aligned]
                 : aligned;
@@ -3268,7 +3283,7 @@
     }
 
     // ========== Alignment Algorithm ==========
-    async function alignParagraphs(blocks1, blocks2) {
+    async function alignParagraphs(blocks1, blocks2, onProgress) {
         if (blocks1.length === 0 && blocks2.length === 0) return [];
         if (blocks1.length === 0) return blocks2.map(b => ({ left: [], right: [b] }));
         if (blocks2.length === 0) return blocks1.map(b => ({ left: [b], right: [] }));
@@ -3302,9 +3317,12 @@
 
         // Align each segment with DP
         const result = [...fm.frontMatterPairs];
+        const totalSegBlocks = segments.reduce((s, seg) => s + (seg.left ? seg.left.length : 0) + (seg.right ? seg.right.length : 0), 0);
+        let segBlocksDone = 0;
         for (const seg of segments) {
             if (seg.type === 'heading') {
                 result.push({ left: [seg.b1], right: [seg.b2], isHeading: true });
+                segBlocksDone += 2;
             } else {
                 let aligned = await dpAlign(seg.left, seg.right, seg.feats1, seg.feats2);
                 // Rescue pass: if segment produced mostly gaps, retry without content anchors
@@ -3315,12 +3333,17 @@
                     if (retryMatched > segMatched) aligned = retry;
                 }
                 result.push(...aligned);
+                segBlocksDone += (seg.left ? seg.left.length : 0) + (seg.right ? seg.right.length : 0);
+            }
+            if (onProgress && totalSegBlocks > 0) {
+                onProgress(segBlocksDone / totalSegBlocks);
             }
             // Yield to browser between segments
             await new Promise(r => setTimeout(r, 0));
         }
 
         // Post-process: refine poor matches by splitting at sentence boundaries
+        if (onProgress) onProgress(1);
         return refineSentenceAlignment(result);
     }
 
