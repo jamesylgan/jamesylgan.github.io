@@ -903,6 +903,12 @@ async function runTests() {
       ['Index',              mkBlocks(5)],
       ['About',              mkBlocks(2)],
       ['Also By',            mkBlocks(3)],
+      ["Author's Note",      mkBlocks(7)],
+      ["Translator's Note",  mkBlocks(5)],
+      ["Editor's Note",      mkBlocks(4)],
+      ['Prologue',           mkBlocks(5)],
+      ['Postscript',         mkBlocks(4)],
+      ['Endnotes',           mkBlocks(6)],
     ];
     for (const [title, blocks] of enFragments) {
       assert(T.isFragmentChapter(mkCh(title, blocks)), `EN fragment: "${title}"`);
@@ -920,6 +926,7 @@ async function runTests() {
       ['Introducción',         mkBlocks(4)],
       ['Agradecimientos',      mkBlocks(2)],
       ['Sobre el autor',       mkBlocks(3)],
+      ['Sobre la autora',      mkBlocks(3)],
       ['Índice',               mkBlocks(5)],
       ['Apéndice',             mkBlocks(4)],
       ['Bibliografía',         mkBlocks(3)],
@@ -927,19 +934,41 @@ async function runTests() {
       ['Notas',                mkBlocks(3)],
       ['Aviso legal',          mkBlocks(2)],
       ['Contraportada',        mkBlocks(1)],
+      ['Nota de la autora',    mkBlocks(7)],
+      ['Nota del traductor',   mkBlocks(5)],
+      ['Nota del editor',      mkBlocks(4)],
+      ['Postfacio',            mkBlocks(3)],
     ];
     for (const [title, blocks] of esFragments) {
       assert(T.isFragmentChapter(mkCh(title, blocks)), `ES fragment: "${title}"`);
     }
 
-    // ── German fragments (for future support) ──
-    // TODO: Add German fragment patterns when Kapitel support is expanded
+    // ── German fragments ──
+    const deFragments = [
+      ['Impressum',            mkBlocks(3)],
+      ['Inhaltsverzeichnis',   mkBlocks(5)],
+      ['Vorwort',              mkBlocks(4)],
+      ['Nachwort',             mkBlocks(3)],
+      ['Danksagung',           mkBlocks(2)],
+    ];
+    for (const [title, blocks] of deFragments) {
+      assert(T.isFragmentChapter(mkCh(title, blocks)), `DE fragment: "${title}"`);
+    }
 
-    // ── French fragments (for future support) ──
-    // TODO: Add French fragment patterns when Chapitre support is expanded
+    // ── French fragments ──
+    const frFragments = [
+      ['Préface',              mkBlocks(4)],
+      ['Avant-propos',         mkBlocks(3)],
+      ['Table des matières',   mkBlocks(5)],
+      ['Remerciements',        mkBlocks(2)],
+    ];
+    for (const [title, blocks] of frFragments) {
+      assert(T.isFragmentChapter(mkCh(title, blocks)), `FR fragment: "${title}"`);
+    }
 
     // ── Detection by heading (not title) ──
     assert(T.isFragmentChapter(mkCh('(empty)', [{ type: 'heading', text: 'Dedication' }, { type: 'paragraph', text: 'For my family.' }])), 'Heading-based detection');
+    assert(T.isFragmentChapter(mkCh('(empty)', [{ type: 'heading', text: "Author's Note" }, ...mkBlocks(5)])), 'Heading: Author Note');
 
     // ── Short content = fragment regardless of title ──
     assert(T.isFragmentChapter(mkCh('Unknown Section', mkBlocks(2))), '2-block = fragment');

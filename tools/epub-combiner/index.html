@@ -1270,21 +1270,51 @@
     // Detect whether a chapter entry is a non-content fragment (front/back matter, TOC, etc.)
     // that should be merged with adjacent fragments rather than treated as a real chapter.
     function isFragmentChapter(ch) {
-        // Fragments known by title/heading content (multilingual)
-        const fragmentPatterns = /^(?:cover|title\s*page|copyright|colophon|about|tabla?\s+(?:de\s+)?(?:contenidos?|materias?)|table\s+of\s+contents|contents|toc|dedication|dedicatoria|epigraph|ep[ií]grafe|foreword|pr[oó]logo|preface|prefacio|acknowledgements?|agradecimientos|introduction|introducci[oó]n|afterword|ep[ií]logo|epilogue|appendix|ap[eé]ndice|bibliography|bibliograf[ií]a|glossary|glosario|index|[ií]ndice|notes?|notas?|about\s+the\s+author|sobre\s+el\s+autor|also\s+by|otros\s+libros|other\s+books|impressum|legal|aviso\s+legal|portada|contraportada|frontispiece|frontispicio|half[\s-]?title|back\s*cover)$/i;
+        // ── 1. Title/heading pattern matching (multilingual) ──
+        // Matches both exact titles ("Dedication") and compound titles ("Author's Note", "Nota de la autora")
+        const fragmentKeywords = [
+            // EN
+            /^cover$/i, /^title\s*page$/i, /^copyright/i, /^colophon$/i,
+            /^table\s+of\s+contents$/i, /^contents$/i, /^toc$/i,
+            /^dedication$/i, /^epigraph$/i,
+            /^foreword/i, /^preface/i, /^introduction$/i, /^prologue$/i,
+            /^afterword/i, /^epilogue$/i, /^postscript/i,
+            /^acknowledge?ments?$/i, /^about\b/i, /^also\s+by\b/i, /^other\s+books/i,
+            /^appendix/i, /^bibliography$/i, /^glossary$/i, /^index$/i,
+            /\bnotes?$/i, /^end\s*notes?$/i, /^foot\s*notes?$/i,
+            /^impressum$/i, /^legal/i, /^half[\s-]?title$/i, /^back\s*cover$/i,
+            /\bauthor'?s?\s+note/i, /\btranslator'?s?\s+note/i, /\beditor'?s?\s+note/i,
+            // ES
+            /^portada$/i, /^contraportada$/i, /^dedicatoria$/i, /^ep[ií]grafe$/i,
+            /^pr[oó]logo/i, /^prefacio/i, /^introducci[oó]n$/i,
+            /^ep[ií]logo/i, /^postfacio/i,
+            /^agradecimientos$/i, /^sobre\s+(el|la)\s+/i, /^otros\s+libros/i,
+            /^tabla?\s+(de\s+)?(contenidos?|materias?)$/i, /^[ií]ndice$/i,
+            /^ap[eé]ndice/i, /^bibliograf[ií]a$/i, /^glosario$/i,
+            /^notas?$/i, /^aviso\s+legal$/i, /^nota\s+(?:de\s+)?(?:la|del?|los?|las?)\s+/i,
+            // DE
+            /^impressum$/i, /^inhaltsverzeichnis$/i, /^vorwort/i, /^nachwort/i, /^danksagung/i,
+            // FR
+            /^pr[eé]face/i, /^avant-propos/i, /^table\s+des\s+mati[eè]res$/i, /^remerciements$/i,
+        ];
+
+        function matchesFragment(text) {
+            const t = (text || '').trim();
+            if (!t) return false;
+            return fragmentKeywords.some(re => re.test(t));
+        }
 
         // Check title
-        const title = (ch.title || '').trim();
-        if (fragmentPatterns.test(title)) return true;
+        if (matchesFragment(ch.title)) return true;
 
         // Check first heading block
         const firstHeading = ch.blocks.find(b => b.type === 'heading');
-        if (firstHeading && fragmentPatterns.test(firstHeading.text.trim())) return true;
+        if (firstHeading && matchesFragment(firstHeading.text)) return true;
 
-        // Very short entries (≤3 blocks) are almost certainly fragments
+        // ── 2. Very short entries are almost certainly fragments ──
         if (ch.blocks.length <= 3) return true;
 
-        // Short entries (≤10 blocks) with no substantial paragraph content are fragments
+        // ── 3. Short entries with minimal paragraph content ──
         if (ch.blocks.length <= 10) {
             const paraChars = ch.blocks
                 .filter(b => b.type === 'paragraph')
@@ -2587,6 +2617,8 @@
             if (isPaired) {
                 actionsHtml += `
                     <button class="btn btn-sm btn-primary" onclick="jumpToChapterAlignment(${currentPairIdx})" style="font-size:10px;">Align</button>
+                    <button class="btn btn-sm btn-secondary" onclick="pushPairingsDown(${globalIdx},1)" title="Push L1 pairings down from here (insert gap)" style="font-size:10px;padding:2px 4px;">&#8615;L</button>
+                    <button class="btn btn-sm btn-secondary" onclick="pushPairingsDown(${globalIdx},2)" title="Push L2 pairings down from here (insert gap)" style="font-size:10px;padding:2px 4px;">&#8615;R</button>
                     <button class="btn btn-sm btn-danger" onclick="unpairChapter(${currentPairIdx})" style="font-size:10px;">Unpair</button>`;
             }
             actionsHtml += `</div>`;
@@ -2768,6 +2800,43 @@
             enableTab('generateTab');
         }
         alert(`Restored ${loaded} alignment(s) from cache. ${Object.keys(paragraphAlignments).length} total loaded.`);
+    }
+
+    // Push pairings down from a given row: unpair the specified side at globalIdx,
+    // then for each subsequent paired row, shift that side's chapter down by one.
+    // This inserts a gap on one side, pushing all pairings below down.
+    function pushPairingsDown(globalIdx, side) {
+        pushUndoSnapshot('Push pairings down from row ' + (globalIdx + 1));
+        const chKey = side === 1 ? 'ch1' : 'ch2';
+
+        // Collect the chain: starting from globalIdx, for each paired entry,
+        // detach the specified side and push it to the next paired entry
+        let floating = null; // chapter index that got displaced
+        for (let i = globalIdx; i < chapterPairs.length; i++) {
+            const pair = chapterPairs[i];
+            if (pair[chKey] === null) {
+                // This is an unpaired slot on the other side — place floating here
+                if (floating !== null) {
+                    pair[chKey] = floating;
+                    floating = null;
+                    break;
+                }
+                continue;
+            }
+            // Displace this side's chapter
+            const displaced = pair[chKey];
+            pair[chKey] = floating; // null for the first iteration (creates the gap)
+            floating = displaced;
+            // Clear alignment cache for this pair
+            if (pair.ch1 !== null && pair.ch2 !== null) {
+                delete paragraphAlignments[`${pair.ch1}-${pair.ch2}`];
+            }
+        }
+        // If we still have a floating chapter, append it as unpaired
+        if (floating !== null) {
+            chapterPairs.push(side === 1 ? { ch1: floating, ch2: null } : { ch1: null, ch2: floating });
+        }
+        renderChapterAlignment();
     }
 
     function moveChapterPair(globalIdx, direction) {
