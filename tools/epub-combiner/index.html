@@ -1211,6 +1211,11 @@
         return el ? el.textContent.trim() : '';
     }
 
+    function cleanText(s) {
+        // Trim ASCII whitespace AND non-breaking spaces / zero-width chars
+        return (s || '').replace(/^[\s\u00a0\u200b\ufeff]+|[\s\u00a0\u200b\ufeff]+$/g, '');
+    }
+
     function extractBlocks(body) {
         if (!body) return [];
         const blocks = [];
@@ -1222,32 +1227,43 @@
             for (const child of node.children) {
                 const tag = child.tagName.toLowerCase();
                 if (['h1','h2','h3','h4','h5','h6'].includes(tag)) {
-                    blocks.push({ type: 'heading', level: parseInt(tag[1]), text: child.textContent.trim(), html: child.innerHTML });
+                    const text = cleanText(child.textContent);
+                    if (text || hasImage(child)) {
+                        blocks.push({ type: 'heading', level: parseInt(tag[1]), text: text || '[image]', html: child.innerHTML });
+                    }
                 } else if (tag === 'p') {
-                    const text = child.textContent.trim();
+                    const text = cleanText(child.textContent);
                     if (text || hasImage(child)) {
                         blocks.push({ type: 'paragraph', text: text || '[image]', html: child.innerHTML });
                     }
                 } else if (tag === 'blockquote') {
-                    const text = child.textContent.trim();
+                    const text = cleanText(child.textContent);
                     if (text) blocks.push({ type: 'blockquote', text: text, html: child.innerHTML });
                 } else if (tag === 'img') {
-                    // Standalone image (not inside a <p>)
-                    const alt = child.getAttribute('alt') || '[image]';
+                    // Standalone image (not inside a <p> or <figure>)
+                    const alt = cleanText(child.getAttribute('alt')) || '[image]';
                     blocks.push({ type: 'figure', text: alt, html: child.outerHTML });
                 } else if (tag === 'svg') {
                     blocks.push({ type: 'figure', text: '[svg]', html: child.outerHTML });
                 } else if (['section', 'article', 'div', 'main'].includes(tag)) {
-                    // Wrapper elements: recurse into them
-                    walk(child);
+                    // Wrapper elements: recurse, but if it only contains an image,
+                    // extract as figure to avoid recursing into just an <img>
+                    if (child.children.length === 1 && child.children[0].tagName &&
+                        child.children[0].tagName.toLowerCase() === 'img') {
+                        const img = child.children[0];
+                        const alt = cleanText(img.getAttribute('alt')) || '[image]';
+                        blocks.push({ type: 'figure', text: alt, html: child.innerHTML });
+                    } else {
+                        walk(child);
+                    }
                 } else if (['ul', 'ol'].includes(tag)) {
-                    const text = child.textContent.trim();
+                    const text = cleanText(child.textContent);
                     if (text) blocks.push({ type: 'list', text: text, html: child.outerHTML });
                 } else if (['pre', 'table'].includes(tag)) {
-                    const text = child.textContent.trim();
+                    const text = cleanText(child.textContent);
                     if (text) blocks.push({ type: tag, text: text, html: child.outerHTML });
                 } else if (tag === 'figure') {
-                    const text = child.textContent.trim();
+                    const text = cleanText(child.textContent);
                     blocks.push({ type: 'figure', text: text || '[figure]', html: child.outerHTML });
                 }
             }
