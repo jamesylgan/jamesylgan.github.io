@@ -4567,21 +4567,33 @@
                 ri++;
             }
 
-            // Merge context pairs back in order, then splice into the main array
-            // Rebuild the region: context pairs at their relative positions + new pairs for the gap area
+            // Merge context pairs and new pairs back in document order.
+            // Each new pair has blocks with _dpIdx — use these to interleave correctly.
             const rebuilt = [];
             let newIdx = 0;
             for (let r = regionStart; r < regionEnd; r++) {
                 const cp = contextPairs.find(c => c.idx === r);
                 if (cp) {
+                    // Before inserting context pair, flush any new pairs whose blocks
+                    // have _dpIdx less than this context pair's blocks
+                    const cpMinIdx = Math.min(
+                        ...(cp.pair.left || []).map(b => b._dpIdx ?? Infinity),
+                        ...(cp.pair.right || []).map(b => b._dpIdx ?? Infinity)
+                    );
+                    while (newIdx < newPairs.length) {
+                        const np = newPairs[newIdx];
+                        const npMinIdx = Math.min(
+                            ...(np.left || []).map(b => b._dpIdx ?? Infinity),
+                            ...(np.right || []).map(b => b._dpIdx ?? Infinity)
+                        );
+                        if (npMinIdx < cpMinIdx) { rebuilt.push(np); newIdx++; }
+                        else break;
+                    }
                     rebuilt.push(cp.pair);
-                } else if (newIdx === 0) {
-                    // Insert all new pairs at the first gap position
-                    rebuilt.push(...newPairs);
-                    newIdx = 1; // mark as inserted
                 }
-                // Skip other original gap rows (they're replaced by newPairs)
             }
+            // Flush remaining new pairs
+            while (newIdx < newPairs.length) { rebuilt.push(newPairs[newIdx++]); }
             if (newIdx === 0) rebuilt.push(...newPairs); // in case no gap rows were found
 
             // Only apply repair if it actually reduces gaps
