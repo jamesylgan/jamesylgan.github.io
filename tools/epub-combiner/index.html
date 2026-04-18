@@ -5725,15 +5725,20 @@ ${spineXml}
         } catch (e) { return null; }
     }
 
-    function hasStoredAlignments() {
+    function hasStoredSession() {
         const key = getSessionKey();
         if (!key) return false;
+        // Check for metadata key (chapter pairs saved) or alignment keys
+        if (localStorage.getItem(key + ':meta')) return true;
+        if (localStorage.getItem(key)) return true; // legacy format
         const prefix = key + ':align:';
         for (let i = 0; i < localStorage.length; i++) {
             if (localStorage.key(i).startsWith(prefix)) return true;
         }
         return false;
     }
+    // Keep old name as alias for backward compat
+    function hasStoredAlignments() { return hasStoredSession(); }
 
     function tryRestoreSession() {
         if (!epub1 || !epub2) return false;
