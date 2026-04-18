@@ -177,6 +177,52 @@
         .unpaired-section { margin-top: 20px; }
         .unpaired-section h3 { font-size: 14px; color: var(--text-muted); }
 
+        /* Chapter edit panels */
+        .chapter-edit-toolbar {
+            display: flex; gap: 10px; margin-bottom: 15px; align-items: center;
+        }
+        .chapter-edit-panel {
+            margin-bottom: 15px; border: 1px solid var(--border); border-radius: 8px;
+            background: white; overflow: hidden;
+        }
+        .chapter-edit-panel summary {
+            padding: 10px 15px; cursor: pointer; font-weight: 600; font-size: 13px;
+            color: var(--text); user-select: none; list-style: none;
+        }
+        .chapter-edit-panel summary::-webkit-details-marker { display: none; }
+        .chapter-edit-panel summary::before { content: '\25B6  '; font-size: 10px; }
+        .chapter-edit-panel[open] summary::before { content: '\25BC  '; }
+        .chapter-edit-panel[open] summary { border-bottom: 1px solid var(--border); }
+        .chapter-edit-list { padding: 10px; }
+        .chapter-edit-actions { margin-bottom: 8px; display: flex; gap: 8px; }
+        .split-block-list { max-height: 50vh; overflow-y: auto; }
+        .split-block-item {
+            padding: 6px 10px; font-size: 12px; border-bottom: 1px solid #f0f0f0;
+            display: flex; gap: 8px; align-items: flex-start;
+        }
+        .split-block-type {
+            font-size: 10px; font-weight: 600; color: var(--text-muted);
+            min-width: 35px; text-transform: uppercase; padding-top: 2px;
+        }
+        .split-block-text { flex: 1; line-height: 1.4; }
+        .split-point {
+            padding: 4px 10px; font-size: 11px; color: var(--primary);
+            cursor: pointer; text-align: center; background: #f8f9fa;
+            border: 1px dashed var(--primary); margin: 2px 0; border-radius: 4px;
+            transition: background 0.15s;
+        }
+        .split-point:hover { background: #e8f0fe; }
+        .chapter-preview-row {
+            display: flex; gap: 15px; margin: 8px 0; padding: 10px;
+            border: 1px solid var(--border); border-radius: 6px; background: #fafafa;
+            font-size: 12px;
+        }
+        .chapter-preview-col { flex: 1; max-height: 200px; overflow-y: auto; }
+        .chapter-preview-col .block-preview {
+            padding: 3px 0; border-bottom: 1px solid #eee; line-height: 1.4;
+        }
+        .chapter-preview-col .block-preview.heading { font-weight: 600; }
+
         /* Paragraph alignment — sidebar layout */
         .para-layout {
             display: flex; gap: 0; border: 1px solid var(--border);
@@ -643,6 +689,161 @@
     let embeddingModelLoading = false;
     let embeddingCache = new Map(); // text → number[] (in-session)
     const EMBEDDING_CACHE_LS_KEY = 'epubCombiner:embCache:v1';
+    let chapterEditHistory = [];
+    const MAX_UNDO_DEPTH = 20;
+
+    // ── Chapter Edit Operations ──
+
+    function deepCloneChapters(chapters) {
+        return chapters.map(ch => ({
+            id: ch.id, href: ch.href, title: ch.title,
+            blocks: ch.blocks.map(b => ({ ...b }))
+        }));
+    }
+
+    function pushUndoSnapshot(description) {
+        chapterEditHistory.push({
+            epub1Chapters: deepCloneChapters(epub1.chapters),
+            epub2Chapters: deepCloneChapters(epub2.chapters),
+            chapterPairs: JSON.parse(JSON.stringify(chapterPairs)),
+            reviewedChapters: { ...reviewedChapters },
+            description: description
+        });
+        if (chapterEditHistory.length > MAX_UNDO_DEPTH) chapterEditHistory.shift();
+    }
+
+    function undoChapterEdit() {
+        if (chapterEditHistory.length === 0) return;
+        const snapshot = chapterEditHistory.pop();
+        epub1.chapters = snapshot.epub1Chapters;
+        epub2.chapters = snapshot.epub2Chapters;
+        chapterPairs = snapshot.chapterPairs;
+        paragraphAlignments = {};
+        reviewedChapters = snapshot.reviewedChapters;
+        reviewedRows = {};
+        bgAlignGeneration++;
+        bgAlignCurrent = null;
+        renderChapterAlignment();
+    }
+
+    function invalidateAlignments() {
+        paragraphAlignments = {};
+        reviewedChapters = {};
+        reviewedRows = {};
+        bgAlignGeneration++;
+        bgAlignCurrent = null;
+        const sessionKey = getSessionKey();
+        if (sessionKey) {
+            const prefix = sessionKey + ':align:';
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && k.startsWith(prefix)) keysToRemove.push(k);
+            }
+            keysToRemove.forEach(k => localStorage.removeItem(k));
+        }
+    }
+
+    function reindexChapterPairs(bookNum, mergeStart, mergeEnd) {
+        const chKey = bookNum === 1 ? 'ch1' : 'ch2';
+        const mergedKey = bookNum === 1 ? 'mergedCh1' : 'mergedCh2';
+        const removedCount = mergeEnd - mergeStart;
+
+        const toRemove = [];
+        for (let i = 0; i < chapterPairs.length; i++) {
+            const pair = chapterPairs[i];
+            if (pair[mergedKey]) {
+                pair[mergedKey] = pair[mergedKey].map(mi => {
+                    if (mi > mergeEnd) return mi - removedCount;
+                    if (mi >= mergeStart && mi <= mergeEnd) return mergeStart;
+                    return mi;
+                });
+                pair[mergedKey] = [...new Set(pair[mergedKey])];
+                if (pair[mergedKey].length <= 1) delete pair[mergedKey];
+            }
+            const idx = pair[chKey];
+            if (idx === null) continue;
+            if (idx > mergeStart && idx <= mergeEnd) {
+                toRemove.push(i);
+            } else if (idx > mergeEnd) {
+                pair[chKey] = idx - removedCount;
+            }
+        }
+        for (let i = toRemove.length - 1; i >= 0; i--) {
+            chapterPairs.splice(toRemove[i], 1);
+        }
+    }
+
+    function mergeChapters(bookNum, startIdx, endIdx) {
+        if (startIdx >= endIdx) return;
+        const epub = bookNum === 1 ? epub1 : epub2;
+
+        pushUndoSnapshot(`Merge chapters ${startIdx + 1}-${endIdx + 1} in Language ${bookNum}`);
+
+        const mergedBlocks = [];
+        for (let i = startIdx; i <= endIdx; i++) {
+            mergedBlocks.push(...epub.chapters[i].blocks);
+        }
+        const mergedChapter = {
+            id: epub.chapters[startIdx].id + '_merged',
+            href: epub.chapters[startIdx].href,
+            title: epub.chapters[startIdx].title,
+            blocks: mergedBlocks
+        };
+
+        epub.chapters.splice(startIdx, endIdx - startIdx + 1, mergedChapter);
+        reindexChapterPairs(bookNum, startIdx, endIdx);
+        invalidateAlignments();
+        renderChapterAlignment();
+    }
+
+    function reindexChapterPairsForSplit(bookNum, splitIdx) {
+        const chKey = bookNum === 1 ? 'ch1' : 'ch2';
+        const mergedKey = bookNum === 1 ? 'mergedCh1' : 'mergedCh2';
+
+        for (const pair of chapterPairs) {
+            if (pair[mergedKey]) {
+                pair[mergedKey] = pair[mergedKey].map(mi => mi > splitIdx ? mi + 1 : mi);
+            }
+            const idx = pair[chKey];
+            if (idx === null) continue;
+            if (idx > splitIdx) {
+                pair[chKey] = idx + 1;
+            }
+        }
+        // Add unpaired entry for second half of split
+        chapterPairs.push(bookNum === 1
+            ? { ch1: splitIdx + 1, ch2: null }
+            : { ch1: null, ch2: splitIdx + 1 }
+        );
+    }
+
+    function splitChapter(bookNum, chapterIdx, blockIdx) {
+        const epub = bookNum === 1 ? epub1 : epub2;
+        const chapter = epub.chapters[chapterIdx];
+        if (blockIdx <= 0 || blockIdx >= chapter.blocks.length) return;
+
+        pushUndoSnapshot(`Split chapter ${chapterIdx + 1} in Language ${bookNum}`);
+
+        const ch1 = {
+            id: chapter.id + '_a',
+            href: chapter.href,
+            title: chapter.title,
+            blocks: chapter.blocks.slice(0, blockIdx)
+        };
+        const ch2Blocks = chapter.blocks.slice(blockIdx);
+        const ch2 = {
+            id: chapter.id + '_b',
+            href: chapter.href,
+            title: titleFromBlocks(ch2Blocks),
+            blocks: ch2Blocks
+        };
+
+        epub.chapters.splice(chapterIdx, 1, ch1, ch2);
+        reindexChapterPairsForSplit(bookNum, chapterIdx);
+        invalidateAlignments();
+        renderChapterAlignment();
+    }
 
     // ── Embedding helpers ──
 
@@ -920,7 +1121,7 @@
         });
 
         // Parse chapters (spine XHTML items)
-        const chapters = [];
+        let chapters = [];
         for (const item of spineItems) {
             const fullPath = opfDir + item.href;
             const file = zip.file(fullPath);
@@ -936,6 +1137,11 @@
                 blocks: blocks
             });
         }
+
+        // Smart chapter boundary detection:
+        // 1. Split spine entries that contain multiple chapter headings
+        // 2. Merge consecutive unnumbered fragments into single front/back matter entries
+        chapters = autoMergeFragments(autoSplitChapters(chapters));
 
         // Collect non-spine resource manifest (lazy — data loaded on demand from zip)
         const resources = {};
@@ -995,12 +1201,96 @@
 
     function extractChapterTitle(doc, blocks) {
         // Try <title>, then first heading, then first paragraph
-        const titleEl = doc.querySelector('title');
-        if (titleEl && titleEl.textContent.trim()) return titleEl.textContent.trim();
+        if (doc) {
+            const titleEl = doc.querySelector('title');
+            if (titleEl && titleEl.textContent.trim()) return titleEl.textContent.trim();
+        }
         const heading = blocks.find(b => b.type === 'heading');
         if (heading) return heading.text.substring(0, 80);
         if (blocks.length > 0) return blocks[0].text.substring(0, 60) + '...';
         return '(empty)';
+    }
+
+    function titleFromBlocks(blocks) {
+        const heading = blocks.find(b => b.type === 'heading');
+        if (heading) return heading.text.substring(0, 80);
+        if (blocks.length > 0) return blocks[0].text.substring(0, 60) + '...';
+        return '(empty)';
+    }
+
+    // Auto-split spine entries that contain multiple chapter headings
+    function autoSplitChapters(chapters) {
+        for (let ci = chapters.length - 1; ci >= 0; ci--) {
+            const ch = chapters[ci];
+            // Find all heading blocks with chapter numbers
+            const chapterHeadingIndices = [];
+            for (let bi = 0; bi < ch.blocks.length; bi++) {
+                const b = ch.blocks[bi];
+                if (b.type === 'heading' && extractBlockChapterNum(b.text) !== null) {
+                    chapterHeadingIndices.push(bi);
+                }
+            }
+            if (chapterHeadingIndices.length < 2) continue;
+
+            // Split at each chapter heading boundary
+            const newChapters = [];
+            for (let hi = 0; hi < chapterHeadingIndices.length; hi++) {
+                const start = chapterHeadingIndices[hi];
+                const end = hi + 1 < chapterHeadingIndices.length
+                    ? chapterHeadingIndices[hi + 1]
+                    : ch.blocks.length;
+                const blocks = ch.blocks.slice(start, end);
+                newChapters.push({
+                    id: ch.id + '_split' + hi,
+                    href: ch.href,
+                    title: titleFromBlocks(blocks),
+                    blocks: blocks
+                });
+            }
+            // If there's content before the first chapter heading, keep it as a separate entry
+            if (chapterHeadingIndices[0] > 0) {
+                const prefixBlocks = ch.blocks.slice(0, chapterHeadingIndices[0]);
+                newChapters.unshift({
+                    id: ch.id + '_pre',
+                    href: ch.href,
+                    title: titleFromBlocks(prefixBlocks),
+                    blocks: prefixBlocks
+                });
+            }
+            chapters.splice(ci, 1, ...newChapters);
+        }
+        return chapters;
+    }
+
+    // Auto-merge adjacent unnumbered (non-chapter) spine entries into single front/back matter entries
+    function autoMergeFragments(chapters) {
+        function hasChapterNum(ch) {
+            return ch.blocks.some(b => b.type === 'heading' && extractBlockChapterNum(b.text) !== null);
+        }
+
+        const result = [];
+        let pendingGroup = null; // accumulates consecutive unnumbered chapters
+
+        for (const ch of chapters) {
+            if (hasChapterNum(ch)) {
+                // Flush any pending unnumbered group
+                if (pendingGroup) { result.push(pendingGroup); pendingGroup = null; }
+                result.push(ch);
+            } else {
+                // Unnumbered — accumulate into group
+                if (!pendingGroup) {
+                    pendingGroup = { id: ch.id, href: ch.href, title: ch.title, blocks: [...ch.blocks] };
+                } else {
+                    pendingGroup.blocks.push(...ch.blocks);
+                    // Keep first non-empty title
+                    if (pendingGroup.title === '(empty)' && ch.title !== '(empty)') {
+                        pendingGroup.title = ch.title;
+                    }
+                }
+            }
+        }
+        if (pendingGroup) result.push(pendingGroup);
+        return result;
     }
 
     // ========== Upload Tab Helpers ==========
@@ -2051,101 +2341,302 @@
 
     function renderChapterAlignment() {
         const el = document.getElementById('chapterAlignmentContent');
+        if (!el) return;
+        const lang1 = escapeHtml(document.getElementById('lang1Label').value || 'Language 1');
+        const lang2 = escapeHtml(document.getElementById('lang2Label').value || 'Language 2');
         const paired = chapterPairs.filter(p => p.ch1 !== null && p.ch2 !== null);
-        const unpaired1 = chapterPairs.filter(p => p.ch1 !== null && p.ch2 === null);
-        const unpaired2 = chapterPairs.filter(p => p.ch1 === null && p.ch2 !== null);
 
-        let html = `<table class="chapter-table">
+        // Toolbar with undo, re-run, and merge buttons for each language
+        let html = `<div class="chapter-edit-toolbar">
+            <button class="btn btn-sm btn-secondary" onclick="undoChapterEdit()" ${chapterEditHistory.length === 0 ? 'disabled' : ''}>
+                &#8617; Undo${chapterEditHistory.length > 0 ? ' (' + chapterEditHistory.length + ')' : ''}
+            </button>
+            <button class="btn btn-sm btn-primary" onclick="rerunAutoPairing()">&#8635; Re-run Auto-Pairing</button>
+            <span style="flex:1;"></span>
+            <button class="btn btn-sm btn-secondary" id="mergeBtn1" onclick="mergeSelectedChapters(1)" disabled>Merge ${lang1}</button>
+            <button class="btn btn-sm btn-secondary" id="mergeBtn2" onclick="mergeSelectedChapters(2)" disabled>Merge ${lang2}</button>
+        </div>`;
+
+        // Summary
+        html += `<p style="font-size:12px;color:var(--text-muted);margin:0 0 10px;">
+            ${lang1}: ${epub1.chapters.length} chapters | ${lang2}: ${epub2.chapters.length} chapters | ${paired.length} paired
+        </p>`;
+
+        // Unified table: all chapter pairs in order
+        html += `<table class="chapter-table">
             <thead><tr>
-                <th>#</th>
-                <th>${escapeHtml(document.getElementById('lang1Label').value || 'Language 1')}</th>
-                <th></th>
-                <th>${escapeHtml(document.getElementById('lang2Label').value || 'Language 2')}</th>
-                <th>Confidence</th>
-                <th>Actions</th>
+                <th style="width:24px;"></th>
+                <th>${lang1}</th>
+                <th style="width:30px;"></th>
+                <th>${lang2}</th>
+                <th style="width:70px;">Conf.</th>
+                <th style="width:140px;">Actions</th>
             </tr></thead><tbody>`;
 
-        paired.forEach((pair, idx) => {
-            const c1 = epub1.chapters[pair.ch1];
-            const c2 = epub2.chapters[pair.ch2];
-            const ratio = c1.blocks.length && c2.blocks.length
-                ? Math.min(c1.blocks.length, c2.blocks.length) / Math.max(c1.blocks.length, c2.blocks.length)
-                : 0;
-            const warn = ratio < 0.5 && c1.blocks.length > 0 && c2.blocks.length > 0;
+        let pairIdx = 0;
+        chapterPairs.forEach((pair, globalIdx) => {
+            const isPaired = pair.ch1 !== null && pair.ch2 !== null;
+            const currentPairIdx = isPaired ? pairIdx++ : -1;
 
-            const key = `${pair.ch1}-${pair.ch2}`;
-            const conf = getChapterConfidence(pair);
-            const isReviewed = reviewedChapters[key];
-            let confHtml = '<span style="color:var(--text-muted);font-size:12px;">—</span>';
-            if (isReviewed) {
-                confHtml = `<span class="confidence-badge good" style="background:#28a745;">Reviewed</span>`;
-            } else if (conf !== null) {
-                const level = conf >= 0.5 ? 'good' : conf >= 0.3 ? 'moderate' : 'poor';
-                confHtml = `<span class="confidence-badge ${level}">${Math.round(conf * 100)}%</span>`;
+            // Left side (L1)
+            let l1Html, l2Html;
+            if (pair.ch1 !== null) {
+                const c1 = epub1.chapters[pair.ch1];
+                l1Html = `<div style="display:flex;align-items:center;gap:6px;">
+                    <input type="checkbox" class="chapterCheck1" value="${pair.ch1}" onchange="updateMergeButton(1)" style="margin:0;">
+                    <div style="flex:1;">
+                        ${escapeHtml(c1.title)}<br>
+                        <span class="para-count">${c1.blocks.length} blocks</span>
+                    </div>
+                    <div style="display:flex;gap:2px;">
+                        <button class="btn btn-sm btn-secondary" onclick="toggleChapterPreviewSingle(${globalIdx},1)" title="Preview" style="font-size:10px;padding:2px 5px;">&#128065;</button>
+                        ${c1.blocks.length > 1 ? `<button class="btn btn-sm btn-secondary" onclick="showSplitDialog(1,${pair.ch1})" title="Split" style="font-size:10px;padding:2px 5px;">&#9986;</button>` : ''}
+                    </div>
+                </div>`;
+            } else {
+                l1Html = `<div style="display:flex;align-items:center;gap:6px;">
+                    <select id="pairSelect2_${globalIdx}" style="flex:1;padding:4px;border:1px solid var(--border);border-radius:4px;font-size:12px;">
+                        <option value="">-- Pair with ${lang1} --</option>
+                        ${getUnpairedOptions(1)}
+                    </select>
+                    <button class="btn btn-sm btn-primary" onclick="manualPairChapter(${globalIdx}, 2)" style="font-size:10px;">Pair</button>
+                </div>`;
             }
 
-            html += `<tr>
-                <td>${idx + 1}</td>
-                <td>${escapeHtml(c1.title)}<br><span class="para-count">${c1.blocks.length} blocks</span></td>
-                <td style="text-align:center;">&#8596;</td>
-                <td>${escapeHtml(c2.title)}<br><span class="para-count">${c2.blocks.length} blocks</span>
-                    ${warn ? '<br><span class="mismatch-warn">&#9888; Large block count mismatch</span>' : ''}
-                </td>
+            // Right side (L2)
+            if (pair.ch2 !== null) {
+                const c2 = epub2.chapters[pair.ch2];
+                const ratio = isPaired ? Math.min(epub1.chapters[pair.ch1].blocks.length, c2.blocks.length) / Math.max(epub1.chapters[pair.ch1].blocks.length, c2.blocks.length) : 1;
+                const warn = isPaired && ratio < 0.5 && epub1.chapters[pair.ch1].blocks.length > 0 && c2.blocks.length > 0;
+                l2Html = `<div style="display:flex;align-items:center;gap:6px;">
+                    <div style="flex:1;">
+                        ${escapeHtml(c2.title)}<br>
+                        <span class="para-count">${c2.blocks.length} blocks</span>
+                        ${warn ? '<br><span class="mismatch-warn">&#9888; Mismatch</span>' : ''}
+                    </div>
+                    <div style="display:flex;gap:2px;">
+                        <button class="btn btn-sm btn-secondary" onclick="toggleChapterPreviewSingle(${globalIdx},2)" title="Preview" style="font-size:10px;padding:2px 5px;">&#128065;</button>
+                        ${c2.blocks.length > 1 ? `<button class="btn btn-sm btn-secondary" onclick="showSplitDialog(2,${pair.ch2})" title="Split" style="font-size:10px;padding:2px 5px;">&#9986;</button>` : ''}
+                    </div>
+                    <input type="checkbox" class="chapterCheck2" value="${pair.ch2}" onchange="updateMergeButton(2)" style="margin:0;">
+                </div>`;
+            } else {
+                l2Html = `<div style="display:flex;align-items:center;gap:6px;">
+                    <select id="pairSelect1_${globalIdx}" style="flex:1;padding:4px;border:1px solid var(--border);border-radius:4px;font-size:12px;">
+                        <option value="">-- Pair with ${lang2} --</option>
+                        ${getUnpairedOptions(2)}
+                    </select>
+                    <button class="btn btn-sm btn-primary" onclick="manualPairChapter(${globalIdx}, 1)" style="font-size:10px;">Pair</button>
+                </div>`;
+            }
+
+            // Confidence
+            let confHtml = '';
+            if (isPaired) {
+                const key = `${pair.ch1}-${pair.ch2}`;
+                const conf = getChapterConfidence(pair);
+                const isReviewed = reviewedChapters[key];
+                if (isReviewed) {
+                    confHtml = `<span class="confidence-badge good" style="background:#28a745;">Reviewed</span>`;
+                } else if (conf !== null) {
+                    const level = conf >= 0.5 ? 'good' : conf >= 0.3 ? 'moderate' : 'poor';
+                    confHtml = `<span class="confidence-badge ${level}">${Math.round(conf * 100)}%</span>`;
+                } else {
+                    confHtml = '<span style="color:var(--text-muted);font-size:12px;">—</span>';
+                }
+            }
+
+            // Actions
+            let actionsHtml = '';
+            if (isPaired) {
+                actionsHtml = `
+                    <button class="btn btn-sm btn-primary" onclick="jumpToChapterAlignment(${currentPairIdx})" style="font-size:10px;">Align</button>
+                    <button class="btn btn-sm btn-danger" onclick="unpairChapter(${currentPairIdx})" style="font-size:10px;">Unpair</button>`;
+            }
+
+            const rowBg = isPaired ? '' : 'background:#fff8e1;';
+            html += `<tr style="${rowBg}">
+                <td style="text-align:center;font-size:11px;color:var(--text-muted);">${globalIdx + 1}</td>
+                <td>${l1Html}</td>
+                <td style="text-align:center;">${isPaired ? '&#8596;' : ''}</td>
+                <td>${l2Html}</td>
                 <td style="text-align:center;">${confHtml}</td>
-                <td>
-                    <button class="btn btn-sm btn-primary" onclick="jumpToChapterAlignment(${idx})" style="margin-right:4px;">Align</button>
-                    <button class="btn btn-sm btn-danger" onclick="unpairChapter(${idx})">Unpair</button>
+                <td>${actionsHtml}</td>
+            </tr>`;
+
+            // Preview row (hidden by default)
+            html += `<tr id="chapterPreview_${globalIdx}" style="display:none;">
+                <td colspan="6">
+                    <div class="chapter-preview-row">
+                        ${pair.ch1 !== null ? `<div class="chapter-preview-col">
+                            <strong style="font-size:11px;color:var(--text-muted);">${lang1}</strong>
+                            ${renderBlockPreview(epub1.chapters[pair.ch1].blocks)}
+                        </div>` : '<div class="chapter-preview-col"></div>'}
+                        ${pair.ch2 !== null ? `<div class="chapter-preview-col">
+                            <strong style="font-size:11px;color:var(--text-muted);">${lang2}</strong>
+                            ${renderBlockPreview(epub2.chapters[pair.ch2].blocks)}
+                        </div>` : '<div class="chapter-preview-col"></div>'}
+                    </div>
                 </td>
             </tr>`;
         });
 
         html += '</tbody></table>';
-
-        // Unpaired chapters
-        if (unpaired1.length || unpaired2.length) {
-            html += '<div class="unpaired-section"><h3>Unpaired Chapters</h3>';
-
-            unpaired1.forEach((pair, idx) => {
-                const globalIdx = chapterPairs.indexOf(pair);
-                const c1 = epub1.chapters[pair.ch1];
-                html += `<div style="margin:8px 0;display:flex;align-items:center;gap:10px;">
-                    <span style="flex:1;">[L1] ${escapeHtml(c1.title)} (${c1.blocks.length} blocks)</span>
-                    <select id="pairSelect1_${globalIdx}" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;">
-                        <option value="">-- Pair with --</option>
-                        ${getUnpairedOptions(2)}
-                    </select>
-                    <button class="btn btn-sm btn-primary" onclick="manualPairChapter(${globalIdx}, 1)">Pair</button>
-                </div>`;
-            });
-
-            unpaired2.forEach((pair, idx) => {
-                const globalIdx = chapterPairs.indexOf(pair);
-                const c2 = epub2.chapters[pair.ch2];
-                html += `<div style="margin:8px 0;display:flex;align-items:center;gap:10px;">
-                    <span style="flex:1;">[L2] ${escapeHtml(c2.title)} (${c2.blocks.length} blocks)</span>
-                    <select id="pairSelect2_${globalIdx}" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;">
-                        <option value="">-- Pair with --</option>
-                        ${getUnpairedOptions(1)}
-                    </select>
-                    <button class="btn btn-sm btn-primary" onclick="manualPairChapter(${globalIdx}, 2)">Pair</button>
-                </div>`;
-            });
-
-            html += '</div>';
-        }
-
         el.innerHTML = html;
     }
 
-    function getUnpairedOptions(langNum) {
-        const chapters = langNum === 1 ? epub1.chapters : epub2.chapters;
-        const usedIndices = new Set(chapterPairs.map(p => langNum === 1 ? p.ch1 : p.ch2).filter(x => x !== null));
-        let opts = '';
-        chapters.forEach((ch, i) => {
-            if (!usedIndices.has(i)) {
-                opts += `<option value="${i}">${escapeHtml(ch.title)}</option>`;
+    function renderBlockPreview(blocks) {
+        // Show first 3 and last 3 blocks (with ellipsis if more)
+        const maxShow = 3;
+        let preview = '';
+        const showBlocks = [];
+        if (blocks.length <= maxShow * 2) {
+            showBlocks.push(...blocks);
+        } else {
+            showBlocks.push(...blocks.slice(0, maxShow));
+            showBlocks.push(null); // separator
+            showBlocks.push(...blocks.slice(-maxShow));
+        }
+        for (const b of showBlocks) {
+            if (b === null) {
+                preview += '<div style="text-align:center;color:var(--text-muted);font-size:11px;padding:4px;">...</div>';
+                continue;
+            }
+            const cls = b.type === 'heading' ? ' heading' : '';
+            const text = b.text.substring(0, 100) + (b.text.length > 100 ? '...' : '');
+            preview += `<div class="block-preview${cls}">${escapeHtml(text)}</div>`;
+        }
+        return preview;
+    }
+
+    function toggleChapterPreview(idx) {
+        const row = document.getElementById('chapterPreview_' + idx);
+        if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
+    }
+
+    function toggleChapterPreviewSingle(globalIdx, bookNum) {
+        toggleChapterPreview(globalIdx);
+    }
+
+    function toggleAllChapterChecks(bookNum, checked) {
+        document.querySelectorAll(`.chapterCheck${bookNum}`).forEach(cb => cb.checked = checked);
+        updateMergeButton(bookNum);
+    }
+
+    function updateMergeButton(bookNum) {
+        const checks = document.querySelectorAll(`.chapterCheck${bookNum}:checked`);
+        const indices = Array.from(checks).map(cb => parseInt(cb.value)).sort((a, b) => a - b);
+        const btn = document.getElementById('mergeBtn' + bookNum);
+        if (!btn) return;
+        let adjacent = indices.length >= 2;
+        for (let i = 1; i < indices.length; i++) {
+            if (indices[i] !== indices[i - 1] + 1) { adjacent = false; break; }
+        }
+        btn.disabled = !adjacent;
+    }
+
+    function mergeSelectedChapters(bookNum) {
+        const checks = document.querySelectorAll(`.chapterCheck${bookNum}:checked`);
+        const indices = Array.from(checks).map(cb => parseInt(cb.value)).sort((a, b) => a - b);
+        if (indices.length < 2) return;
+        for (let i = 1; i < indices.length; i++) {
+            if (indices[i] !== indices[i - 1] + 1) {
+                alert('Selected chapters must be adjacent to merge.');
+                return;
+            }
+        }
+        mergeChapters(bookNum, indices[0], indices[indices.length - 1]);
+    }
+
+    function showSplitDialog(bookNum, chapterIdx) {
+        const epub = bookNum === 1 ? epub1 : epub2;
+        const chapter = epub.chapters[chapterIdx];
+
+        let html = `<div class="disclaimer-overlay" id="splitOverlay" onclick="if(event.target===this)this.remove()">
+            <div class="disclaimer-modal" style="max-width:700px;max-height:80vh;overflow:auto;">
+                <h2 style="color:var(--text);font-size:16px;">Split: ${escapeHtml(chapter.title)}</h2>
+                <p style="font-size:13px;color:var(--text-muted);">Click between blocks to set the split point.</p>
+                <div class="split-block-list">`;
+
+        chapter.blocks.forEach((block, i) => {
+            const preview = block.text.substring(0, 150) + (block.text.length > 150 ? '...' : '');
+            const typeLabel = block.type === 'heading' ? `H${block.level || ''}` : block.type.substring(0, 4);
+
+            html += `<div class="split-block-item">
+                <span class="split-block-type">${typeLabel}</span>
+                <span class="split-block-text">${escapeHtml(preview)}</span>
+            </div>`;
+
+            if (i < chapter.blocks.length - 1) {
+                html += `<div class="split-point" onclick="doSplit(${bookNum}, ${chapterIdx}, ${i + 1})"
+                              title="Split here">
+                    &#9986; Split here (${i + 1} above | ${chapter.blocks.length - i - 1} below)
+                </div>`;
             }
         });
+
+        html += `</div>
+                <button class="btn btn-secondary" onclick="document.getElementById('splitOverlay').remove()"
+                        style="margin-top:15px;">Cancel</button>
+            </div></div>`;
+
+        document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    function doSplit(bookNum, chapterIdx, blockIdx) {
+        document.getElementById('splitOverlay').remove();
+        splitChapter(bookNum, chapterIdx, blockIdx);
+    }
+
+    async function rerunAutoPairing() {
+        if (!epub1 || !epub2) return;
+
+        pushUndoSnapshot('Before re-run auto-pairing');
+        showAlignmentOverlay();
+        alignmentCancelled = false;
+
+        try {
+            updateAlignPhase('Re-computing chapter features...', 0);
+            updateAlignDetail(`${epub1.chapters.length} + ${epub2.chapters.length} chapters`);
+            await new Promise(r => setTimeout(r, 0));
+            const feats1 = await precomputeChapterFeatures(epub1.chapters);
+            const feats2 = await precomputeChapterFeatures(epub2.chapters);
+
+            updateAlignPhase('Computing similarity matrix...', 20);
+            const simMatrix = await computeChapterSimilarityMatrix(feats1, feats2);
+
+            if (alignmentCancelled) return;
+
+            updateAlignPhase('Finding optimal pairings...', 60);
+            const result = await findOptimalChapterPairing(
+                simMatrix, epub1.chapters.length, epub2.chapters.length, feats1, feats2
+            );
+
+            chapterPairs = buildChapterPairsFromResult(result);
+            splitChapterFrontMatter(chapterPairs, epub1, epub2);
+            invalidateAlignments();
+
+            updateAlignPhase('Done', 100);
+        } finally {
+            hideAlignmentOverlay();
+            renderChapterAlignment();
+            saveSession();
+        }
+    }
+
+    function getUnpairedOptions(langNum) {
+        // Return chapters that exist in unpaired entries for the given language
+        const chapters = langNum === 1 ? epub1.chapters : epub2.chapters;
+        const chKey = langNum === 1 ? 'ch1' : 'ch2';
+        const otherKey = langNum === 1 ? 'ch2' : 'ch1';
+        let opts = '';
+        for (const pair of chapterPairs) {
+            if (pair[chKey] !== null && pair[otherKey] === null) {
+                const i = pair[chKey];
+                const ch = chapters[i];
+                opts += `<option value="${i}">${escapeHtml(ch.title)} (${ch.blocks.length} blocks)</option>`;
+            }
+        }
         return opts;
     }
 
@@ -2153,16 +2644,27 @@
         const pair = chapterPairs.filter(p => p.ch1 !== null && p.ch2 !== null)[idx];
         if (!pair) return;
         const pairIdx = chapterPairs.indexOf(pair);
+        const key = `${pair.ch1}-${pair.ch2}`;
         // Split into two unpaired entries
         chapterPairs.splice(pairIdx, 1, { ch1: pair.ch1, ch2: null }, { ch1: null, ch2: pair.ch2 });
-        delete paragraphAlignments[pairIdx];
+        delete paragraphAlignments[key];
+        delete reviewedChapters[key];
+        delete reviewedRows[key];
         renderChapterAlignment();
+        saveSession();
     }
 
     function manualPairChapter(globalIdx, fromLang) {
         const selectEl = document.getElementById(`pairSelect${fromLang}_${globalIdx}`);
+        if (!selectEl || selectEl.value === '') {
+            alert('Please select a chapter to pair with.');
+            return;
+        }
         const targetIdx = parseInt(selectEl.value);
-        if (isNaN(targetIdx)) return;
+        if (isNaN(targetIdx)) {
+            alert('Please select a chapter to pair with.');
+            return;
+        }
 
         const pair = chapterPairs[globalIdx];
         // Find the unpaired entry for the target language
@@ -2171,7 +2673,10 @@
             targetLang === 1 ? (p.ch1 === targetIdx && p.ch2 === null) : (p.ch2 === targetIdx && p.ch1 === null)
         );
 
-        if (targetPairIdx === -1) return;
+        if (targetPairIdx === -1) {
+            alert('That chapter is no longer available for pairing.');
+            return;
+        }
 
         // Merge them
         if (fromLang === 1) {
@@ -2183,6 +2688,7 @@
         // Remove the now-merged unpaired entry
         chapterPairs.splice(targetPairIdx, 1);
         renderChapterAlignment();
+        saveSession();
     }
 
     // ========== Paragraph Alignment ==========
