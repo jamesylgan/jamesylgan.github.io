@@ -933,6 +933,30 @@
                         </div>
                     </div>
                 </div>
+                <!-- Dictionary Size -->
+                <div class="settings-group" id="dictSizeSettingsGroup" style="margin-top: 0;">
+                    <div class="settings-group-header" onclick="toggleSettingsGroup('dictSizeSettingsGroup')">
+                        <span data-i18n="dictSizeSettings">Dictionary Size</span>
+                        <span class="settings-group-arrow">▼</span>
+                    </div>
+                    <div class="settings-group-content" style="padding: 12px;">
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                <input type="radio" name="dictSize" value="light" onchange="setDictSize('light')" checked>
+                                <span><strong>Light</strong> — 5k words + stemmer (instant)</span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                <input type="radio" name="dictSize" value="expanded" onchange="setDictSize('expanded')">
+                                <span><strong>Expanded</strong> — 314k conjugated forms (~1MB download)</span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                <input type="radio" name="dictSize" value="full" onchange="setDictSize('full')">
+                                <span><strong>Full</strong> — 2.6M forms (~8MB download, slow on mobile)</span>
+                            </label>
+                            <div id="dictLoadStatus" style="font-size:12px;color:var(--text-muted);"></div>
+                        </div>
+                    </div>
+                </div>
                 <!-- Word Lookup Conjugation Settings -->
                 <div class="settings-group" id="lookupConjSettingsGroup" style="margin-top: 0;">
                     <div class="settings-group-header" onclick="toggleSettingsGroup('lookupConjSettingsGroup')">
@@ -973,6 +997,7 @@
     </div>
 
     <script src="../lib/storage-version-manager.js"></script>
+    <script src="es-en-dict.js"></script>
     <script src="common-words.js"></script>
     <script>
     // Lesson Data (extracted from PDF)
@@ -1386,7 +1411,7 @@
 
     // Storage schema with version control
     const spanishProgressSchema = StorageVersionManager.defineSchema('spanishProgress', {
-        version: 9,
+        version: 10,
         default: {
             completedDays: [],
             sectionChecks: {}, // { "1-phrases": true, "1-vocab": false, ... }
@@ -1449,6 +1474,11 @@
                 conjQuizTypes: {},
                 unlockAllConj: false,
                 lookupConjTenses: data.lookupConjTenses || {}
+            }),
+            // v10: Add dictSize setting for external dictionary toggle
+            10: (data) => ({
+                ...data,
+                dictSize: 'light'
             })
         }
     });
@@ -2464,6 +2494,12 @@
         applyLearnTabVisibility();
         const unlockAllConjCb = document.getElementById('unlockAllConjCheckbox');
         if (unlockAllConjCb) unlockAllConjCb.checked = progress.unlockAllConj === true;
+        // Restore dictionary size setting
+        if (progress.dictSize && progress.dictSize !== 'light') {
+            const radio = document.querySelector(`input[name="dictSize"][value="${progress.dictSize}"]`);
+            if (radio) radio.checked = true;
+            loadExternalDict(progress.dictSize);
+        }
         setInterval(autoSave, 30000); // Auto-save every 30 seconds
     }
 
@@ -3926,6 +3962,58 @@
         }
     });
 
+    // ── External Dictionary Loading ──
+    let extDictLoading = false;
+    async function loadExternalDict(size) {
+        if (extDictLoading) return;
+        const statusEl = document.getElementById('dictLoadStatus');
+        if (size === 'expanded' && typeof esExpLookup === 'function') {
+            if (statusEl) statusEl.textContent = 'Expanded dict ready (314k forms)';
+            return;
+        }
+        if (size === 'full' && typeof esFullLookup === 'function') {
+            if (statusEl) statusEl.textContent = 'Full dict ready (2.6M forms)';
+            return;
+        }
+        extDictLoading = true;
+        const src = size === 'full' ? '../lib/es-en-full.js' : '../lib/es-en-expanded.js';
+        if (statusEl) statusEl.textContent = `Loading ${size} dictionary...`;
+        try {
+            await new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = src;
+                s.onload = resolve;
+                s.onerror = reject;
+                document.head.appendChild(s);
+            });
+            if (statusEl) statusEl.textContent = `${size === 'full' ? 'Full (2.6M)' : 'Expanded (314k)'} dict loaded.`;
+        } catch (e) {
+            if (statusEl) statusEl.textContent = `Failed to load ${size} dict.`;
+        }
+        extDictLoading = false;
+    }
+
+    function setDictSize(size) {
+        progress.dictSize = size;
+        autoSave();
+        if (size !== 'light') loadExternalDict(size);
+        else {
+            const statusEl = document.getElementById('dictLoadStatus');
+            if (statusEl) statusEl.textContent = '';
+        }
+    }
+
+    function externalDictLookup(word) {
+        const w = word.toLowerCase();
+        // Try expanded dict first (fast hash lookup)
+        if (typeof esExpLookup === 'function') { const r = esExpLookup(w); if (r) return r; }
+        // Try full dict
+        if (typeof esFullLookup === 'function') { const r = esFullLookup(w); if (r) return r; }
+        // Fall back to stemmer-based lookup
+        if (typeof lookupSpanish === 'function') return lookupSpanish(w);
+        return null;
+    }
+
     function filterWordLookup(query) {
         buildWordDictionary();
         const results = document.getElementById('wordLookupResults');
@@ -3975,6 +4063,19 @@
 
         matches.sort((a, b) => b.score - a.score);
         matches = matches.slice(0, 50);
+
+        // Fallback: check external dictionary if no matches in lesson vocab
+        if (matches.length === 0 && q.length >= 2) {
+            const extResult = externalDictLookup(q);
+            if (extResult) {
+                results.innerHTML = `<div class="word-result-item" style="cursor:default;">
+                    <span class="word-result-spanish">${escapeHtml(q)}</span>
+                    <span class="word-result-badge" style="background:#e8f0fe;color:#1a73e8;">dict</span>
+                    <span class="word-result-english">${escapeHtml(extResult)}</span>
+                </div>`;
+                return;
+            }
+        }
 
         if (matches.length === 0) {
             results.innerHTML = `<p style="color:var(--text-muted);padding:8px">${t('noWordsFound')}</p>`;
