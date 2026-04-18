@@ -811,11 +811,16 @@
                 pair[chKey] = idx + 1;
             }
         }
-        // Add unpaired entry for second half of split
-        chapterPairs.push(bookNum === 1
+        // Insert unpaired entry for second half right after the source pair
+        const sourceIdx = chapterPairs.findIndex(p => p[chKey] === splitIdx);
+        const newEntry = bookNum === 1
             ? { ch1: splitIdx + 1, ch2: null }
-            : { ch1: null, ch2: splitIdx + 1 }
-        );
+            : { ch1: null, ch2: splitIdx + 1 };
+        if (sourceIdx >= 0) {
+            chapterPairs.splice(sourceIdx + 1, 0, newEntry);
+        } else {
+            chapterPairs.push(newEntry);
+        }
     }
 
     function splitChapter(bookNum, chapterIdx, blockIdx) {
