@@ -933,17 +933,26 @@
                         </div>
                     </div>
                 </div>
-                <!-- Dictionary Size -->
-                <div class="settings-group" id="dictSizeSettingsGroup" style="margin-top: 0;">
-                    <div class="settings-group-header" onclick="toggleSettingsGroup('dictSizeSettingsGroup')">
-                        <span data-i18n="dictSizeSettings">Dictionary Size</span>
+                <!-- Word Lookup Conjugation Settings -->
+                <div class="settings-group" id="lookupConjSettingsGroup" style="margin-top: 0;">
+                    <div class="settings-group-header" onclick="toggleSettingsGroup('lookupConjSettingsGroup')">
+                        <span data-i18n="lookupConjSettings">Word Lookup Conjugations</span>
+                        <span class="settings-group-arrow">▼</span>
+                    </div>
+                    <div class="settings-group-content" id="lookupConjTensesContainer"></div>
+                </div>
+                <!-- Advanced Settings -->
+                <div class="settings-group" id="advancedSettingsGroup" style="margin-top: 0;">
+                    <div class="settings-group-header" onclick="toggleSettingsGroup('advancedSettingsGroup')">
+                        <span>Advanced Settings</span>
                         <span class="settings-group-arrow">▼</span>
                     </div>
                     <div class="settings-group-content" style="padding: 12px;">
-                        <div style="display:flex;flex-direction:column;gap:8px;">
+                        <p style="font-size:13px;font-weight:600;margin:0 0 8px;">Dictionary Size</p>
+                        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
                                 <input type="radio" name="dictSize" value="light" onchange="setDictSize('light')" checked>
-                                <span><strong>Light</strong> — 5k words + stemmer (instant)</span>
+                                <span><strong>Light</strong> — 5k words + stemmer (instant, no download)</span>
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
                                 <input type="radio" name="dictSize" value="expanded" onchange="setDictSize('expanded')">
@@ -955,15 +964,21 @@
                             </label>
                             <div id="dictLoadStatus" style="font-size:12px;color:var(--text-muted);"></div>
                         </div>
+                        <p style="font-size:13px;font-weight:600;margin:0 0 8px;">Dictionary Format</p>
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                <input type="radio" name="dictFormat" value="uncompressed" onchange="setDictFormat('uncompressed')" checked>
+                                <span><strong>Standard</strong> — uncompressed JS file (works everywhere)</span>
+                            </label>
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                <input type="radio" name="dictFormat" value="compressed" onchange="setDictFormat('compressed')">
+                                <span><strong>Compressed</strong> — smaller download if served via HTTPS (GitHub Pages)</span>
+                            </label>
+                            <p style="font-size:11px;color:var(--text-muted);margin:4px 0 0;">
+                                Compressed relies on server gzip. Use Standard if loading from local files.
+                            </p>
+                        </div>
                     </div>
-                </div>
-                <!-- Word Lookup Conjugation Settings -->
-                <div class="settings-group" id="lookupConjSettingsGroup" style="margin-top: 0;">
-                    <div class="settings-group-header" onclick="toggleSettingsGroup('lookupConjSettingsGroup')">
-                        <span data-i18n="lookupConjSettings">Word Lookup Conjugations</span>
-                        <span class="settings-group-arrow">▼</span>
-                    </div>
-                    <div class="settings-group-content" id="lookupConjTensesContainer"></div>
                 </div>
             </div>
             <div class="save-controls">
@@ -1475,10 +1490,11 @@
                 unlockAllConj: false,
                 lookupConjTenses: data.lookupConjTenses || {}
             }),
-            // v10: Add dictSize setting for external dictionary toggle
+            // v10: Add dictSize and dictFormat settings
             10: (data) => ({
                 ...data,
-                dictSize: 'light'
+                dictSize: 'light',
+                dictFormat: 'uncompressed'
             })
         }
     });
@@ -2494,11 +2510,15 @@
         applyLearnTabVisibility();
         const unlockAllConjCb = document.getElementById('unlockAllConjCheckbox');
         if (unlockAllConjCb) unlockAllConjCb.checked = progress.unlockAllConj === true;
-        // Restore dictionary size setting
+        // Restore dictionary settings
         if (progress.dictSize && progress.dictSize !== 'light') {
             const radio = document.querySelector(`input[name="dictSize"][value="${progress.dictSize}"]`);
             if (radio) radio.checked = true;
             loadExternalDict(progress.dictSize);
+        }
+        if (progress.dictFormat && progress.dictFormat !== 'uncompressed') {
+            const fmtRadio = document.querySelector(`input[name="dictFormat"][value="${progress.dictFormat}"]`);
+            if (fmtRadio) fmtRadio.checked = true;
         }
         setInterval(autoSave, 30000); // Auto-save every 30 seconds
     }
@@ -4000,6 +4020,19 @@
         else {
             const statusEl = document.getElementById('dictLoadStatus');
             if (statusEl) statusEl.textContent = '';
+        }
+    }
+
+    function setDictFormat(format) {
+        progress.dictFormat = format;
+        autoSave();
+        const statusEl = document.getElementById('dictLoadStatus');
+        if (statusEl) {
+            if (format === 'compressed') {
+                statusEl.textContent = 'Compressed mode: server handles gzip. Downloads are ~7-10x smaller over HTTPS.';
+            } else {
+                statusEl.textContent = 'Standard mode: files loaded as-is. Use if opening from local disk.';
+            }
         }
     }
 
