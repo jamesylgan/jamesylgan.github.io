@@ -1222,7 +1222,13 @@
         // Try <title>, then first heading, then first paragraph
         if (doc) {
             const titleEl = doc.querySelector('title');
-            if (titleEl && titleEl.textContent.trim()) return titleEl.textContent.trim();
+            if (titleEl) {
+                const t = titleEl.textContent.trim();
+                // Skip generic/filename-like titles (e.g., "part0000", "ch01.xhtml", "Section0003")
+                if (t && !/^(?:part|chapter|section|ch|seg|split|item|text)\d+(?:\.x?html?)?$/i.test(t)) {
+                    return t;
+                }
+            }
         }
         const heading = blocks.find(b => b.type === 'heading');
         if (heading) return heading.text.substring(0, 80);
