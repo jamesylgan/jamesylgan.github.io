@@ -1143,10 +1143,8 @@
             });
         }
 
-        // Smart chapter boundary detection:
-        // 1. Split spine entries that contain multiple chapter headings
-        // 2. Merge consecutive unnumbered fragments into single front/back matter entries
-        chapters = autoMergeFragments(autoSplitChapters(chapters));
+        // Split spine entries that contain multiple chapter headings
+        chapters = autoSplitChapters(chapters);
 
         // Collect non-spine resource manifest (lazy — data loaded on demand from zip)
         const resources = {};
@@ -1268,9 +1266,35 @@
     }
 
     // Auto-merge adjacent unnumbered (non-chapter) spine entries into single front/back matter entries
-    function autoMergeFragments(chapters) {
-        const FRAGMENT_MAX_BLOCKS = 10; // Only merge small unnumbered entries (front/back matter fragments)
+    // Detect whether a chapter entry is a non-content fragment (front/back matter, TOC, etc.)
+    // that should be merged with adjacent fragments rather than treated as a real chapter.
+    function isFragmentChapter(ch) {
+        // Fragments known by title/heading content (multilingual)
+        const fragmentPatterns = /^(?:cover|title\s*page|copyright|colophon|about|tabla?\s+(?:de\s+)?(?:contenidos?|materias?)|table\s+of\s+contents|contents|toc|dedication|dedicatoria|epigraph|ep[ií]grafe|foreword|pr[oó]logo|preface|prefacio|acknowledgements?|agradecimientos|introduction|introducci[oó]n|afterword|ep[ií]logo|epilogue|appendix|ap[eé]ndice|bibliography|bibliograf[ií]a|glossary|glosario|index|[ií]ndice|notes?|notas?|about\s+the\s+author|sobre\s+el\s+autor|also\s+by|otros\s+libros|other\s+books|impressum|legal|aviso\s+legal|portada|contraportada|frontispiece|frontispicio|half[\s-]?title|back\s*cover)$/i;
 
+        // Check title
+        const title = (ch.title || '').trim();
+        if (fragmentPatterns.test(title)) return true;
+
+        // Check first heading block
+        const firstHeading = ch.blocks.find(b => b.type === 'heading');
+        if (firstHeading && fragmentPatterns.test(firstHeading.text.trim())) return true;
+
+        // Very short entries (≤3 blocks) are almost certainly fragments
+        if (ch.blocks.length <= 3) return true;
+
+        // Short entries (≤10 blocks) with no substantial paragraph content are fragments
+        if (ch.blocks.length <= 10) {
+            const paraChars = ch.blocks
+                .filter(b => b.type === 'paragraph')
+                .reduce((s, b) => s + b.text.length, 0);
+            if (paraChars < 200) return true;
+        }
+
+        return false;
+    }
+
+    function autoMergeFragments(chapters) {
         function hasChapterNum(ch) {
             // Check heading blocks AND the chapter title (from EPUB <title> tag)
             if (ch.title && extractBlockChapterNum(ch.title) !== null) return true;
@@ -1278,15 +1302,15 @@
         }
 
         const result = [];
-        let pendingGroup = null; // accumulates consecutive small unnumbered chapters
+        let pendingGroup = null; // accumulates consecutive fragment chapters
 
         for (const ch of chapters) {
-            if (hasChapterNum(ch) || ch.blocks.length > FRAGMENT_MAX_BLOCKS) {
-                // Numbered chapter or substantial unnumbered chapter — flush and keep separate
+            if (hasChapterNum(ch) || !isFragmentChapter(ch)) {
+                // Real chapter (numbered, or has substantial content) — flush and keep separate
                 if (pendingGroup) { result.push(pendingGroup); pendingGroup = null; }
                 result.push(ch);
             } else {
-                // Small unnumbered — accumulate into fragment group
+                // Fragment — accumulate into group
                 if (!pendingGroup) {
                     pendingGroup = { id: ch.id, href: ch.href, title: ch.title, blocks: [...ch.blocks] };
                 } else {
@@ -1299,6 +1323,48 @@
         }
         if (pendingGroup) result.push(pendingGroup);
         return result;
+    }
+
+    // Cross-language-aware fragment merging: only merge when it helps chapter alignment
+    function smartMergeFragments() {
+        if (!epub1 || !epub2) return;
+
+        function countRealChapters(chapters) {
+            return chapters.filter(ch => !isFragmentChapter(ch) || hasChapterNum(ch)).length;
+        }
+        function hasChapterNum(ch) {
+            if (ch.title && extractBlockChapterNum(ch.title) !== null) return true;
+            return ch.blocks.some(b => b.type === 'heading' && extractBlockChapterNum(b.text) !== null);
+        }
+
+        const real1 = countRealChapters(epub1.chapters);
+        const real2 = countRealChapters(epub2.chapters);
+        const total1 = epub1.chapters.length;
+        const total2 = epub2.chapters.length;
+        const frag1 = total1 - real1;
+        const frag2 = total2 - real2;
+
+        // If both sides have the same number of real chapters AND the same total,
+        // fragments already align by position — no merge needed
+        if (real1 === real2 && total1 === total2) return;
+
+        // If real chapter counts match but total counts differ due to fragments,
+        // merge fragments on the side with more to reduce noise for the pairing algorithm
+        if (real1 === real2 && frag1 !== frag2) {
+            if (frag1 > frag2) epub1.chapters = autoMergeFragments(epub1.chapters);
+            if (frag2 > frag1) epub2.chapters = autoMergeFragments(epub2.chapters);
+            // If still mismatched after one-sided merge, try both
+            if (epub1.chapters.length !== epub2.chapters.length) {
+                epub1.chapters = autoMergeFragments(epub1.chapters);
+                epub2.chapters = autoMergeFragments(epub2.chapters);
+            }
+            return;
+        }
+
+        // Different real chapter counts — merge fragments on both sides
+        // to give the DP pairing algorithm the cleanest input
+        epub1.chapters = autoMergeFragments(epub1.chapters);
+        epub2.chapters = autoMergeFragments(epub2.chapters);
     }
 
     // ========== Upload Tab Helpers ==========
@@ -1437,7 +1503,11 @@
             return;
         }
 
-        // 2. Show overlay
+        // 2. Cross-language-aware fragment merging
+        // Only merge fragments when it helps align chapter counts between the two EPUBs
+        smartMergeFragments();
+
+        // 3. Show overlay
         showAlignmentOverlay();
         alignmentCancelled = false;
 
@@ -2170,10 +2240,16 @@
             // Run alignment on content portion with block-level progress
             const chBaseBlocks = blocksProcessed;
             const aligned = await alignParagraphs(blocks1, blocks2, (frac) => {
-                const curBlocks = chBaseBlocks + Math.round(frac * bc);
+                const chBlocksDone = Math.round(frac * bc);
+                const curBlocks = chBaseBlocks + chBlocksDone;
                 const pctNow = totalBlocks > 0 ? (curBlocks / totalBlocks) * 100 : 0;
                 updateAlignPhase('Aligning paragraphs...', pctNow);
                 updateAlignDetail(`Chapter ${i + 1} of ${total} · ${curBlocks.toLocaleString()} / ${totalBlocks.toLocaleString()} blocks`);
+                // Update per-chapter progress
+                if (itemEl) {
+                    const statusEl = itemEl.querySelector('.ch-status');
+                    if (statusEl) statusEl.innerHTML = `${Math.round(frac * 100)}%`;
+                }
             });
             paragraphAlignments[key] = frontMatterPairs.length > 0
                 ? [...frontMatterPairs, ...aligned]
@@ -2506,8 +2582,8 @@
     }
 
     function renderBlockPreview(blocks) {
-        // Show first 3 and last 3 blocks (with ellipsis if more)
-        const maxShow = 3;
+        // Show first 5 and last 5 blocks (with ellipsis and total count if more)
+        const maxShow = 5;
         let preview = '';
         const showBlocks = [];
         if (blocks.length <= maxShow * 2) {
@@ -2517,9 +2593,10 @@
             showBlocks.push(null); // separator
             showBlocks.push(...blocks.slice(-maxShow));
         }
+        const hiddenCount = blocks.length - Math.min(blocks.length, maxShow * 2);
         for (const b of showBlocks) {
             if (b === null) {
-                preview += '<div style="text-align:center;color:var(--text-muted);font-size:11px;padding:4px;">...</div>';
+                preview += `<div style="text-align:center;color:var(--text-muted);font-size:11px;padding:4px;">... ${hiddenCount} more blocks ...</div>`;
                 continue;
             }
             const cls = b.type === 'heading' ? ' heading' : '';
