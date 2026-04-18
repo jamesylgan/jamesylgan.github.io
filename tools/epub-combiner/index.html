@@ -1245,17 +1245,6 @@
                     blocks.push({ type: 'figure', text: alt, html: child.outerHTML });
                 } else if (tag === 'svg') {
                     blocks.push({ type: 'figure', text: '[svg]', html: child.outerHTML });
-                } else if (['section', 'article', 'div', 'main'].includes(tag)) {
-                    // Wrapper elements: recurse, but if it only contains an image,
-                    // extract as figure to avoid recursing into just an <img>
-                    if (child.children.length === 1 && child.children[0].tagName &&
-                        child.children[0].tagName.toLowerCase() === 'img') {
-                        const img = child.children[0];
-                        const alt = cleanText(img.getAttribute('alt')) || '[image]';
-                        blocks.push({ type: 'figure', text: alt, html: child.innerHTML });
-                    } else {
-                        walk(child);
-                    }
                 } else if (['ul', 'ol'].includes(tag)) {
                     const text = cleanText(child.textContent);
                     if (text) blocks.push({ type: 'list', text: text, html: child.outerHTML });
@@ -1265,6 +1254,17 @@
                 } else if (tag === 'figure') {
                     const text = cleanText(child.textContent);
                     blocks.push({ type: 'figure', text: text || '[figure]', html: child.outerHTML });
+                } else if (child.children && child.children.length > 0) {
+                    // Any other element with children: recurse into it
+                    // (catches div, section, aside, span, custom elements, etc.)
+                    if (child.children.length === 1 && child.children[0].tagName &&
+                        child.children[0].tagName.toLowerCase() === 'img') {
+                        const img = child.children[0];
+                        const alt = cleanText(img.getAttribute('alt')) || '[image]';
+                        blocks.push({ type: 'figure', text: alt, html: child.innerHTML });
+                    } else {
+                        walk(child);
+                    }
                 }
             }
         }
