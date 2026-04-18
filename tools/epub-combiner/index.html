@@ -574,19 +574,26 @@
                         <div class="confidence-summary" id="confidenceSummary" style="flex:1;margin:0;padding:6px 10px;border:none;background:transparent;"></div>
                         <button class="btn btn-sm btn-success" id="markReviewedBtn" onclick="markChapterReviewed()" style="font-size:11px;white-space:nowrap;">Mark Reviewed</button>
                     </div>
-                    <div class="alignment-toolbar" style="margin:0;">
-                        <button class="btn btn-sm btn-secondary" onclick="splitPair()" id="splitBtn" disabled>Split</button>
-                        <button class="btn btn-sm btn-secondary" onclick="splitSentences()" id="splitSentBtn" disabled>Split Sent.</button>
-                        <button class="btn btn-sm btn-secondary" onclick="mergeUp('left')" id="mergeUpBtn" disabled title="Merge left block with row above">&#8593;L</button>
-                        <button class="btn btn-sm btn-secondary" onclick="mergeUp('right')" id="mergeUpRBtn" disabled title="Merge right block with row above">&#8593;R</button>
-                        <button class="btn btn-sm btn-secondary" onclick="mergeDown('left')" id="mergeDownBtn" disabled title="Merge left block with row below">&#8595;L</button>
-                        <button class="btn btn-sm btn-secondary" onclick="mergeDown('right')" id="mergeDownRBtn" disabled title="Merge right block with row below">&#8595;R</button>
-                        <button class="btn btn-sm btn-secondary" onclick="closeGap('left')" id="closeGapLBtn" disabled title="Close left gap: pull next non-gap up">&#8657;L</button>
-                        <button class="btn btn-sm btn-secondary" onclick="closeGap('right')" id="closeGapRBtn" disabled title="Close right gap: pull next non-gap up">&#8657;R</button>
-                        <button class="btn btn-sm btn-danger" onclick="unpairSelected()" id="unpairBtn" disabled>Unpair</button>
-                        <button class="btn btn-sm btn-secondary" onclick="toggleLinkMode()" id="linkBtn">Link</button>
-                        <button class="btn btn-sm btn-secondary" onclick="toggleRowReviewed()" id="rowReviewBtn" disabled title="Mark selected row as reviewed">&#10003;</button>
-                        <button class="btn btn-sm btn-secondary" onclick="realignCurrentChapter()">&#8635;</button>
+                    <div class="alignment-toolbar" style="margin:0;display:flex;flex-direction:column;gap:4px;">
+                        <div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center;">
+                            <button class="btn btn-sm btn-secondary" onclick="splitPair()" id="splitBtn" disabled>Split Row</button>
+                            <button class="btn btn-sm btn-secondary" onclick="splitSentences()" id="splitSentBtn" disabled>Split Sentences</button>
+                            <button class="btn btn-sm btn-danger" onclick="unpairSelected()" id="unpairBtn" disabled>Unpair</button>
+                            <button class="btn btn-sm btn-secondary" onclick="toggleLinkMode()" id="linkBtn">Link Mode</button>
+                            <button class="btn btn-sm btn-secondary" onclick="toggleRowReviewed()" id="rowReviewBtn" disabled>Row &#10003;</button>
+                            <button class="btn btn-sm btn-secondary" onclick="closeAllGaps()" id="closeAllGapsBtn">Close All Gaps</button>
+                            <button class="btn btn-sm btn-secondary" onclick="realignCurrentChapter()">Re-align</button>
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:3px;align-items:center;">
+                            <button class="btn btn-sm btn-secondary" onclick="mergeUp('left')" id="mergeUpBtn" disabled>Merge L Up</button>
+                            <button class="btn btn-sm btn-secondary" onclick="mergeUp('right')" id="mergeUpRBtn" disabled>Merge R Up</button>
+                            <button class="btn btn-sm btn-secondary" onclick="mergeDown('left')" id="mergeDownBtn" disabled>Merge L Down</button>
+                            <button class="btn btn-sm btn-secondary" onclick="mergeDown('right')" id="mergeDownRBtn" disabled>Merge R Down</button>
+                            <button class="btn btn-sm btn-secondary" onclick="closeGap('left')" id="closeGapLBtn" disabled>Close L Gap</button>
+                            <button class="btn btn-sm btn-secondary" onclick="closeGap('right')" id="closeGapRBtn" disabled>Close R Gap</button>
+                            <button class="btn btn-sm btn-secondary" onclick="closeGapAll('left')" id="closeGapAllLBtn" disabled>Close L Gap+Below</button>
+                            <button class="btn btn-sm btn-secondary" onclick="closeGapAll('right')" id="closeGapAllRBtn" disabled>Close R Gap+Below</button>
+                        </div>
                         <div class="alignment-status" id="alignmentStatus"></div>
                     </div>
                     <div class="row-progress" id="rowProgress"></div>
@@ -4910,7 +4917,7 @@
 
     function updateToolbarButtons() {
         const allBtns = ['splitBtn','splitSentBtn','mergeUpBtn','mergeUpRBtn','mergeDownBtn','mergeDownRBtn',
-             'closeGapLBtn','closeGapRBtn','unpairBtn','rowReviewBtn'];
+             'closeGapLBtn','closeGapRBtn','closeGapAllLBtn','closeGapAllRBtn','unpairBtn','rowReviewBtn'];
         if (linkMode) {
             allBtns.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = true; });
             return;
@@ -4934,6 +4941,8 @@
         document.getElementById('mergeDownRBtn').disabled = !canMergeDown;
         document.getElementById('closeGapLBtn').disabled = !(hasSelection && isLeftGap);
         document.getElementById('closeGapRBtn').disabled = !(hasSelection && isRightGap);
+        document.getElementById('closeGapAllLBtn').disabled = !(hasSelection && isLeftGap);
+        document.getElementById('closeGapAllRBtn').disabled = !(hasSelection && isRightGap);
         document.getElementById('unpairBtn').disabled = !hasSelection;
         document.getElementById('rowReviewBtn').disabled = !hasSelection;
     }
@@ -5260,33 +5269,105 @@
         showChapterPairAlignment();
     }
 
-    // Close a gap on one side: find the next row that has content on this side
-    // and pull it (and everything below) up to fill the gap
+    // Close a gap on one side: measure the gap size (consecutive empty rows on this side),
+    // then pull up that many content rows from below to fill the gap.
     function closeGap(side) {
         const key = document.getElementById('chapterPairSelect').value;
         const alignment = paragraphAlignments[key];
         if (!alignment || selectedPairRow < 0) return;
 
         const blockKey = side === 'left' ? 'left' : 'right';
-        const curr = alignment[selectedPairRow];
+        if (alignment[selectedPairRow][blockKey].length > 0) return;
 
-        // Current row must be a gap on the specified side
-        if (curr[blockKey].length > 0) return;
+        // Measure gap size: how many consecutive rows have empty content on this side
+        let gapEnd = selectedPairRow;
+        while (gapEnd < alignment.length && alignment[gapEnd][blockKey].length === 0) gapEnd++;
+        const gapSize = gapEnd - selectedPairRow;
 
-        // Find next row with content on this side
-        let nextIdx = -1;
-        for (let i = selectedPairRow + 1; i < alignment.length; i++) {
-            if (alignment[i][blockKey].length > 0) { nextIdx = i; break; }
+        // Pull up content from gapEnd onwards to fill the gap rows
+        let fillIdx = gapEnd;
+        for (let g = selectedPairRow; g < gapEnd && fillIdx < alignment.length; g++) {
+            if (alignment[fillIdx][blockKey].length > 0) {
+                alignment[g][blockKey] = alignment[fillIdx][blockKey];
+                alignment[fillIdx][blockKey] = [];
+            }
+            fillIdx++;
         }
-        if (nextIdx < 0) return;
 
-        // Pull the content from nextIdx into selectedPairRow
-        curr[blockKey] = alignment[nextIdx][blockKey];
-        alignment[nextIdx][blockKey] = [];
+        // Clean up empty rows
+        for (let i = alignment.length - 1; i >= 0; i--) {
+            if (alignment[i].left.length === 0 && alignment[i].right.length === 0) {
+                alignment.splice(i, 1);
+                if (selectedPairRow > i) selectedPairRow--;
+            }
+        }
+        showChapterPairAlignment();
+    }
 
-        // If the source row is now empty on both sides, remove it
-        if (alignment[nextIdx].left.length === 0 && alignment[nextIdx].right.length === 0) {
-            alignment.splice(nextIdx, 1);
+    // Close gap + push everything below up: fills the gap AND shifts all subsequent
+    // content on this side up by the gap size
+    function closeGapAll(side) {
+        const key = document.getElementById('chapterPairSelect').value;
+        const alignment = paragraphAlignments[key];
+        if (!alignment || selectedPairRow < 0) return;
+
+        const blockKey = side === 'left' ? 'left' : 'right';
+        if (alignment[selectedPairRow][blockKey].length > 0) return;
+
+        // Measure gap
+        let gapEnd = selectedPairRow;
+        while (gapEnd < alignment.length && alignment[gapEnd][blockKey].length === 0) gapEnd++;
+        const gapSize = gapEnd - selectedPairRow;
+        if (gapSize === 0) return;
+
+        // Shift ALL content on this side up by gapSize positions
+        for (let i = gapEnd; i < alignment.length; i++) {
+            const target = i - gapSize;
+            if (target >= 0 && target < alignment.length && alignment[target][blockKey].length === 0) {
+                alignment[target][blockKey] = alignment[i][blockKey];
+                alignment[i][blockKey] = [];
+            }
+        }
+
+        // Clean up empty rows
+        for (let i = alignment.length - 1; i >= 0; i--) {
+            if (alignment[i].left.length === 0 && alignment[i].right.length === 0) {
+                alignment.splice(i, 1);
+                if (selectedPairRow > i) selectedPairRow--;
+            }
+        }
+        showChapterPairAlignment();
+    }
+
+    // Close ALL gaps in the current chapter alignment
+    function closeAllGaps() {
+        const key = document.getElementById('chapterPairSelect').value;
+        const alignment = paragraphAlignments[key];
+        if (!alignment) return;
+
+        // Iterate and for each one-sided gap, pull next content up
+        let changed = true;
+        while (changed) {
+            changed = false;
+            for (let i = 0; i < alignment.length; i++) {
+                const hasLeft = alignment[i].left.length > 0;
+                const hasRight = alignment[i].right.length > 0;
+                if (hasLeft === hasRight) continue; // both empty or both filled — skip
+
+                const blockKey = !hasLeft ? 'left' : 'right';
+                // Find next row with content on the empty side
+                for (let j = i + 1; j < alignment.length; j++) {
+                    if (alignment[j][blockKey].length > 0) {
+                        alignment[i][blockKey] = alignment[j][blockKey];
+                        alignment[j][blockKey] = [];
+                        if (alignment[j].left.length === 0 && alignment[j].right.length === 0) {
+                            alignment.splice(j, 1);
+                        }
+                        changed = true;
+                        break;
+                    }
+                }
+            }
         }
         showChapterPairAlignment();
     }
@@ -6173,6 +6254,53 @@ ${spineXml}
         const arr = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
         return new Blob([arr], { type: type || 'application/epub+zip' });
+    }
+    // ── Keyboard Shortcuts (paragraph alignment tab) ──
+    document.addEventListener('keydown', (e) => {
+        // Only active when paragraph tab is visible and no input/textarea focused
+        const paraTab = document.getElementById('tab-paragraphs');
+        if (!paraTab || !paraTab.classList.contains('active')) return;
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+        const key = e.key.toLowerCase();
+        if (key === 'g') {
+            // Close gap: auto-detect which side
+            const al = paragraphAlignments[document.getElementById('chapterPairSelect').value];
+            if (al && selectedPairRow >= 0) {
+                const p = al[selectedPairRow];
+                if (p.left.length === 0 && p.right.length > 0) closeGap('left');
+                else if (p.right.length === 0 && p.left.length > 0) closeGap('right');
+            }
+            e.preventDefault();
+        } else if (key === 'l') {
+            toggleLinkMode(); e.preventDefault();
+        } else if (key === 'u') {
+            unpairSelected(); e.preventDefault();
+        } else if (key === 'r') {
+            toggleRowReviewed(); e.preventDefault();
+        } else if (key === 'arrowup' && e.shiftKey) {
+            // Navigate to prev unreviewed
+            navigateUnreviewed(-1); e.preventDefault();
+        } else if (key === 'arrowdown' && e.shiftKey) {
+            // Navigate to next unreviewed
+            navigateUnreviewed(1); e.preventDefault();
+        } else if (key === 'arrowup' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+            if (selectedPairRow > 0) { selectAlignmentRow(selectedPairRow - 1); e.preventDefault(); }
+        } else if (key === 'arrowdown' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+            const al = paragraphAlignments[document.getElementById('chapterPairSelect').value];
+            if (al && selectedPairRow < al.length - 1) { selectAlignmentRow(selectedPairRow + 1); e.preventDefault(); }
+        }
+    });
+
+    function navigateUnreviewed(direction) {
+        const key = document.getElementById('chapterPairSelect').value;
+        const reviewed = reviewedRows[key] || new Set();
+        const al = paragraphAlignments[key];
+        if (!al) return;
+        const start = selectedPairRow >= 0 ? selectedPairRow + direction : 0;
+        for (let i = start; i >= 0 && i < al.length; i += direction) {
+            if (!reviewed.has(i)) { selectAlignmentRow(i); return; }
+        }
     }
     </script>
 </body>
