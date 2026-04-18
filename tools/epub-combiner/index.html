@@ -2643,6 +2643,7 @@
             if (isPaired) {
                 actionsHtml += `
                     <button class="btn btn-sm btn-primary" onclick="jumpToChapterAlignment(${currentPairIdx})" style="font-size:10px;">Align</button>
+                    <div style="width:100%;"></div>
                     <button class="btn btn-sm btn-secondary" onclick="pushPairingsDown(${globalIdx},1)" title="Push L1 pairings down from here (insert gap)" style="font-size:10px;padding:2px 4px;">&#8615;L</button>
                     <button class="btn btn-sm btn-secondary" onclick="pushPairingsDown(${globalIdx},2)" title="Push L2 pairings down from here (insert gap)" style="font-size:10px;padding:2px 4px;">&#8615;R</button>
                     <button class="btn btn-sm btn-danger" onclick="unpairChapter(${currentPairIdx})" style="font-size:10px;">Unpair</button>`;
