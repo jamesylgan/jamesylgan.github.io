@@ -3997,18 +3997,31 @@
         }
         extDictLoading = true;
         const src = size === 'full' ? '../lib/es-en-full.js' : '../lib/es-en-expanded.js';
-        if (statusEl) statusEl.textContent = `Loading ${size} dictionary...`;
+        if (statusEl) statusEl.textContent = `Loading ${size} dictionary from ${src}...`;
         try {
             await new Promise((resolve, reject) => {
                 const s = document.createElement('script');
                 s.src = src;
-                s.onload = resolve;
-                s.onerror = reject;
+                s.onload = () => {
+                    console.log(`[Dict] ${size} loaded from ${src}`);
+                    resolve();
+                };
+                s.onerror = (err) => {
+                    console.error(`[Dict] Failed to load ${src}:`, err);
+                    reject(err);
+                };
                 document.head.appendChild(s);
             });
-            if (statusEl) statusEl.textContent = `${size === 'full' ? 'Full (2.6M)' : 'Expanded (314k)'} dict loaded.`;
+            // Verify the lookup function exists
+            const fn = size === 'full' ? 'esFullLookup' : 'esExpLookup';
+            const ok = typeof window[fn] === 'function';
+            if (statusEl) statusEl.textContent = ok
+                ? `${size === 'full' ? 'Full (2.6M)' : 'Expanded (314k)'} dict loaded. Try: habló, madrugada, corriendo`
+                : `Script loaded but ${fn} not found. Check console.`;
+            if (!ok) console.error(`[Dict] ${fn} not defined after loading ${src}`);
         } catch (e) {
-            if (statusEl) statusEl.textContent = `Failed to load ${size} dict.`;
+            if (statusEl) statusEl.textContent = `Failed to load ${size} dict. Check network/console.`;
+            console.error('[Dict] Load error:', e);
         }
         extDictLoading = false;
     }
@@ -4097,16 +4110,14 @@
         matches.sort((a, b) => b.score - a.score);
         matches = matches.slice(0, 50);
 
-        // Fallback: check external dictionary if no matches in lesson vocab
-        if (matches.length === 0 && q.length >= 2) {
+        // Supplement with external dictionary (stemmer + expanded/full dict)
+        if (q.length >= 2 && !matchedKeys.has(q)) {
             const extResult = externalDictLookup(q);
             if (extResult) {
-                results.innerHTML = `<div class="word-result-item" style="cursor:default;">
-                    <span class="word-result-spanish">${escapeHtml(q)}</span>
-                    <span class="word-result-badge" style="background:#e8f0fe;color:#1a73e8;">dict</span>
-                    <span class="word-result-english">${escapeHtml(extResult)}</span>
-                </div>`;
-                return;
+                matches.push({
+                    entry: { spanish: q, english: extResult, days: [], isVerb: false, gender: null, _fromDict: true },
+                    score: matches.length === 0 ? 3 : 0.5 // top result if no lesson matches
+                });
             }
         }
 
@@ -4116,10 +4127,10 @@
         }
 
         results.innerHTML = matches.map(({ entry }) => `
-            <div class="word-result-item" onclick="openWordModal('${escapeHtml(entry.spanish).replace(/'/g, "\\'")}')">
+            <div class="word-result-item" ${entry._fromDict ? 'style="cursor:default;"' : `onclick="openWordModal('${escapeHtml(entry.spanish).replace(/'/g, "\\'")}')"` }>
                 <span class="word-result-spanish">${escapeHtml(entry.spanish)}</span>
-                ${entry.gender ? `<span class="word-result-badge">${entry.gender === 'm' ? 'masc' : 'fem'}</span>` : entry.isVerb ? `<span class="word-result-badge">${t('verb')}</span>` : ''}
-                <span class="word-result-english">${escapeHtml(getWordTranslation(entry))}</span>
+                ${entry._fromDict ? '<span class="word-result-badge" style="background:#e8f0fe;color:#1a73e8;">dict</span>' : entry.gender ? `<span class="word-result-badge">${entry.gender === 'm' ? 'masc' : 'fem'}</span>` : entry.isVerb ? `<span class="word-result-badge">${t('verb')}</span>` : ''}
+                <span class="word-result-english">${escapeHtml(entry._fromDict ? entry.english : getWordTranslation(entry))}</span>
             </div>
         `).join('');
     }
