@@ -11,6 +11,7 @@
     <title>EPUB Combiner</title>
     <script src="../lib/jszip.min.js"></script>
     <script src="../spanish-tool/es-en-dict.js"></script>
+    <script src="../lib/es-en-expanded.js"></script>
     <style>
         :root {
             --primary: #007bff;
@@ -3606,21 +3607,29 @@
         const cognateScore = cognateChecks > 0 ? cognateMatches / cognateChecks : 0.3;
 
         // 5b. Dictionary-based word matching (ES↔EN)
+        // Uses expanded dict (314k pre-conjugated forms) for fast hash lookup
         let dictScore = 0.5; // neutral default
-        if (typeof lookupSpanish === 'function' && longWords1.length > 0 && longWords2.length > 0) {
+        const dictLookup = typeof esExpLookup === 'function' ? esExpLookup
+            : typeof lookupSpanish === 'function' ? lookupSpanish : null;
+        // Only use dictionary when at least one side has Spanish words (dict returns hits)
+        if (dictLookup && longWords1.length > 0 && longWords2.length > 0) {
+            // Quick check: does the dict recognize enough words to indicate Spanish text?
+            const check1 = longWords1.slice(0, 8).filter(w => dictLookup(w)).length;
+            const check2 = longWords2.slice(0, 8).filter(w => dictLookup(w)).length;
+            const hasSpanish = check1 >= 2 || check2 >= 2;
+            if (!hasSpanish) dictScore = 0.5; // neutral — not enough Spanish words
+            else {
             let dictMatches = 0, dictChecks = 0;
             const words1Set = new Set(longWords1);
             const words2Set = new Set(longWords2);
-            // Try Spanish→English: stem Spanish words and check if translation words appear in English text
+            // Try both directions: words from side with fewer words → lookup → check other side
             const sample = longWords1.length > longWords2.length ? longWords2 : longWords1;
             const target = longWords1.length > longWords2.length ? words1Set : words2Set;
             const sampleLimit = Math.min(sample.length, 12);
             for (let si = 0; si < sampleLimit; si++) {
-                const w = sample[si];
-                const translation = lookupSpanish(w);
+                const translation = dictLookup(sample[si]);
                 if (translation) {
                     dictChecks++;
-                    // Translation can be "word1/word2" or "to verb" — extract individual words
                     const transWords = translation.toLowerCase().replace(/\(.*?\)/g, '').split(/[\s\/,]+/).filter(tw => tw.length >= 3);
                     for (const tw of transWords) {
                         if (target.has(tw)) { dictMatches++; break; }
@@ -3628,6 +3637,7 @@
                 }
             }
             if (dictChecks > 0) dictScore = dictMatches / dictChecks;
+            } // end hasSpanish
         }
 
         // 6. Translation match — words whose API translations appear in the other text
@@ -3664,9 +3674,9 @@
         const hasDict = dictScore !== 0.5; // dict produced a real score
         let score;
         if (hasTranslations) {
-            score = lenRatio * 0.15 + nameScore * 0.15 + numScore * 0.10 + punctScore * 0.10 + cognateScore * 0.10 + transScore * 0.20 + dictScore * 0.20;
+            score = lenRatio * 0.18 + nameScore * 0.18 + numScore * 0.10 + punctScore * 0.10 + cognateScore * 0.12 + transScore * 0.20 + dictScore * 0.12;
         } else if (hasDict) {
-            score = lenRatio * 0.20 + nameScore * 0.20 + numScore * 0.10 + punctScore * 0.10 + cognateScore * 0.15 + dictScore * 0.25;
+            score = lenRatio * 0.25 + nameScore * 0.22 + numScore * 0.13 + punctScore * 0.13 + cognateScore * 0.12 + dictScore * 0.15;
         } else {
             score = lenRatio * 0.30 + nameScore * 0.25 + numScore * 0.15 + punctScore * 0.15 + cognateScore * 0.15;
         }
