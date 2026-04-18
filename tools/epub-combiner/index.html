@@ -521,6 +521,7 @@
         <div class="btn-row">
             <button class="btn btn-secondary" id="swapBtn" onclick="swapLanguages()" disabled>&#8644; Swap Order</button>
             <button class="btn btn-primary" id="continueBtn" onclick="continueToAlignment()" disabled>Continue to Alignment &rarr;</button>
+            <button class="btn btn-secondary" id="restoreCacheBtn" onclick="restoreFromCacheAndSkip()" style="display:none;">&#128190; Restore from cache</button>
             <span style="margin-left:auto;display:flex;gap:6px;">
                 <button class="btn btn-sm" style="background:#e9ecef;color:var(--text-muted);" onclick="loadTestEpubs()" id="testBtn">Load Test EPUBs</button>
                 <button class="btn btn-sm" style="background:#e9ecef;color:var(--text-muted);" onclick="downloadTestEpubs()" id="downloadTestBtn">&#8595; Download Test EPUBs</button>
@@ -1407,6 +1408,29 @@
         const both = epub1 && epub2;
         document.getElementById('swapBtn').disabled = !both;
         document.getElementById('continueBtn').disabled = !both;
+        // Show restore button if both EPUBs loaded and cache exists
+        const restoreBtn = document.getElementById('restoreCacheBtn');
+        if (restoreBtn) {
+            restoreBtn.style.display = (both && hasStoredAlignments()) ? '' : 'none';
+        }
+    }
+
+    function restoreFromCacheAndSkip() {
+        if (!epub1 || !epub2) return;
+        const restored = tryRestoreSession();
+        if (!restored || chapterPairs.length === 0) {
+            alert('No cached session found for these EPUBs.');
+            return;
+        }
+        // Go straight to chapter alignment view with cached data
+        enableTab('chapterTab');
+        switchTab('chapterTab');
+        renderChapterAlignment();
+        if (Object.keys(paragraphAlignments).length > 0) {
+            enableTab('paragraphTab');
+            enableTab('generateTab');
+        }
+        showUploadStatus('Restored from cache — skipped alignment.', 'success');
     }
 
     function swapLanguages() {
