@@ -2049,11 +2049,21 @@
             if (!usedCh2.has(j)) pairs.push({ ch1: null, ch2: j });
         }
 
-        // Sort by the first non-null index to maintain order
+        // Sort to maintain natural document order:
+        // Use a composite key so paired entries anchor correctly and unpaired entries
+        // stay near their natural position. For paired entries, use ch1 index as primary.
+        // For unpaired, use their own index but offset to place them near the right spot.
         pairs.sort((a, b) => {
-            const ai = a.ch1 !== null ? a.ch1 : (a.ch2 !== null ? a.ch2 : 0);
-            const bi = b.ch1 !== null ? b.ch1 : (b.ch2 !== null ? b.ch2 : 0);
-            return ai - bi;
+            // Primary: sort by ch1 index (both paired and unpaired-L1)
+            // For unpaired-L2, find the nearest ch1 position to anchor them
+            function sortKey(p) {
+                if (p.ch1 !== null) return p.ch1 * 2;
+                // Unpaired L2: place after the last paired entry whose ch2 < this ch2
+                // Use ch2 index scaled to ch1 range as approximation
+                const ch2Ratio = numCh1 > 0 ? (p.ch2 / Math.max(numCh2, 1)) * numCh1 : p.ch2;
+                return ch2Ratio * 2 + 0.5; // +0.5 to place after same-position paired entry
+            }
+            return sortKey(a) - sortKey(b);
         });
 
         return pairs;
