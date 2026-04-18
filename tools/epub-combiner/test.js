@@ -86,6 +86,14 @@ const dom = new JSDOM(`<!DOCTYPE html><html><body>
 const { window } = dom;
 window.JSZip = JSZip;
 
+// Load Spanish-English dictionary
+const dictPath = path.join(__dirname, '..', 'spanish-tool', 'es-en-dict.js');
+if (fs.existsSync(dictPath)) {
+  const dictScript = window.document.createElement('script');
+  dictScript.textContent = fs.readFileSync(dictPath, 'utf8');
+  window.document.body.appendChild(dictScript);
+}
+
 // Stub alert/confirm
 window.alert = () => {};
 window.confirm = () => true;
