@@ -104,6 +104,10 @@ const translationsVI = {
 
     // Word Lookup
     lookupConjSettings: 'Chia động từ trong tra từ',
+    advancedSettings: 'Cài đặt nâng cao',
+    dictionarySize: 'Kích thước từ điển',
+    dictionaryFormat: 'Định dạng từ điển',
+    dictEnglishOnly: 'Từ điển mở rộng/đầy đủ chỉ có tiếng Tây Ban Nha↔Anh. Chuyển sang chế độ tiếng Anh để sử dụng.',
     wordLookupTitle: 'Tra từ',
     wordLookupDesc: 'Tìm kiếm bất kỳ từ tiếng Tây Ban Nha nào để xem định nghĩa và bảng chia động từ.',
     wordLookupPlaceholder: 'Nhập từ tiếng Tây Ban Nha hoặc tiếng Việt...',

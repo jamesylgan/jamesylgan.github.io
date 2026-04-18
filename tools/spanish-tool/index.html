@@ -944,11 +944,11 @@
                 <!-- Advanced Settings -->
                 <div class="settings-group" id="advancedSettingsGroup" style="margin-top: 0;">
                     <div class="settings-group-header" onclick="toggleSettingsGroup('advancedSettingsGroup')">
-                        <span>Advanced Settings</span>
+                        <span data-i18n="advancedSettings">Advanced Settings</span>
                         <span class="settings-group-arrow">▼</span>
                     </div>
                     <div class="settings-group-content" style="padding: 12px;">
-                        <p style="font-size:13px;font-weight:600;margin:0 0 8px;">Dictionary Size</p>
+                        <p style="font-size:13px;font-weight:600;margin:0 0 8px;" data-i18n="dictionarySize">Dictionary Size</p>
                         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
                                 <input type="radio" name="dictSize" value="light" onchange="setDictSize('light')" checked>
@@ -964,7 +964,7 @@
                             </label>
                             <div id="dictLoadStatus" style="font-size:12px;color:var(--text-muted);"></div>
                         </div>
-                        <p style="font-size:13px;font-weight:600;margin:0 0 8px;">Dictionary Format</p>
+                        <p style="font-size:13px;font-weight:600;margin:0 0 8px;" data-i18n="dictionaryFormat">Dictionary Format</p>
                         <div style="display:flex;flex-direction:column;gap:6px;">
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
                                 <input type="radio" name="dictFormat" value="uncompressed" onchange="setDictFormat('uncompressed')" checked>
@@ -1624,6 +1624,10 @@
 
             // Word Lookup
             lookupConjSettings: 'Word Lookup Conjugations',
+            advancedSettings: 'Advanced Settings',
+            dictionarySize: 'Dictionary Size',
+            dictionaryFormat: 'Dictionary Format',
+            dictEnglishOnly: 'Expanded/Full dictionaries are Spanish↔English only. Switch to English mode to use them.',
             wordLookupTitle: 'Word Lookup',
             wordLookupDesc: 'Search for any Spanish word to see its definition and conjugation tables.',
             wordLookupPlaceholder: 'Type a Spanish or English word...',
@@ -4030,7 +4034,7 @@
     function setDictSize(size) {
         // Vietnamese mode: expanded/full dicts are Spanish-English only
         if (progress.uiLanguage === 'vi' && size !== 'light') {
-            alert('Expanded/Full dictionaries are Spanish↔English only. Switch to English mode to use them.');
+            alert(t('dictEnglishOnly'));
             const radio = document.querySelector('input[name="dictSize"][value="light"]');
             if (radio) radio.checked = true;
             return;
