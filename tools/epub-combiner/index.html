@@ -575,10 +575,12 @@
                     <div class="alignment-toolbar" style="margin:0;">
                         <button class="btn btn-sm btn-secondary" onclick="splitPair()" id="splitBtn" disabled>Split</button>
                         <button class="btn btn-sm btn-secondary" onclick="splitSentences()" id="splitSentBtn" disabled>Split Sent.</button>
-                        <button class="btn btn-sm btn-secondary" onclick="mergeUp()" id="mergeUpBtn" disabled>Merge Up</button>
-                        <button class="btn btn-sm btn-secondary" onclick="mergeDown()" id="mergeDownBtn" disabled>Merge Down</button>
-                        <button class="btn btn-sm btn-secondary" onclick="moveRowUp()" id="moveUpBtn" disabled>&#9650;</button>
-                        <button class="btn btn-sm btn-secondary" onclick="moveRowDown()" id="moveDownBtn" disabled>&#9660;</button>
+                        <button class="btn btn-sm btn-secondary" onclick="mergeUp('left')" id="mergeUpBtn" disabled title="Merge left block with row above">&#8593;L</button>
+                        <button class="btn btn-sm btn-secondary" onclick="mergeUp('right')" id="mergeUpRBtn" disabled title="Merge right block with row above">&#8593;R</button>
+                        <button class="btn btn-sm btn-secondary" onclick="mergeDown('left')" id="mergeDownBtn" disabled title="Merge left block with row below">&#8595;L</button>
+                        <button class="btn btn-sm btn-secondary" onclick="mergeDown('right')" id="mergeDownRBtn" disabled title="Merge right block with row below">&#8595;R</button>
+                        <button class="btn btn-sm btn-secondary" onclick="closeGap('left')" id="closeGapLBtn" disabled title="Close left gap: pull next non-gap up">&#8657;L</button>
+                        <button class="btn btn-sm btn-secondary" onclick="closeGap('right')" id="closeGapRBtn" disabled title="Close right gap: pull next non-gap up">&#8657;R</button>
                         <button class="btn btn-sm btn-danger" onclick="unpairSelected()" id="unpairBtn" disabled>Unpair</button>
                         <button class="btn btn-sm btn-secondary" onclick="toggleLinkMode()" id="linkBtn">Link</button>
                         <button class="btn btn-sm btn-secondary" onclick="toggleRowReviewed()" id="rowReviewBtn" disabled title="Mark selected row as reviewed">&#10003;</button>
@@ -1541,6 +1543,8 @@
 
     function restoreFromCacheAndSkip() {
         if (!epub1 || !epub2) return;
+        // Run same pre-processing as continueToAlignment so chapter indices match
+        smartMergeFragments();
         const restored = tryRestoreSession();
         if (!restored || chapterPairs.length === 0) {
             alert('No cached session found for these EPUBs.');
@@ -2614,6 +2618,9 @@
             <button class="btn btn-sm btn-primary" onclick="rerunAutoPairing()">&#8635; Re-run Auto-Pairing</button>
             <button class="btn btn-sm btn-secondary" onclick="restoreAlignmentsFromCache()">&#128190; Restore cache${loadedCount > 0 ? ' (' + loadedCount + ' loaded)' : ''}</button>
             <button class="btn btn-sm btn-secondary" onclick="saveSession();renderChapterAlignment();alert('Saved to cache.');">&#128190; Save to cache</button>
+            <button class="btn btn-sm btn-secondary" onclick="exportSession()">&#8595; Export</button>
+            <button class="btn btn-sm btn-secondary" onclick="document.getElementById('importSessionFile').click();">&#8593; Import</button>
+            <input type="file" id="importSessionFile" accept=".json" style="display:none" onchange="importSession(this.files[0])">
             <span style="flex:1;"></span>
             <button class="btn btn-sm btn-secondary" id="mergeBtn1" onclick="mergeSelectedChapters(1)" disabled>Merge ${lang1}</button>
             <button class="btn btn-sm btn-secondary" onclick="showAutoNumberDialog(1)">Auto# ${lang1}</button>
@@ -4862,10 +4869,10 @@
     }
 
     function updateToolbarButtons() {
+        const allBtns = ['splitBtn','splitSentBtn','mergeUpBtn','mergeUpRBtn','mergeDownBtn','mergeDownRBtn',
+             'closeGapLBtn','closeGapRBtn','unpairBtn','rowReviewBtn'];
         if (linkMode) {
-            ['splitBtn','splitSentBtn','mergeUpBtn','mergeDownBtn',
-             'moveUpBtn','moveDownBtn','unpairBtn','rowReviewBtn']
-                .forEach(id => document.getElementById(id).disabled = true);
+            allBtns.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = true; });
             return;
         }
         const hasSelection = selectedPairRow >= 0;
@@ -4876,15 +4883,17 @@
         const canSplitSentences = pair && (pair.left.length > 0 || pair.right.length > 0);
         const canMergeUp = hasSelection && selectedPairRow > 0;
         const canMergeDown = hasSelection && alignment && selectedPairRow < alignment.length - 1;
-        const canMoveUp = hasSelection && selectedPairRow > 0;
-        const canMoveDown = hasSelection && alignment && selectedPairRow < alignment.length - 1;
+        const isLeftGap = pair && pair.left.length === 0 && pair.right.length > 0;
+        const isRightGap = pair && pair.right.length === 0 && pair.left.length > 0;
 
         document.getElementById('splitBtn').disabled = !canSplitBlocks;
         document.getElementById('splitSentBtn').disabled = !canSplitSentences;
         document.getElementById('mergeUpBtn').disabled = !canMergeUp;
+        document.getElementById('mergeUpRBtn').disabled = !canMergeUp;
         document.getElementById('mergeDownBtn').disabled = !canMergeDown;
-        document.getElementById('moveUpBtn').disabled = !canMoveUp;
-        document.getElementById('moveDownBtn').disabled = !canMoveDown;
+        document.getElementById('mergeDownRBtn').disabled = !canMergeDown;
+        document.getElementById('closeGapLBtn').disabled = !(hasSelection && isLeftGap);
+        document.getElementById('closeGapRBtn').disabled = !(hasSelection && isRightGap);
         document.getElementById('unpairBtn').disabled = !hasSelection;
         document.getElementById('rowReviewBtn').disabled = !hasSelection;
     }
@@ -5170,38 +5179,75 @@
         showChapterPairAlignment();
     }
 
-    function mergeUp() {
+    function mergeUp(side) {
         const key = document.getElementById('chapterPairSelect').value;
         const alignment = paragraphAlignments[key];
         if (!alignment || selectedPairRow <= 0) return;
 
         const prev = alignment[selectedPairRow - 1];
         const curr = alignment[selectedPairRow];
-        const merged = {
-            left: [...prev.left, ...curr.left],
-            right: [...prev.right, ...curr.right],
-            isHeading: prev.isHeading || curr.isHeading
-        };
+        const blockKey = side === 'left' ? 'left' : 'right';
 
-        alignment.splice(selectedPairRow - 1, 2, merged);
-        selectedPairRow = selectedPairRow - 1;
+        // Merge the specified side's blocks into the previous row
+        prev[blockKey] = [...prev[blockKey], ...curr[blockKey]];
+        curr[blockKey] = [];
+
+        // If current row is now empty on both sides, remove it
+        if (curr.left.length === 0 && curr.right.length === 0) {
+            alignment.splice(selectedPairRow, 1);
+            selectedPairRow = selectedPairRow - 1;
+        }
         showChapterPairAlignment();
     }
 
-    function mergeDown() {
+    function mergeDown(side) {
         const key = document.getElementById('chapterPairSelect').value;
         const alignment = paragraphAlignments[key];
         if (!alignment || selectedPairRow < 0 || selectedPairRow >= alignment.length - 1) return;
 
         const curr = alignment[selectedPairRow];
         const next = alignment[selectedPairRow + 1];
-        const merged = {
-            left: [...curr.left, ...next.left],
-            right: [...curr.right, ...next.right],
-            isHeading: curr.isHeading || next.isHeading
-        };
+        const blockKey = side === 'left' ? 'left' : 'right';
 
-        alignment.splice(selectedPairRow, 2, merged);
+        // Merge the specified side's blocks into the next row
+        next[blockKey] = [...curr[blockKey], ...next[blockKey]];
+        curr[blockKey] = [];
+
+        // If current row is now empty on both sides, remove it
+        if (curr.left.length === 0 && curr.right.length === 0) {
+            alignment.splice(selectedPairRow, 1);
+        }
+        showChapterPairAlignment();
+    }
+
+    // Close a gap on one side: find the next row that has content on this side
+    // and pull it (and everything below) up to fill the gap
+    function closeGap(side) {
+        const key = document.getElementById('chapterPairSelect').value;
+        const alignment = paragraphAlignments[key];
+        if (!alignment || selectedPairRow < 0) return;
+
+        const blockKey = side === 'left' ? 'left' : 'right';
+        const curr = alignment[selectedPairRow];
+
+        // Current row must be a gap on the specified side
+        if (curr[blockKey].length > 0) return;
+
+        // Find next row with content on this side
+        let nextIdx = -1;
+        for (let i = selectedPairRow + 1; i < alignment.length; i++) {
+            if (alignment[i][blockKey].length > 0) { nextIdx = i; break; }
+        }
+        if (nextIdx < 0) return;
+
+        // Pull the content from nextIdx into selectedPairRow
+        curr[blockKey] = alignment[nextIdx][blockKey];
+        alignment[nextIdx][blockKey] = [];
+
+        // If the source row is now empty on both sides, remove it
+        if (alignment[nextIdx].left.length === 0 && alignment[nextIdx].right.length === 0) {
+            alignment.splice(nextIdx, 1);
+        }
         showChapterPairAlignment();
     }
 
@@ -5808,6 +5854,63 @@ ${spineXml}
         // Sort hashes so order of upload doesn't matter
         const hashes = [epub1.fileHash, epub2.fileHash].sort();
         return SAVE_KEY_PREFIX + hashes[0].substring(0, 12) + '_' + hashes[1].substring(0, 12);
+    }
+
+    function exportSession() {
+        if (!epub1 || !epub2) { alert('Load both EPUBs first.'); return; }
+        const data = {
+            version: 2,
+            hash1: epub1.fileHash, hash2: epub2.fileHash,
+            lang1: document.getElementById('lang1Label').value,
+            lang2: document.getElementById('lang2Label').value,
+            chapterPairs: chapterPairs,
+            paragraphAlignments: paragraphAlignments,
+            reviewedChapters: reviewedChapters,
+            reviewedRows: reviewedRows,
+            selectedMode: selectedMode,
+            exportedAt: new Date().toISOString()
+        };
+        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `epub-session-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    async function importSession(file) {
+        if (!file) return;
+        try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+            if (!data.chapterPairs) { alert('Invalid session file.'); return; }
+
+            // Verify EPUBs match (if loaded)
+            if (epub1 && epub2) {
+                const hashes = new Set([epub1.fileHash, epub2.fileHash]);
+                if (!hashes.has(data.hash1) || !hashes.has(data.hash2)) {
+                    if (!confirm('This session was saved with different EPUBs. Import anyway?')) return;
+                }
+            }
+
+            chapterPairs = data.chapterPairs;
+            paragraphAlignments = data.paragraphAlignments || {};
+            reviewedChapters = data.reviewedChapters || {};
+            reviewedRows = data.reviewedRows || {};
+            if (data.selectedMode) selectedMode = data.selectedMode;
+
+            renderChapterAlignment();
+            if (Object.keys(paragraphAlignments).length > 0) {
+                enableTab('paragraphTab');
+                enableTab('generateTab');
+            }
+            alert(`Imported: ${Object.keys(chapterPairs).length} chapter pairs, ${Object.keys(paragraphAlignments).length} alignments.`);
+        } catch (e) {
+            alert('Failed to import: ' + e.message);
+        }
+        // Reset file input so same file can be re-imported
+        document.getElementById('importSessionFile').value = '';
     }
 
     function saveSession() {
