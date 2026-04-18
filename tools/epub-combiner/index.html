@@ -2543,12 +2543,16 @@
             }
 
             // Actions
-            let actionsHtml = '';
+            let actionsHtml = `<div style="display:flex;gap:2px;flex-wrap:wrap;align-items:center;">`;
+            // Move up/down
+            actionsHtml += `<button class="btn btn-sm btn-secondary" onclick="moveChapterPair(${globalIdx},-1)" title="Move up" style="font-size:10px;padding:2px 4px;" ${globalIdx === 0 ? 'disabled' : ''}>&#9650;</button>`;
+            actionsHtml += `<button class="btn btn-sm btn-secondary" onclick="moveChapterPair(${globalIdx},1)" title="Move down" style="font-size:10px;padding:2px 4px;" ${globalIdx === chapterPairs.length - 1 ? 'disabled' : ''}>&#9660;</button>`;
             if (isPaired) {
-                actionsHtml = `
+                actionsHtml += `
                     <button class="btn btn-sm btn-primary" onclick="jumpToChapterAlignment(${currentPairIdx})" style="font-size:10px;">Align</button>
                     <button class="btn btn-sm btn-danger" onclick="unpairChapter(${currentPairIdx})" style="font-size:10px;">Unpair</button>`;
             }
+            actionsHtml += `</div>`;
 
             const rowBg = isPaired ? '' : 'background:#fff8e1;';
             html += `<tr style="${rowBg}">
@@ -2581,26 +2585,45 @@
         el.innerHTML = html;
     }
 
-    function renderBlockPreview(blocks) {
-        // Show first 5 and last 5 blocks (with ellipsis and total count if more)
+    function renderBlockPreview(blocks, previewId) {
         const maxShow = 5;
-        let preview = '';
-        const showBlocks = [];
         if (blocks.length <= maxShow * 2) {
-            showBlocks.push(...blocks);
-        } else {
-            showBlocks.push(...blocks.slice(0, maxShow));
-            showBlocks.push(null); // separator
-            showBlocks.push(...blocks.slice(-maxShow));
+            // Show all if small enough
+            return blocks.map(b => {
+                const cls = b.type === 'heading' ? ' heading' : '';
+                const text = b.text.substring(0, 120) + (b.text.length > 120 ? '...' : '');
+                return `<div class="block-preview${cls}">${escapeHtml(text)}</div>`;
+            }).join('');
         }
-        const hiddenCount = blocks.length - Math.min(blocks.length, maxShow * 2);
-        for (const b of showBlocks) {
-            if (b === null) {
-                preview += `<div style="text-align:center;color:var(--text-muted);font-size:11px;padding:4px;">... ${hiddenCount} more blocks ...</div>`;
-                continue;
-            }
+
+        const hiddenCount = blocks.length - maxShow * 2;
+        let preview = '';
+        // First N
+        for (let i = 0; i < maxShow; i++) {
+            const b = blocks[i];
             const cls = b.type === 'heading' ? ' heading' : '';
-            const text = b.text.substring(0, 100) + (b.text.length > 100 ? '...' : '');
+            const text = b.text.substring(0, 120) + (b.text.length > 120 ? '...' : '');
+            preview += `<div class="block-preview${cls}">${escapeHtml(text)}</div>`;
+        }
+        // Expandable middle
+        const midId = previewId || ('bp_' + Math.random().toString(36).substring(2, 8));
+        preview += `<div id="${midId}_collapsed" style="text-align:center;padding:4px;">
+            <span style="color:var(--text-muted);font-size:11px;">... ${hiddenCount} more blocks ...</span>
+            <button class="btn btn-sm btn-secondary" onclick="document.getElementById('${midId}_collapsed').style.display='none';document.getElementById('${midId}_expanded').style.display='block';" style="font-size:10px;padding:1px 6px;margin-left:6px;">Show all</button>
+        </div>`;
+        preview += `<div id="${midId}_expanded" style="display:none;">`;
+        for (let i = maxShow; i < blocks.length - maxShow; i++) {
+            const b = blocks[i];
+            const cls = b.type === 'heading' ? ' heading' : '';
+            const text = b.text.substring(0, 120) + (b.text.length > 120 ? '...' : '');
+            preview += `<div class="block-preview${cls}">${escapeHtml(text)}</div>`;
+        }
+        preview += `<div style="text-align:center;padding:2px;"><button class="btn btn-sm btn-secondary" onclick="document.getElementById('${midId}_collapsed').style.display='';document.getElementById('${midId}_expanded').style.display='none';" style="font-size:10px;padding:1px 6px;">Collapse</button></div></div>`;
+        // Last N
+        for (let i = blocks.length - maxShow; i < blocks.length; i++) {
+            const b = blocks[i];
+            const cls = b.type === 'heading' ? ' heading' : '';
+            const text = b.text.substring(0, 120) + (b.text.length > 120 ? '...' : '');
             preview += `<div class="block-preview${cls}">${escapeHtml(text)}</div>`;
         }
         return preview;
@@ -2683,6 +2706,16 @@
     function doSplit(bookNum, chapterIdx, blockIdx) {
         document.getElementById('splitOverlay').remove();
         splitChapter(bookNum, chapterIdx, blockIdx);
+    }
+
+    function moveChapterPair(globalIdx, direction) {
+        const targetIdx = globalIdx + direction;
+        if (targetIdx < 0 || targetIdx >= chapterPairs.length) return;
+        // Swap
+        const tmp = chapterPairs[globalIdx];
+        chapterPairs[globalIdx] = chapterPairs[targetIdx];
+        chapterPairs[targetIdx] = tmp;
+        renderChapterAlignment();
     }
 
     async function rerunAutoPairing() {
