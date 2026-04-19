@@ -4075,12 +4075,14 @@
         html += '</h2>';
         html += '<div class="word-translation">' + escapeHtml(englishDef) + '</div>';
 
-        // Show the resolved infinitive and conjugation info if the searched word is a conjugated form
+        // Show conjugation badge if this is a conjugated form
         if (infinitive && infinitive !== w) {
             var conjId = identifyConjugation(w, infinitive);
-            var conjDesc = conjId ? ' — ' + conjId.pronoun + ', ' + conjId.tense : '';
-            html += '<p style="font-size:12px;color:var(--text-muted);margin:4px 0 4px;font-style:italic;">'
-                + escapeHtml(w) + ' &rarr; <strong>' + escapeHtml(infinitive) + '</strong>' + escapeHtml(conjDesc) + '</p>';
+            html += '<div style="margin:8px 0;">';
+            html += '<span class="word-result-badge" style="background:#fff3cd;color:#856404;font-size:12px;padding:3px 8px;">\u2192 ' + escapeHtml(infinitive);
+            if (conjId) html += ' \u00B7 ' + escapeHtml(conjId.pronoun) + ' \u00B7 ' + escapeHtml(conjId.tense);
+            html += '</span>';
+            html += '</div>';
         }
 
         html += '<p style="font-size:11px;color:var(--text-muted);margin:4px 0 8px;font-style:italic;">From external dictionary</p>';
@@ -4486,8 +4488,7 @@
                 if (resolvedInfinitive) {
                     const infDef = externalDictLookup(resolvedInfinitive);
                     conjInfo = identifyConjugation(q, resolvedInfinitive);
-                    var conjDesc = conjInfo ? ' [' + conjInfo.pronoun + ', ' + conjInfo.tense + ']' : '';
-                    displayEnglish = (infDef || extResult) + ' (\u2192 ' + resolvedInfinitive + conjDesc + ')';
+                    displayEnglish = infDef || extResult;
                     displayIsVerb = true;
                 }
                 matches.push({
