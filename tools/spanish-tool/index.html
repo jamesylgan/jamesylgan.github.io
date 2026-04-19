@@ -2331,8 +2331,8 @@
                 lesson.verbs.forEach(verbName => {
                     const verbData = typeVerbs.find(v => v.verb === verbName);
                     if (verbData) {
-                        html += `<p style="margin:8px 0 4px;font-weight:500;font-style:italic;">${escapeHtml(verbData.verb)}</p>`;
-                        html += `<table class="conj-table">`;
+                        html += `<p style="margin:12px 0 4px;font-weight:500;font-style:italic;">${escapeHtml(verbData.verb)}</p>`;
+                        html += `<table class="conj-table"><tr><th style="width:40%;">${t('pronoun')}</th><th>${t('form')}</th></tr>`;
                         const isImperative = lesson.id.startsWith('imperative_');
                         Object.entries(verbData.forms).forEach(([pKey, form]) => {
                             html += `<tr><td>${escapeHtml(getPronounLabel(pKey, isImperative ? lesson.id : null))}</td><td>${escapeHtml(form)}</td></tr>`;
