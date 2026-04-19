@@ -956,11 +956,11 @@
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
                                 <input type="radio" name="dictSize" value="expanded" onchange="setDictSize('expanded')">
-                                <span><strong>Expanded</strong> — 314k conjugated forms (~1MB download)</span>
+                                <span><strong>Expanded</strong> — 10k words (~300KB). Try: madrugada, vecino, paraguas</span>
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
                                 <input type="radio" name="dictSize" value="full" onchange="setDictSize('full')">
-                                <span><strong>Full</strong> — 2.6M forms (~8MB download, slow on mobile)</span>
+                                <span><strong>Full</strong> — 81k words (~2.5MB). Try: vislumbrar, alborada, jolgorio</span>
                             </label>
                             <div id="dictLoadStatus" style="font-size:12px;color:var(--text-muted);"></div>
                         </div>
@@ -4088,11 +4088,11 @@
         if (extDictLoading) return;
         const statusEl = document.getElementById('dictLoadStatus');
         if (size === 'expanded' && typeof esExpLookup === 'function') {
-            if (statusEl) statusEl.textContent = 'Expanded dict ready (314k forms)';
+            if (statusEl) statusEl.textContent = 'Expanded dict ready (10k words). Try: madrugada, vecino, paraguas';
             return;
         }
         if (size === 'full' && typeof esFullLookup === 'function') {
-            if (statusEl) statusEl.textContent = 'Full dict ready (2.6M forms)';
+            if (statusEl) statusEl.textContent = 'Full dict ready (81k words). Try: vislumbrar, alborada, jolgorio';
             return;
         }
         extDictLoading = true;
@@ -4116,7 +4116,7 @@
             const fn = size === 'full' ? 'esFullLookup' : 'esExpLookup';
             const ok = typeof window[fn] === 'function';
             if (statusEl) statusEl.textContent = ok
-                ? `${size === 'full' ? 'Full (2.6M)' : 'Expanded (314k)'} dict loaded. Try: habló, madrugada, corriendo`
+                ? `${size === 'full' ? 'Full (81k words)' : 'Expanded (10k words)'} dict loaded. Try: ${size === 'full' ? 'vislumbrar, alborada, jolgorio' : 'madrugada, vecino, paraguas'}`
                 : `Script loaded but ${fn} not found. Check console.`;
             if (!ok) console.error(`[Dict] ${fn} not defined after loading ${src}`);
         } catch (e) {
