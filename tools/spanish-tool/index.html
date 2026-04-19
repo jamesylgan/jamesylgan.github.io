@@ -4302,24 +4302,23 @@
             });
         }
 
-        // Autocomplete from external dictionaries (expanded/full)
+        // Autocomplete from external dictionaries (expanded/full) — lemmas first
         if (q.length >= 3 && matches.length < 50) {
             const extDicts = [];
-            if (typeof esExp === 'object') extDicts.push(esExp);
-            if (typeof esFull === 'object') extDicts.push(esFull);
-            for (const dict of extDicts) {
+            if (typeof esExp === 'object' && typeof esExpV !== 'undefined') extDicts.push([esExp, esExpV]);
+            if (typeof esFull === 'object' && typeof esFullV !== 'undefined') extDicts.push([esFull, esFullV]);
+            for (const [dict, values] of extDicts) {
                 for (const key in dict) {
                     if (matchedKeys.has(key)) continue;
                     if (key.startsWith(q) || key === q) {
                         const idx = dict[key];
-                        const values = dict === esExp ? esExpV : (typeof esFullV !== 'undefined' ? esFullV : null);
-                        if (values && typeof idx === 'number') {
+                        if (typeof idx === 'number' && values[idx]) {
                             const en = values[idx];
                             const isInf = (key.endsWith('ar') || key.endsWith('er') || key.endsWith('ir')) && key.length > 3;
-                            const isVerb = isInf && en && en.startsWith('to ');
+                            const isVerb = isInf && en.startsWith('to ');
                             matches.push({
                                 entry: { spanish: key, english: en, days: [], isVerb: isVerb, gender: null, _fromDict: true },
-                                score: key === q ? 2.8 : 1.5
+                                score: key === q ? 2.8 : 1.5 // lemmas get higher score than conjugated forms
                             });
                             matchedKeys.add(key);
                             if (matches.length >= 50) break;
@@ -4328,21 +4327,21 @@
                 }
                 if (matches.length >= 50) break;
             }
-            // Also autocomplete conjugated forms (only if few matches so far, and query is specific enough)
-            if (typeof esFormToInf === 'object' && q.length >= 4 && matches.length < 10) {
+            // Conjugated forms: lower priority, only if few lemma matches, longer query
+            if (typeof esFormToInf === 'object' && typeof esFormToInfV !== 'undefined' && q.length >= 4 && matches.length < 15) {
                 let formChecked = 0;
                 for (const form in esFormToInf) {
-                    if (++formChecked > 50000) break; // cap iteration for performance
+                    if (++formChecked > 50000) break;
                     if (matchedKeys.has(form) || matches.length >= 50) continue;
                     if (form.startsWith(q)) {
-                        const infIdx = esFormToInf[form];
-                        const inf = typeof esFormToInfV !== 'undefined' ? esFormToInfV[infIdx] : null;
-                        if (inf) {
+                        const inf = esFormToInfV[esFormToInf[form]];
+                        if (inf && !matchedKeys.has(inf)) {
                             const en = externalDictLookup(inf);
                             if (en) {
+                                // Show as "conjugatedForm → infinitive: definition"
                                 matches.push({
-                                    entry: { spanish: form, english: en + ' (\u2192 ' + inf + ')', days: [], isVerb: true, gender: null, _fromDict: true, _resolvedInfinitive: inf },
-                                    score: 1.2
+                                    entry: { spanish: form, english: inf + ': ' + en, days: [], isVerb: true, gender: null, _fromDict: true, _resolvedInfinitive: inf, _isConjugatedForm: true },
+                                    score: 0.8 // lower than lemma matches
                                 });
                                 matchedKeys.add(form);
                             }
@@ -4399,7 +4398,8 @@
 
         results.innerHTML = matches.map(({ entry }) => {
             const safeWord = escapeHtml(entry.spanish).replace(/'/g, '&#39;');
-            const badge = entry._fromDict ? '<span class="word-result-badge" style="background:#e8f0fe;color:#1a73e8;">dict</span>'
+            const badge = entry._isConjugatedForm ? '<span class="word-result-badge" style="background:#fff3cd;color:#856404;">\u2192 ' + escapeHtml(entry._resolvedInfinitive) + '</span>'
+                : entry._fromDict ? '<span class="word-result-badge" style="background:#e8f0fe;color:#1a73e8;">dict</span>'
                 : entry.gender ? '<span class="word-result-badge">' + (entry.gender === 'm' ? 'masc' : 'fem') + '</span>'
                 : entry.isVerb ? '<span class="word-result-badge">' + t('verb') + '</span>' : '';
             const translation = escapeHtml(entry._fromDict ? entry.english : getWordTranslation(entry));
