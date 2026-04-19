@@ -2256,8 +2256,9 @@
         document.getElementById('learnGridContainer').style.display = 'none';
         document.getElementById('learnView').classList.add('active');
 
-        document.getElementById('learnTitle').textContent = lesson.title;
-        document.getElementById('learnSubtitle').textContent = lesson.id === 'pronoun_placement' ? 'Grammar Pattern' : 'Conjugation';
+        const viL = (progress.uiLanguage === 'vi' && typeof translationsVI !== 'undefined' && translationsVI.learnLessons) ? translationsVI.learnLessons[lesson.id] : null;
+        document.getElementById('learnTitle').textContent = viL ? viL.title : lesson.title;
+        document.getElementById('learnSubtitle').textContent = lesson.id === 'pronoun_placement' ? (progress.uiLanguage === 'vi' ? 'Mẫu ngữ pháp' : 'Grammar Pattern') : (progress.uiLanguage === 'vi' ? 'Chia động từ' : 'Conjugation');
 
         document.getElementById('prevLearnBtn').style.visibility = idx === 0 ? 'hidden' : 'visible';
         document.getElementById('nextLearnBtn').style.visibility = idx === learnLessons.length - 1 ? 'hidden' : 'visible';
@@ -2311,17 +2312,30 @@
 
     function renderLearnContent(lesson) {
         let html = '';
-        if (lesson.customContent) {
-            html += renderPronounPlacementLesson();
-        } else {
-            html += `<div class="section"><p style="line-height:1.7">${lesson.intro}</p>`;
+        // Check for Vietnamese translation of this lesson
+        const useVi = progress.uiLanguage === 'vi' && typeof translationsVI !== 'undefined';
+        const viLesson = useVi && translationsVI.learnLessons ? translationsVI.learnLessons[lesson.id] : null;
 
-            if (lesson.explanation) {
-                html += `<div style="margin:12px 0;padding:12px 16px;background:#f8f9fa;border-radius:8px;border-left:3px solid var(--primary);line-height:1.7;font-size:14px;">${lesson.explanation}</div>`;
+        if (lesson.customContent) {
+            if (viLesson && viLesson.customContentVi) {
+                html += viLesson.customContentVi;
+            } else {
+                html += renderPronounPlacementLesson();
+            }
+        } else {
+            const intro = viLesson ? viLesson.intro : lesson.intro;
+            const explanation = viLesson ? viLesson.explanation : lesson.explanation;
+            const rule = viLesson ? viLesson.rule : lesson.rule;
+            const tip = viLesson ? viLesson.tip : lesson.tip;
+
+            html += `<div class="section"><p style="line-height:1.7">${intro}</p>`;
+
+            if (explanation) {
+                html += `<div style="margin:12px 0;padding:12px 16px;background:#f8f9fa;border-radius:8px;border-left:3px solid var(--primary);line-height:1.7;font-size:14px;">${explanation}</div>`;
             }
 
-            if (lesson.rule) {
-                html += `<div class="learn-rule">${escapeHtml(lesson.rule)}</div>`;
+            if (rule) {
+                html += `<div class="learn-rule">${escapeHtml(rule)}</div>`;
             }
 
             if (lesson.endings) {
@@ -2353,16 +2367,20 @@
             }
             html += `</div>`;
 
-            if (lesson.examples.length > 0) {
+            // Examples: use Vietnamese translations if available
+            const examples = lesson.examples || [];
+            if (examples.length > 0) {
+                const viExamples = viLesson ? viLesson.examples : null;
                 html += `<div class="section">`;
-                lesson.examples.forEach(ex => {
-                    html += `<div class="learn-example"><span class="es">${escapeHtml(ex.es)}</span><br><span class="en">${escapeHtml(ex.en)}</span></div>`;
+                examples.forEach((ex, i) => {
+                    const translation = viExamples && viExamples[i] ? viExamples[i].vi : ex.en;
+                    html += `<div class="learn-example"><span class="es">${escapeHtml(ex.es)}</span><br><span class="en">${escapeHtml(translation)}</span></div>`;
                 });
                 html += `</div>`;
             }
 
-            if (lesson.tip) {
-                html += `<div class="section"><div class="learn-tip"><strong>${t('learnTip')}:</strong> ${escapeHtml(lesson.tip)}</div></div>`;
+            if (tip) {
+                html += `<div class="section"><div class="learn-tip"><strong>${t('learnTip')}:</strong> ${escapeHtml(tip)}</div></div>`;
             }
         }
 
