@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <title>Cita Previa Guide - Toma de Huellas (TIE Fingerprinting)</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #f8f9fa; --bg-card: #ffffff; --bg-surface: #f0f2f5;
+            --text: #1a1a2e; --text-muted: #555; --text-dim: #888;
+            --border: #ddd; --border-light: #e8e8e8;
+            --accent: #2563eb; --accent-hover: #1d4ed8;
+            --red: #dc2626; --green: #16a34a; --yellow: #d97706; --orange: #ea580c;
+            --flag-red: #c60b1e; --flag-yellow: #ffc400;
+        }
+        .dark {
+            --bg: #111827; --bg-card: #1f2937; --bg-surface: #1a2235;
+            --text: #f3f4f6; --text-muted: #9ca3af; --text-dim: #6b7280;
+            --border: #374151; --border-light: #2d3748;
+            --accent: #3b82f6; --accent-hover: #2563eb;
+            --red: #f87171; --green: #34d399; --yellow: #fbbf24; --orange: #fb923c;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg); color: var(--text);
+            min-height: 100vh; line-height: 1.6;
+        }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 20px; border-bottom: 1px solid var(--border);
+            background: var(--bg-surface); flex-wrap: wrap; gap: 8px;
+        }
+        .header h1 { font-size: 1.1rem; font-weight: 600; }
+        .header .flag { font-size: 1.3rem; }
+        .back-link { color: var(--text-muted); font-size: 13px; }
+        .dark-toggle { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 14px; }
+
+        .container { max-width: 800px; margin: 0 auto; padding: 24px 20px; }
+
+        h2 { font-size: 1.3rem; margin: 32px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--flag-red); }
+        h2:first-of-type { margin-top: 16px; }
+        h3 { font-size: 1.05rem; margin: 20px 0 8px; color: var(--accent); }
+
+        p, li { font-size: 0.9rem; color: var(--text-muted); }
+        p { margin-bottom: 12px; }
+        ul, ol { margin: 8px 0 16px 24px; }
+        li { margin-bottom: 6px; }
+
+        .callout {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-left: 4px solid var(--accent); border-radius: 8px;
+            padding: 14px 16px; margin: 16px 0;
+        }
+        .callout.warn { border-left-color: var(--orange); }
+        .callout.success { border-left-color: var(--green); }
+        .callout.danger { border-left-color: var(--red); }
+        .callout strong { color: var(--text); }
+
+        .step-flow {
+            display: flex; flex-direction: column; gap: 0;
+            margin: 16px 0;
+        }
+        .step {
+            display: flex; gap: 14px; padding: 14px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .step:last-child { border-bottom: none; }
+        .step-num {
+            min-width: 32px; height: 32px; border-radius: 50%;
+            background: var(--accent); color: #fff; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem; flex-shrink: 0;
+        }
+        .step-content { flex: 1; }
+        .step-content strong { color: var(--text); display: block; margin-bottom: 2px; }
+        .step-content p { margin-bottom: 4px; }
+
+        code {
+            background: var(--bg-surface); padding: 2px 6px; border-radius: 4px;
+            font-size: 0.82rem; color: var(--text);
+        }
+
+        table {
+            width: 100%; border-collapse: collapse; margin: 12px 0 20px;
+            font-size: 0.85rem;
+        }
+        th, td {
+            text-align: left; padding: 10px 12px;
+            border-bottom: 1px solid var(--border-light);
+        }
+        th { background: var(--bg-surface); color: var(--text); font-weight: 600; }
+        td { color: var(--text-muted); }
+
+        .updated { font-size: 0.75rem; color: var(--text-dim); margin-top: 32px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div style="display:flex;align-items:center;gap:12px;">
+            <a href="index.html" class="back-link">&larr; Back to Guide</a>
+            <h1><span class="flag">🇪🇸</span> Cita Previa Guide</h1>
+        </div>
+        <button class="dark-toggle" onclick="document.body.classList.toggle('dark')">🌙</button>
+    </div>
+
+    <div class="container">
+        <h2>Booking a Toma de Huellas Appointment (TIE Fingerprinting)</h2>
+
+        <p>After your EX-19 or residence authorization is approved, you need a <strong>toma de huellas</strong> (fingerprinting) appointment to receive your physical TIE card. Getting this appointment in Madrid is notoriously difficult due to bots and high demand.</p>
+
+        <div class="callout success">
+            <strong>Key Discovery (April 2026):</strong> The "sin Cl@ve" (without digital certificate) path often shows zero availability because bots exhaust those slots. However, the <strong>"con Cl@ve" path frequently has appointments available</strong>. If you or someone you know has Cl@ve, use that path.
+        </div>
+
+        <h2>The Cl@ve Workaround</h2>
+
+        <h3>The Problem</h3>
+        <p>When you try to book via the "sin Cl@ve" path, you'll likely see:</p>
+        <div class="callout danger">
+            <strong>"En este momento no hay citas disponibles para la reserva sin cl@ve."</strong><br>
+            Followed by: "SI TIENEN A SU DISPOSICION MEDIANTE EL USO DE CL@VE, CITAS DISPONIBLES PARA SU RESERVA."
+        </div>
+        <p>Translation: No appointments without Cl@ve, but <em>yes</em> there are appointments available via Cl@ve.</p>
+
+        <h3>The Catch-22</h3>
+        <p>To register for Cl@ve, you typically need a <strong>numero de soporte</strong> from your TIE card. But you need the fingerprinting appointment to get the TIE card. Circular dependency.</p>
+
+        <h3>The Solution: Someone Else Can Book For You</h3>
+        <div class="callout success">
+            <strong>The official portal explicitly states:</strong> "Si todavia no disponen de acceso al certificado electronico, pueden solicitar la cita a traves de cualquier entidad o persona que disponga de el, y podran reservar la cita en su nombre."
+            <br><br>
+            Translation: <strong>Anyone with Cl@ve can book the appointment on your behalf.</strong> The Cl@ve authenticates the <em>booker</em>, not the applicant.
+        </div>
+
+        <p>Who can help:</p>
+        <ul>
+            <li><strong>Your spouse/partner</strong> if they already have Cl@ve (e.g., the EU citizen sponsor who already has their TIE)</li>
+            <li><strong>A friend or colleague</strong> in Spain with Cl@ve access</li>
+            <li><strong>A gestoria or immigration lawyer</strong> -- this is why they can get appointments when you can't (they have Cl@ve). Expect to pay 50-150 EUR.</li>
+        </ul>
+
+        <h2>Booking Flow (Step by Step)</h2>
+
+        <div class="step-flow">
+            <div class="step">
+                <div class="step-num">1</div>
+                <div class="step-content">
+                    <strong>Go to the ICP Plus portal</strong>
+                    <p>URL: <a href="https://icp.administracionelectronica.gob.es/icpplustiem/citar?p=28" target="_blank">icp.administracionelectronica.gob.es/icpplustiem/citar?p=28</a> (direct link for Madrid, province 28)</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num">2</div>
+                <div class="step-content">
+                    <strong>Select office and procedure</strong>
+                    <p>Office: <code>Cualquier oficina</code> (any office) or pick a specific one.</p>
+                    <p>Procedure (TRAMITES POLICIA NACIONAL): <code>POLICIA-TOMA DE HUELLAS (EXPEDICION DE TARJETA) INICIAL, RENOVACION, DUPLICADO Y LEY 14/2013</code> (code 4010)</p>
+                    <p>Click <strong>Aceptar</strong>.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num">3</div>
+                <div class="step-content">
+                    <strong>Choose "Presentacion con Cl@ve"</strong>
+                    <p>This is the path with actual availability. Do NOT choose "sin Cl@ve" -- it will almost certainly show no appointments.</p>
+                    <p>The Cl@ve holder logs in here (this can be a different person than the applicant).</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num">4</div>
+                <div class="step-content">
+                    <strong>Enter the applicant's details</strong>
+                    <p>Document type: <code>N.I.E.</code></p>
+                    <p>NIE number, full name, and nationality of the person who needs the appointment (not the Cl@ve holder).</p>
+                    <p>Click <strong>Aceptar</strong>.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num">5</div>
+                <div class="step-content">
+                    <strong>Click "Solicitar Cita"</strong>
+                    <p>On the options page, click the red "Solicitar Cita" button. If appointments are available, you'll see a calendar to pick a date and time.</p>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-num">6</div>
+                <div class="step-content">
+                    <strong>Confirm and print</strong>
+                    <p>Select your preferred date/time, enter a phone number and email. Confirm the appointment and <strong>print the confirmation page</strong>. They will not accept a phone screen -- you need a paper copy.</p>
+                </div>
+            </div>
+        </div>
+
+        <h2>What to Bring to the Appointment</h2>
+        <table>
+            <tr><th>Document</th><th>Notes</th></tr>
+            <tr><td>Printed cita previa confirmation</td><td>Paper only, no phone screens</td></tr>
+            <tr><td>Passport + photocopy</td><td>Original required</td></tr>
+            <tr><td>Favorable resolution letter</td><td>The approval of your EX-19 or residence authorization</td></tr>
+            <tr><td>Form EX-17</td><td>Filled out and signed</td></tr>
+            <tr><td>Tasa 790 Codigo 012</td><td>Pay at a bank BEFORE the appointment (~16 EUR)</td></tr>
+            <tr><td>3 passport-size photos</td><td>White background, recent</td></tr>
+        </table>
+
+        <h2>If You Can't Get an Appointment</h2>
+
+        <h3>Manual timing tricks</h3>
+        <p>If you must use the "sin Cl@ve" path, these are the reported best times to check (Madrid):</p>
+        <table>
+            <tr><th>When</th><th>What</th></tr>
+            <tr><td>Mondays at 12:00</td><td>Best day/time combo per immigration lawyers</td></tr>
+            <tr><td>Weekdays at 12:00 and 20:00</td><td>General slot release windows</td></tr>
+            <tr><td>8:00 and 14:00</td><td>Additional release times</td></tr>
+            <tr><td>Thursdays at 15:00</td><td>Reported "golden window" by some users</td></tr>
+        </table>
+
+        <h3>The pre-load trick</h3>
+        <p>Have the form filled out and ready 1 minute before the release time. Refresh at exactly the hour. The browser auto-fills cached fields so you can submit faster than starting fresh.</p>
+
+        <h3>You won't lose your approval</h3>
+        <div class="callout">
+            <strong>Don't panic about the 1-month deadline.</strong> The regulation says fingerprinting should happen within 1 month, but in 2026 Madrid's extranjeria offices accept justified delays. Take screenshots every time you check and see "no hay citas disponibles" -- these serve as proof you tried. Your authorization stays valid while fingerprinting is pending.
+        </div>
+
+        <h2>Madrid Office Reference</h2>
+        <p>The system has 40+ offices in Madrid province. When you select "Cualquier oficina" the system checks all of them. Key police stations (CNP) that handle toma de huellas:</p>
+        <ul>
+            <li><strong>CNP AVDA POBLADOS</strong> -- Avda. de los Poblados, S/N</li>
+            <li><strong>CNP OFICINA AQUILES 2</strong> -- Aquiles, 2</li>
+            <li><strong>CNP SAN FELIPE TIE</strong> -- San Felipe, 7</li>
+            <li><strong>CNP Padre Piquer</strong> -- Padre Piquer, 18</li>
+            <li><strong>Silva</strong> -- Silva, 19 (main Oficina de Extranjeria)</li>
+            <li>Plus 20+ district-level CNP offices and satellite comisarias (Alcobendas, Getafe, Mostoles, etc.)</li>
+        </ul>
+        <p>Note: The system may assign you a specific office based on your empadronamiento address, or it may let you choose from all available offices depending on current configuration.</p>
+
+        <p class="updated">Last updated: April 2026</p>
+    </div>
+</body>
+</html>
