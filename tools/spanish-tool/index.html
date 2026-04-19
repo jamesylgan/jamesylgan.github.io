@@ -2611,7 +2611,8 @@
             const isNonFinite = tense === '_non_finite';
             const unlocked = isNonFinite || conjugationTypes.some(ct => ct.tense === tense && isConjTypeUnlocked(ct));
             const setting = (progress.lookupConjTenses || {})[tense];
-            const checked = isNonFinite ? (setting !== undefined ? setting : true) : (unlocked && isLookupTenseVisible(tense));
+            // Checkbox shows user's saved preference (or default true if unlocked/non-finite)
+            const checked = setting !== undefined ? setting : (unlocked || isNonFinite);
             const label = isNonFinite ? 'Non-Finite (infinitive, gerund, participle)' : (tenseLabels[tense] || tense);
             const unlocksAt = isNonFinite ? null : conjugationTypes.find(ct => ct.tense === tense)?.unlocksAt;
             html += `
