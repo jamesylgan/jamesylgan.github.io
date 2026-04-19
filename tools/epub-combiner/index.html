@@ -12,6 +12,7 @@
     <script src="../lib/jszip.min.js"></script>
     <script src="../spanish-tool/es-en-dict.js"></script>
     <script src="../lib/es-en-expanded.js"></script>
+    <script src="../lib/es-form-to-inf.js"></script>
     <style>
         :root {
             --primary: #007bff;
@@ -3614,10 +3615,17 @@
         const cognateScore = cognateChecks > 0 ? cognateMatches / cognateChecks : 0.3;
 
         // 5b. Dictionary-based word matching (ES↔EN)
-        // Uses expanded dict (314k pre-conjugated forms) for fast hash lookup
+        // Tries lemma lookup, then form→infinitive→lemma, then stemmer
         let dictScore = 0.5; // neutral default
-        const dictLookup = typeof esExpLookup === 'function' ? esExpLookup
-            : typeof lookupSpanish === 'function' ? lookupSpanish : null;
+        const dictLookup = function(w) {
+            if (typeof esExpLookup === 'function') { const r = esExpLookup(w); if (r) return r; }
+            if (typeof esFormToInfLookup === 'function') {
+                const inf = esFormToInfLookup(w);
+                if (inf && typeof esExpLookup === 'function') { const r = esExpLookup(inf); if (r) return r; }
+            }
+            if (typeof lookupSpanish === 'function') return lookupSpanish(w);
+            return null;
+        };
         // Only use dictionary when at least one side has Spanish words (dict returns hits)
         if (dictLookup && longWords1.length > 0 && longWords2.length > 0) {
             // Quick check: does the dict recognize enough words to indicate Spanish text?
