@@ -1015,6 +1015,7 @@
     <script src="es-en-dict.js"></script>
     <script src="../lib/en-es-reverse.js"></script>
     <script src="../lib/es-conjugator.js"></script>
+    <script src="../lib/es-form-to-inf.js"></script>
     <script src="common-words.js"></script>
     <script>
     // Lesson Data (extracted from PDF)
@@ -3918,23 +3919,38 @@
         const modal = document.getElementById('wordModal');
         const content = document.getElementById('wordModalContent');
         const w = spanishWord.toLowerCase();
-        const isVerb = (w.endsWith('ar') || w.endsWith('er') || w.endsWith('ir')) && w.length > 3
-            && (englishDef.startsWith('to ') || englishDef.startsWith('To '));
+        const isInfinitive = (w.endsWith('ar') || w.endsWith('er') || w.endsWith('ir')) && w.length > 3;
+        const isVerb = isInfinitive && (englishDef.startsWith('to ') || englishDef.startsWith('To '));
+
+        // Resolve infinitive: if already an infinitive use it, otherwise look up via form-to-inf
+        let infinitive = null;
+        if (isInfinitive) {
+            infinitive = w;
+        } else if (typeof esFormToInfLookup === 'function') {
+            infinitive = esFormToInfLookup(w);
+        }
 
         let html = '<h2>' + escapeHtml(spanishWord);
         if (isVerb) html += ' <span class="word-result-badge">' + t('verb') + '</span>';
         html += '</h2>';
         html += '<div class="word-translation">' + escapeHtml(englishDef) + '</div>';
+
+        // Show the resolved infinitive if the searched word is a conjugated form
+        if (infinitive && infinitive !== w) {
+            html += '<p style="font-size:12px;color:var(--text-muted);margin:4px 0 4px;font-style:italic;">'
+                + escapeHtml(w) + ' &rarr; infinitive: <strong>' + escapeHtml(infinitive) + '</strong></p>';
+        }
+
         html += '<p style="font-size:11px;color:var(--text-muted);margin:4px 0 8px;font-style:italic;">From external dictionary</p>';
 
-        // Show auto-conjugation for regular verbs
-        if (isVerb && typeof autoConjugate === 'function') {
-            if (isIrregularVerb(w)) {
-                html += '<p style="color:var(--text-muted);font-style:italic;">Irregular verb — auto-conjugation not available.</p>';
+        // Show auto-conjugation for verbs (use the resolved infinitive)
+        if (infinitive && typeof autoConjugate === 'function') {
+            if (isIrregularVerb(infinitive)) {
+                html += '<p style="color:var(--text-muted);font-style:italic;">Irregular verb (' + escapeHtml(infinitive) + ') — auto-conjugation not available.</p>';
             } else {
-                var conj = autoConjugate(w);
+                var conj = autoConjugate(infinitive);
                 if (conj) {
-                    html += '<p style="font-size:11px;color:var(--text-muted);margin:4px 0;font-style:italic;">Auto-generated (regular verb)</p>';
+                    html += '<p style="font-size:11px;color:var(--text-muted);margin:4px 0;font-style:italic;">Auto-generated (regular verb: ' + escapeHtml(infinitive) + ')</p>';
                     for (var tense in conj) {
                         html += '<div class="conj-tense-title">' + escapeHtml(tense) + '</div>';
                         html += '<table class="conj-table"><tr><th>' + t('pronoun') + '</th><th>' + t('form') + '</th></tr>';
@@ -4005,7 +4021,7 @@
                 if (autoConj) {
                     html += `<p style="font-size:11px;color:var(--text-muted);margin:8px 0 4px;font-style:italic;">Auto-generated (regular verb)</p>`;
                     for (const [tense, forms] of Object.entries(autoConj)) {
-                        if (!isLookupTenseVisible(tense.toLowerCase())) continue;
+                        // Auto-generated tenses bypass lesson-based visibility filter
                         html += '<div class="conj-tense-title">' + escapeHtml(tense) + '</div>';
                         html += '<table class="conj-table"><tr><th>' + t('pronoun') + '</th><th>' + t('form') + '</th></tr>';
                         for (const [pronoun, form] of Object.entries(forms)) {
@@ -4182,9 +4198,23 @@
         if (q.length >= 2 && !matchedKeys.has(q)) {
             const extResult = externalDictLookup(q);
             if (extResult) {
-                const isExtVerb = (q.endsWith('ar') || q.endsWith('er') || q.endsWith('ir')) && q.length > 3 && extResult.toLowerCase().startsWith('to ');
+                const isExtInfinitive = (q.endsWith('ar') || q.endsWith('er') || q.endsWith('ir')) && q.length > 3;
+                const isExtVerb = isExtInfinitive && extResult.toLowerCase().startsWith('to ');
+                // Try to resolve conjugated form to infinitive
+                let resolvedInfinitive = null;
+                if (!isExtInfinitive && typeof esFormToInfLookup === 'function') {
+                    resolvedInfinitive = esFormToInfLookup(q);
+                }
+                let displayEnglish = extResult;
+                let displayIsVerb = isExtVerb;
+                if (resolvedInfinitive) {
+                    // Look up the infinitive's definition too
+                    const infDef = externalDictLookup(resolvedInfinitive);
+                    displayEnglish = extResult + ' (→ ' + resolvedInfinitive + (infDef ? ': ' + infDef : '') + ')';
+                    displayIsVerb = true;
+                }
                 matches.push({
-                    entry: { spanish: q, english: extResult, days: [], isVerb: isExtVerb, gender: null, _fromDict: true },
+                    entry: { spanish: q, english: displayEnglish, days: [], isVerb: displayIsVerb, gender: null, _fromDict: true, _resolvedInfinitive: resolvedInfinitive },
                     score: matches.length === 0 ? 3 : 0.5
                 });
             }
