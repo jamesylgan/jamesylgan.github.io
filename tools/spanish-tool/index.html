@@ -3913,6 +3913,44 @@
         return entry.english;
     }
 
+    // Modal for words from external dictionary (not in lesson data)
+    function openDictWordModal(spanishWord, englishDef) {
+        const modal = document.getElementById('wordModal');
+        const content = document.getElementById('wordModalContent');
+        const w = spanishWord.toLowerCase();
+        const isVerb = (w.endsWith('ar') || w.endsWith('er') || w.endsWith('ir')) && w.length > 3
+            && (englishDef.startsWith('to ') || englishDef.startsWith('To '));
+
+        let html = '<h2>' + escapeHtml(spanishWord);
+        if (isVerb) html += ' <span class="word-result-badge">' + t('verb') + '</span>';
+        html += '</h2>';
+        html += '<div class="word-translation">' + escapeHtml(englishDef) + '</div>';
+        html += '<p style="font-size:11px;color:var(--text-muted);margin:4px 0 8px;font-style:italic;">From external dictionary</p>';
+
+        // Show auto-conjugation for regular verbs
+        if (isVerb && typeof autoConjugate === 'function') {
+            if (isIrregularVerb(w)) {
+                html += '<p style="color:var(--text-muted);font-style:italic;">Irregular verb — auto-conjugation not available.</p>';
+            } else {
+                var conj = autoConjugate(w);
+                if (conj) {
+                    html += '<p style="font-size:11px;color:var(--text-muted);margin:4px 0;font-style:italic;">Auto-generated (regular verb)</p>';
+                    for (var tense in conj) {
+                        html += '<div class="conj-tense-title">' + escapeHtml(tense) + '</div>';
+                        html += '<table class="conj-table"><tr><th>' + t('pronoun') + '</th><th>' + t('form') + '</th></tr>';
+                        for (var pronoun in conj[tense]) {
+                            html += '<tr><td>' + escapeHtml(pronoun) + '</td><td>' + escapeHtml(conj[tense][pronoun]) + '</td></tr>';
+                        }
+                        html += '</table>';
+                    }
+                }
+            }
+        }
+
+        content.innerHTML = html;
+        modal.classList.add('active');
+    }
+
     function openWordModal(spanishWord, options) {
         buildWordDictionary();
         const cleaned = spanishWord.toLowerCase().replace(/[¿¡.,!?;:"""()]/g, '');
@@ -4144,8 +4182,9 @@
         if (q.length >= 2 && !matchedKeys.has(q)) {
             const extResult = externalDictLookup(q);
             if (extResult) {
+                const isExtVerb = (q.endsWith('ar') || q.endsWith('er') || q.endsWith('ir')) && q.length > 3 && extResult.toLowerCase().startsWith('to ');
                 matches.push({
-                    entry: { spanish: q, english: extResult, days: [], isVerb: false, gender: null, _fromDict: true },
+                    entry: { spanish: q, english: extResult, days: [], isVerb: isExtVerb, gender: null, _fromDict: true },
                     score: matches.length === 0 ? 3 : 0.5
                 });
             }
@@ -4173,7 +4212,9 @@
                 : entry.gender ? '<span class="word-result-badge">' + (entry.gender === 'm' ? 'masc' : 'fem') + '</span>'
                 : entry.isVerb ? '<span class="word-result-badge">' + t('verb') + '</span>' : '';
             const translation = escapeHtml(entry._fromDict ? entry.english : getWordTranslation(entry));
-            const click = entry._fromDict ? '' : "onclick=\"openWordModal('" + safeWord + "')\"";
+            const click = entry._fromDict
+                ? "onclick=\"openDictWordModal('" + safeWord + "','" + escapeHtml(entry.english).replace(/'/g, '&#39;') + "')\""
+                : "onclick=\"openWordModal('" + safeWord + "')\"";
             return '<div class="word-result-item" ' + click + '>'
                 + '<span class="word-result-spanish">' + escapeHtml(entry.spanish) + '</span>'
                 + badge
