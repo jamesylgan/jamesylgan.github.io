@@ -4262,18 +4262,19 @@
 
     function externalDictLookup(word) {
         const w = word.toLowerCase();
-        // Try direct lemma lookup first
-        if (typeof esExpLookup === 'function') { const r = esExpLookup(w); if (r) return r; }
-        if (typeof esFullLookup === 'function') { const r = esFullLookup(w); if (r) return r; }
+        const size = progress.dictSize || 'light';
+        // Try direct lemma lookup (only from loaded dicts matching current setting)
+        if (size !== 'light' && typeof esExpLookup === 'function') { const r = esExpLookup(w); if (r) return r; }
+        if (size === 'full' && typeof esFullLookup === 'function') { const r = esFullLookup(w); if (r) return r; }
         // Try resolving conjugated form → infinitive → definition
-        if (typeof esFormToInfLookup === 'function') {
+        if (size !== 'light' && typeof esFormToInfLookup === 'function') {
             const inf = esFormToInfLookup(w);
             if (inf) {
                 if (typeof esExpLookup === 'function') { const r = esExpLookup(inf); if (r) return r; }
-                if (typeof esFullLookup === 'function') { const r = esFullLookup(inf); if (r) return r; }
+                if (size === 'full' && typeof esFullLookup === 'function') { const r = esFullLookup(inf); if (r) return r; }
             }
         }
-        // Fall back to stemmer-based lookup
+        // Fall back to stemmer-based lookup (always available)
         if (typeof lookupSpanish === 'function') return lookupSpanish(w);
         return null;
     }
@@ -4326,10 +4327,11 @@
         }
 
         // Autocomplete from external dictionaries (expanded/full) — lemmas first
-        if (q.length >= 3 && matches.length < 50) {
+        const dictSize = progress.dictSize || 'light';
+        if (q.length >= 3 && matches.length < 50 && dictSize !== 'light') {
             const extDicts = [];
             if (typeof esExp === 'object' && typeof esExpV !== 'undefined') extDicts.push([esExp, esExpV]);
-            if (typeof esFull === 'object' && typeof esFullV !== 'undefined') extDicts.push([esFull, esFullV]);
+            if (dictSize === 'full' && typeof esFull === 'object' && typeof esFullV !== 'undefined') extDicts.push([esFull, esFullV]);
             for (const [dict, values] of extDicts) {
                 for (const key in dict) {
                     if (matchedKeys.has(key)) continue;
@@ -4351,7 +4353,7 @@
                 if (matches.length >= 50) break;
             }
             // Conjugated forms: lower priority, only if few lemma matches, longer query
-            if (typeof esFormToInf === 'object' && typeof esFormToInfV !== 'undefined' && q.length >= 4 && matches.length < 15) {
+            if (dictSize !== 'light' && typeof esFormToInf === 'object' && typeof esFormToInfV !== 'undefined' && q.length >= 4 && matches.length < 15) {
                 let formChecked = 0;
                 for (const form in esFormToInf) {
                     if (++formChecked > 50000) break;
