@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <meta name="ai-training" content="disallow">
+    <meta name="CCBot" content="nofollow">
+    <meta name="GPTBot" content="nofollow">
+    <title>EX-19 Appeal Checklist</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #f0f2f5; --bg-card: white; --bg-hover: #f9fafb; --text: #1a1a1a;
+            --text-muted: #6b7280; --border: #e5e7eb; --border-light: #f3f4f6;
+            --accent: #2563eb; --accent-hover: #1d4ed8; --accent-light: #dbeafe;
+            --green: #16a34a; --green-light: #dcfce7; --red: #dc2626; --red-light: #fee2e2;
+            --yellow: #f59e0b; --yellow-light: #fef3c7; --orange: #f97316; --orange-light: #ffedd5;
+        }
+        [data-theme="dark"] {
+            --bg: #111827; --bg-card: #1f2937; --bg-hover: #374151; --text: #f3f4f6;
+            --text-muted: #9ca3af; --border: #374151; --border-light: #374151;
+            --accent: #3b82f6; --accent-hover: #2563eb; --accent-light: #1e3a5f;
+            --green: #22c55e; --green-light: #14532d; --red: #ef4444; --red-light: #7f1d1d;
+            --yellow: #fbbf24; --yellow-light: #713f12; --orange: #fb923c; --orange-light: #7c2d12;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 860px; margin: 0 auto; padding: 16px;
+            background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5;
+        }
+        .app-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; margin-bottom: 16px; border-bottom: 3px solid var(--accent);
+            flex-wrap: wrap; gap: 8px;
+        }
+        .app-header h1 { font-size: 1.3rem; }
+        .header-right { display: flex; align-items: center; gap: 8px; }
+        .header-meta { font-size: 12px; color: var(--text-muted); }
+        button { cursor: pointer; font-family: inherit; }
+        .btn {
+            font-size: 12px; padding: 5px 10px; border-radius: 6px;
+            border: 1px solid var(--border); background: var(--bg-card); color: var(--text);
+        }
+        .btn:hover { background: var(--bg-hover); }
+        .btn-icon { background: none; border: none; font-size: 18px; padding: 4px; color: var(--text-muted); }
+        .btn-icon:hover { color: var(--text); }
+
+        /* Progress bar */
+        .progress-bar-container {
+            background: var(--border-light); border-radius: 8px; height: 8px;
+            margin-bottom: 20px; overflow: hidden; border: 1px solid var(--border);
+        }
+        .progress-bar {
+            height: 100%; background: var(--green); border-radius: 8px;
+            transition: width 0.3s ease;
+        }
+        .progress-label {
+            font-size: 12px; color: var(--text-muted); margin-bottom: 6px;
+            display: flex; justify-content: space-between;
+        }
+
+        /* Steps / collapsible sections */
+        .step {
+            background: var(--bg-card); border-radius: 8px; margin-bottom: 12px;
+            border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            overflow: hidden;
+        }
+        .step-header {
+            display: flex; align-items: center; gap: 10px; padding: 14px 16px;
+            cursor: pointer; user-select: none; font-weight: 600; font-size: 15px;
+        }
+        .step-header:hover { background: var(--bg-hover); }
+        .step-chevron {
+            font-size: 12px; color: var(--text-muted); transition: transform 0.2s;
+            flex-shrink: 0; width: 16px; text-align: center;
+        }
+        .step.collapsed .step-chevron { transform: rotate(-90deg); }
+        .step-badge {
+            font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px;
+            margin-left: auto; flex-shrink: 0;
+        }
+        .step-badge.pending { background: var(--yellow-light); color: var(--yellow); }
+        .step-badge.done { background: var(--green-light); color: var(--green); }
+        .step-badge.partial { background: var(--orange-light); color: var(--orange); }
+        .step-body { padding: 0 16px 16px 16px; }
+        .step.collapsed .step-body { display: none; }
+
+        /* Subsections */
+        .subsection { margin-top: 14px; }
+        .subsection:first-child { margin-top: 0; }
+        .subsection-title {
+            font-size: 13px; font-weight: 600; color: var(--accent);
+            margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border-light);
+        }
+        .subsection-desc {
+            font-size: 12px; color: var(--text-muted); margin-bottom: 8px; font-style: italic;
+        }
+
+        /* Checklist items */
+        .check-item {
+            display: flex; gap: 8px; padding: 6px 0; align-items: flex-start;
+        }
+        .check-item input[type="checkbox"] {
+            margin-top: 3px; flex-shrink: 0; width: 16px; height: 16px;
+            accent-color: var(--green); cursor: pointer;
+        }
+        .check-item label { cursor: pointer; flex: 1; }
+        .check-item.checked label { color: var(--text-muted); text-decoration: line-through; }
+        .check-item .item-title { font-weight: 500; }
+        .check-item .item-detail {
+            font-size: 12px; color: var(--text-muted); margin-top: 2px; line-height: 1.4;
+        }
+        .check-item.checked .item-detail { text-decoration: none; }
+
+        /* Info blocks */
+        .info-block {
+            background: var(--accent-light); border-left: 3px solid var(--accent);
+            padding: 10px 12px; border-radius: 0 6px 6px 0; margin: 10px 0;
+            font-size: 13px;
+        }
+        .info-block strong { display: block; margin-bottom: 2px; }
+        .warn-block {
+            background: var(--yellow-light); border-left: 3px solid var(--yellow);
+            padding: 10px 12px; border-radius: 0 6px 6px 0; margin: 10px 0;
+            font-size: 13px;
+        }
+        .warn-block strong { display: block; margin-bottom: 2px; }
+
+        /* Key dates table */
+        .dates-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+        .dates-table th {
+            text-align: left; padding: 6px 8px; background: var(--bg);
+            border-bottom: 2px solid var(--border); font-weight: 600;
+        }
+        .dates-table td {
+            padding: 6px 8px; border-bottom: 1px solid var(--border-light);
+        }
+        .dates-table tr:last-child td { border-bottom: none; }
+        .date-cell { font-weight: 600; white-space: nowrap; }
+
+        /* Legal basis list */
+        .legal-list { list-style: none; padding: 0; }
+        .legal-list li {
+            padding: 4px 0; font-size: 13px;
+            padding-left: 16px; position: relative;
+        }
+        .legal-list li::before {
+            content: "\2022"; position: absolute; left: 0; color: var(--accent); font-weight: bold;
+        }
+
+        /* Importance badges */
+        .importance {
+            display: inline-block; font-size: 10px; font-weight: 600; padding: 1px 6px;
+            border-radius: 4px; margin-left: 6px; vertical-align: middle; letter-spacing: 0.3px;
+        }
+        .importance.essential { background: var(--red-light); color: var(--red); }
+        .importance.important { background: var(--orange-light); color: var(--orange); }
+        .importance.helpful { background: var(--accent-light); color: var(--accent); }
+        .importance.optional { background: var(--border-light); color: var(--text-muted); }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .step-header { padding: 12px; font-size: 14px; }
+            .step-body { padding: 0 12px 12px 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-header">
+        <h1>EX-19 Appeal Checklist</h1>
+        <div class="header-right">
+            <span class="header-meta">Recurso de Reposicion</span>
+            <button class="btn-icon" id="themeToggle" title="Toggle dark mode">&#9789;</button>
+        </div>
+    </div>
+
+    <div class="progress-label">
+        <span id="progressText">0 / 0 items</span>
+        <span id="progressPercent">0%</span>
+    </div>
+    <div class="progress-bar-container">
+        <div class="progress-bar" id="progressBar" style="width:0%"></div>
+    </div>
+
+    <div id="steps"></div>
+
+    <script>
+    const STORAGE_KEY = 'appealChecklist';
+    const COLLAPSE_KEY = 'appealCollapsed';
+
+    const DATA = [
+        {
+            id: 'step1',
+            title: 'STEP 1: Get the Rejection Letter (Monday April 21)',
+            items: [
+                {
+                    section: null,
+                    desc: null,
+                    infoBlock: {
+                        type: 'info',
+                        content: '<strong>Where:</strong> Oficina de Extranjeria, Calle de Silva 19, 28004 Madrid<br><strong>When:</strong> 9:00 AM - 2:00 PM (arrive early)<br><strong>Metro:</strong> Callao (Lines 3, 5) or Santo Domingo (Line 2)<br><br><strong>What to bring:</strong><br>&bull; Parent\'s passport (original)<br>&bull; Sponsor\'s NIE (original)<br>&bull; Original application receipt/resguardo<br>&bull; Phone with rejection status screen (check sede.policia.gob.es beforehand)<br>&bull; A pen for signing the notification receipt<br>&bull; A folder to keep the documents safe'
+                    }
+                },
+                {
+                    section: 'What to do',
+                    desc: null,
+                    checks: [
+                        { id: 's1_notif', title: 'Request the formal notification (notificacion) for the EX-19 rejection', detail: 'Ask for the complete resolution, not just a summary -- you need the full text with the motivo(s) de denegacion', importance: 'essential' },
+                        { id: 's1_date', title: 'Note the EXACT DATE of notification', detail: 'This starts the 1-month appeal clock', importance: 'essential' },
+                        { id: 's1_exp', title: 'Ask for the expediente number (reference number)', detail: 'If you don\'t already have it', importance: 'important' },
+                        { id: 's1_copy', title: 'Get a copy for your records', detail: 'Photograph every page as backup', importance: 'important' },
+                    ]
+                },
+                {
+                    section: 'After pickup',
+                    desc: null,
+                    checks: [
+                        { id: 's1_read', title: 'Read the rejection letter and identify every specific reason cited', detail: null, importance: 'essential' },
+                        { id: 's1_share', title: 'Determine how rejection reasons affect the appeal strategy', detail: 'Tailor the recurso de reposicion to the specific motivo(s)', importance: 'essential' },
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'step2',
+            title: 'STEP 2: Gather Evidence (April 21-27)',
+            items: [
+                {
+                    section: 'A. Cohabitation Proof -- Country of Origin (TOP PRIORITY)',
+                    desc: 'This is the evidence the office never saw. It\'s the core of the appeal.',
+                    checks: [
+                        { id: 's2a_lease', title: 'US lease(s) with parent\'s name covering ~2 year cohabitation', detail: 'Named on the lease -- single strongest document. Get all versions/renewals. Digital/PDF fine. Ideally needs apostille + sworn translation (see Step 4 on timing).', importance: 'essential' },
+                        { id: 's2a_statement', title: 'Signed bilingual statement from EU citizen\'s parents', detail: 'Confirming cohabitation during transitional period before Spain. Already have this -- make a clean copy.', importance: 'important' },
+                        { id: 's2a_flight', title: 'Flight records showing travel to Spain together (~Dec 29, 2025)', detail: 'Booking confirmation, boarding passes, or airline account records', importance: 'helpful' },
+                        { id: 's2a_empad', title: 'Empadronamiento colectivo in Madrid', detail: 'Go to local Oficina de Atencion al Ciudadano. Request "volante de empadronamiento colectivo" (free, issued same day). Shows all residents at the address.', importance: 'essential' },
+                    ]
+                },
+                {
+                    section: 'B. Financial Inability to Self-Support (CRITICAL)',
+                    desc: 'Objective proof of inability to live independently.',
+                    checks: [
+                        { id: 's2b_tax', title: 'US tax returns (last 2-3 years)', detail: 'Download from IRS.gov > "Get Transcript Online" or call 1-800-908-9946. Shows poverty-level / no income. Needs apostille (US Dept of State) + sworn translation. APOSTILLE TAKES 4-8 WEEKS -- request NOW, may not arrive in time.', importance: 'important' },
+                        { id: 's2b_bank', title: 'US bank statements (last 6-12 months)', detail: 'Download from bank\'s online portal. Should show minimal balance / no significant savings.', importance: 'important' },
+                        { id: 's2b_retire', title: 'Proof of no retirement savings', detail: 'If 401k/IRA accounts exist: get statements showing zero/near-zero. If none exist: state this in sworn declaration.', importance: 'helpful' },
+                        { id: 's2b_ssa', title: 'US Social Security statement', detail: 'Download from ssa.gov/myaccount. Shows no/minimal benefits.', importance: 'optional' },
+                    ]
+                },
+                {
+                    section: 'C. Transfer Records & Direct Expense Payments',
+                    desc: 'Reframes the narrative: $100/month was pocket money on top of full household support.',
+                    checks: [
+                        { id: 's2c_transfers', title: '$100/month transfer records for the past ~12 months', detail: 'Bank statements, Venmo, Zelle, Wise -- whatever method used. Shows regularity.', importance: 'important' },
+                        { id: 's2c_rent', title: 'Your rent/mortgage payments (bank statements or receipts)', detail: 'Proves parent lives rent-free in your household.', importance: 'helpful' },
+                        { id: 's2c_bills', title: 'Any bills/expenses paid directly for parent', detail: 'Medical bills, phone plan, insurance premiums, etc. Receipts showing your name as payer.', importance: 'helpful' },
+                        { id: 's2c_insurance', title: 'Health insurance policy (if you\'re paying it)', detail: 'Shows you as policyholder or payer.', importance: 'helpful' },
+                        { id: 's2c_oldrent', title: 'Joint bank account records showing parent\'s rent was paid from shared funds', detail: 'Joint account with spouse used for parent\'s rent before cohabitation. Shows financial interdependence.', importance: 'helpful' },
+                    ]
+                },
+                {
+                    section: 'D. Sworn Declarations (Notary Visit)',
+                    desc: 'Book a notary (notario) this week. Both declarations in one visit. Cost: ~30-50 EUR each.',
+                    checks: [
+                        { id: 's2d_parent', title: 'Sworn declaration from parent (declaracion jurada)', detail: 'Contents: only child is sponsor\'s spouse, no other children. No family in the US. Siblings in Vietnam never provided support. No savings, no retirement, no pension. Not worked in ~2+ years. Not fluent in English, no Spanish. Fully dependent on household.', importance: 'essential' },
+                        { id: 's2d_sponsor', title: 'Sworn declaration from EU citizen sponsor', detail: 'Contents: parent lived in household since Nov 2023 in US + ~4 months Spain. Pays all expenses. Provides $100/month spending money. Parent has no independent means.', importance: 'essential' },
+                    ]
+                },
+                {
+                    section: 'E. Madrid Lease (Current)',
+                    desc: null,
+                    checks: [
+                        { id: 's2e_lease', title: 'Copy of Madrid rental contract or property deed', detail: 'Shows the household parent lives in. Combine with empadronamiento.', importance: 'important' },
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'step3',
+            title: 'STEP 3: Review Rejection Letter (April 21-23)',
+            items: [
+                {
+                    section: null,
+                    desc: null,
+                    checks: [
+                        { id: 's3_reasons', title: 'Identify the specific rejection reason(s)', detail: null, importance: 'essential' },
+                        { id: 's3_draft', title: 'Draft the recurso de reposicion tailored to those reasons', detail: null, importance: 'essential' },
+                        { id: 's3_adjust', title: 'Adjust evidence priority based on what they actually cited', detail: null, importance: 'important' },
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'step4',
+            title: 'STEP 4: Prepare the Recurso de Reposicion (April 23-30)',
+            items: [
+                {
+                    section: 'Apostille Timing Decision',
+                    desc: 'US documents need apostille + sworn translation. Apostille takes 4-8 weeks. Deadline is ~1 month from notification.',
+                    infoBlock: {
+                        type: 'warn',
+                        content: '<strong>Options:</strong><br>1. File recurso with un-apostilled copies + note originals are forthcoming<br>2. Use an expediting service (1-2 weeks, costs more)<br>3. File brief recurso to stop the clock, then submit evidence as supplementary filing'
+                    },
+                    checks: [
+                        { id: 's4_apostille', title: 'Decide on apostille approach based on timing', detail: null, importance: 'important' },
+                        { id: 's4_traductor', title: 'Get sworn translations (traductor jurado) for US documents', detail: 'Madrid has many sworn translators for English > Spanish. Cost: ~30-50 EUR per page. Turnaround: 2-5 business days.', importance: 'important' },
+                    ]
+                },
+                {
+                    section: 'The Recurso Document',
+                    desc: null,
+                    checks: [
+                        { id: 's4_write', title: 'Draft the recurso de reposicion', detail: null, importance: 'essential' },
+                        { id: 's4_review', title: 'Review and approve final version', detail: null, importance: 'essential' },
+                        { id: 's4_print', title: 'Print and sign', detail: null, importance: 'essential' },
+                    ]
+                },
+                {
+                    section: 'Legal Basis (for the recurso)',
+                    desc: null,
+                    legalList: [
+                        'Core: The original application did not include the full scope of dependency evidence. New evidence submitted.',
+                        'RD 240/2007 Article 2.d -- "ascendientes que vivan a cargo"',
+                        'CJEU C-607/21 (April 2025) -- dependency assessed at both departure and application time',
+                        'CJEU Jia (C-1/05) -- dependency = EU citizen guarantees family member\'s subsistence',
+                        'CJEU Reyes (C-423/12) -- reasons for dependency are irrelevant, only existence matters',
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'step5',
+            title: 'STEP 5: File the Recurso (Before ~May 21)',
+            items: [
+                {
+                    section: null,
+                    desc: null,
+                    checks: [
+                        { id: 's5_submit', title: 'Submit the recurso de reposicion with all evidence', detail: 'In person: Registro General, Delegacion del Gobierno en Madrid. Online: Sede electronica (with digital certificate / Cl@ve).', importance: 'essential' },
+                        { id: 's5_copy', title: 'Keep a copy of everything submitted + filing receipt (resguardo)', detail: 'The resguardo proves you met the deadline.', importance: 'essential' },
+                    ]
+                },
+                {
+                    section: 'After Filing',
+                    desc: null,
+                    infoBlock: {
+                        type: 'info',
+                        content: 'The office has <strong>1 month</strong> to respond. No response = rejected (silencio negativo).<br>If rejected again: <strong>2 months</strong> to file recurso contencioso-administrativo (judicial, requires lawyer).'
+                    }
+                },
+                {
+                    section: 'Key Dates',
+                    desc: null,
+                    table: [
+                        ['April 21 (Mon)', 'Pick up rejection letter at Oficina de Extranjeria'],
+                        ['April 21-23', 'Analyze rejection reasons, draft recurso'],
+                        ['April 21-27', 'Gather all evidence, book notary, get empadronamiento'],
+                        ['April 21', 'Start IRS tax transcript request + apostille process'],
+                        ['April 23-30', 'Get sworn translations, finalize recurso'],
+                        ['Before ~May 21', 'FILE the recurso de reposicion'],
+                        ['~June 21', 'Office should respond (silence = rejection)'],
+                        ['If rejected again', '2 months for contencioso-administrativo'],
+                    ]
+                }
+            ]
+        }
+    ];
+
+    // --- State ---
+    function loadChecked() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
+    }
+    function saveChecked(state) { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    function loadCollapsed() {
+        try { return JSON.parse(localStorage.getItem(COLLAPSE_KEY)) || {}; } catch { return {}; }
+    }
+    function saveCollapsed(state) { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(state)); }
+
+    let checked = loadChecked();
+    let collapsed = loadCollapsed();
+
+    // --- Render ---
+    function getAllCheckIds() {
+        const ids = [];
+        DATA.forEach(step => step.items.forEach(item => {
+            if (item.checks) item.checks.forEach(c => ids.push(c.id));
+        }));
+        return ids;
+    }
+
+    function getStepCheckIds(step) {
+        const ids = [];
+        step.items.forEach(item => {
+            if (item.checks) item.checks.forEach(c => ids.push(c.id));
+        });
+        return ids;
+    }
+
+    function stepStatus(step) {
+        const ids = getStepCheckIds(step);
+        if (ids.length === 0) return 'none';
+        const done = ids.filter(id => checked[id]).length;
+        if (done === ids.length) return 'done';
+        if (done > 0) return 'partial';
+        return 'pending';
+    }
+
+    function render() {
+        const container = document.getElementById('steps');
+        container.innerHTML = '';
+
+        DATA.forEach(step => {
+            const el = document.createElement('div');
+            el.className = 'step' + (collapsed[step.id] ? ' collapsed' : '');
+
+            const status = stepStatus(step);
+            const ids = getStepCheckIds(step);
+            const doneCount = ids.filter(id => checked[id]).length;
+            let badgeHtml = '';
+            if (ids.length > 0) {
+                const cls = status === 'done' ? 'done' : status === 'partial' ? 'partial' : 'pending';
+                const label = status === 'done' ? 'Done' : `${doneCount}/${ids.length}`;
+                badgeHtml = `<span class="step-badge ${cls}">${label}</span>`;
+            }
+
+            el.innerHTML = `
+                <div class="step-header">
+                    <span class="step-chevron">&#9660;</span>
+                    <span>${step.title}</span>
+                    ${badgeHtml}
+                </div>
+                <div class="step-body"></div>
+            `;
+
+            el.querySelector('.step-header').addEventListener('click', () => {
+                collapsed[step.id] = !collapsed[step.id];
+                saveCollapsed(collapsed);
+                render();
+            });
+
+            const body = el.querySelector('.step-body');
+
+            step.items.forEach(item => {
+                const sub = document.createElement('div');
+                sub.className = 'subsection';
+
+                if (item.section) {
+                    sub.innerHTML += `<div class="subsection-title">${item.section}</div>`;
+                }
+                if (item.desc) {
+                    sub.innerHTML += `<div class="subsection-desc">${item.desc}</div>`;
+                }
+                if (item.infoBlock) {
+                    const cls = item.infoBlock.type === 'warn' ? 'warn-block' : 'info-block';
+                    sub.innerHTML += `<div class="${cls}">${item.infoBlock.content}</div>`;
+                }
+                if (item.checks) {
+                    item.checks.forEach(c => {
+                        const isChecked = !!checked[c.id];
+                        const div = document.createElement('div');
+                        div.className = 'check-item' + (isChecked ? ' checked' : '');
+                        const impBadge = c.importance ? `<span class="importance ${c.importance}">${c.importance}</span>` : '';
+                        div.innerHTML = `
+                            <input type="checkbox" id="cb_${c.id}" ${isChecked ? 'checked' : ''}>
+                            <label for="cb_${c.id}">
+                                <div class="item-title">${c.title}${impBadge}</div>
+                                ${c.detail ? `<div class="item-detail">${c.detail}</div>` : ''}
+                            </label>
+                        `;
+                        div.querySelector('input').addEventListener('change', (e) => {
+                            checked[c.id] = e.target.checked;
+                            saveChecked(checked);
+                            render();
+                        });
+                        sub.appendChild(div);
+                    });
+                }
+                if (item.legalList) {
+                    const ul = document.createElement('ul');
+                    ul.className = 'legal-list';
+                    item.legalList.forEach(text => {
+                        const li = document.createElement('li');
+                        li.textContent = text;
+                        ul.appendChild(li);
+                    });
+                    sub.appendChild(ul);
+                }
+                if (item.table) {
+                    const table = document.createElement('table');
+                    table.className = 'dates-table';
+                    table.innerHTML = `<thead><tr><th>Date</th><th>Action</th></tr></thead><tbody>${
+                        item.table.map(([d, a]) => `<tr><td class="date-cell">${d}</td><td>${a}</td></tr>`).join('')
+                    }</tbody>`;
+                    sub.appendChild(table);
+                }
+
+                body.appendChild(sub);
+            });
+
+            container.appendChild(el);
+        });
+
+        updateProgress();
+    }
+
+    function updateProgress() {
+        const all = getAllCheckIds();
+        const done = all.filter(id => checked[id]).length;
+        const pct = all.length ? Math.round((done / all.length) * 100) : 0;
+        document.getElementById('progressText').textContent = `${done} / ${all.length} items`;
+        document.getElementById('progressPercent').textContent = `${pct}%`;
+        document.getElementById('progressBar').style.width = `${pct}%`;
+    }
+
+    // --- Theme ---
+    function loadTheme() {
+        const t = localStorage.getItem('appealTheme');
+        if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    }
+    document.getElementById('themeToggle').addEventListener('click', () => {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+        localStorage.setItem('appealTheme', isDark ? 'light' : 'dark');
+    });
+
+    loadTheme();
+    render();
+    </script>
+</body>
+</html>
