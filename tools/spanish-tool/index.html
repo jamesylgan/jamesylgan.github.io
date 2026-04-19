@@ -1014,6 +1014,7 @@
     <script src="../lib/storage-version-manager.js"></script>
     <script src="es-en-dict.js"></script>
     <script src="../lib/en-es-reverse.js"></script>
+    <script src="../lib/es-conjugator.js"></script>
     <script src="common-words.js"></script>
     <script>
     // Lesson Data (extracted from PDF)
@@ -3958,6 +3959,23 @@
                     html += `</table>`;
                 });
                 if (!shownAny) {
+                    html += `<p style="color:var(--text-muted);margin-top:12px;font-style:italic">${t('conjNotAvailable')}</p>`;
+                }
+            } else if (typeof autoConjugate === 'function' && !isIrregularVerb(verbKey)) {
+                // Auto-generate conjugations for regular verbs not in lesson data
+                const autoConj = autoConjugate(verbKey);
+                if (autoConj) {
+                    html += `<p style="font-size:11px;color:var(--text-muted);margin:8px 0 4px;font-style:italic;">Auto-generated (regular verb)</p>`;
+                    for (const [tense, forms] of Object.entries(autoConj)) {
+                        if (!isLookupTenseVisible(tense.toLowerCase())) continue;
+                        html += '<div class="conj-tense-title">' + escapeHtml(tense) + '</div>';
+                        html += '<table class="conj-table"><tr><th>' + t('pronoun') + '</th><th>' + t('form') + '</th></tr>';
+                        for (const [pronoun, form] of Object.entries(forms)) {
+                            html += '<tr><td>' + escapeHtml(pronoun) + '</td><td>' + escapeHtml(form) + '</td></tr>';
+                        }
+                        html += '</table>';
+                    }
+                } else {
                     html += `<p style="color:var(--text-muted);margin-top:12px;font-style:italic">${t('conjNotAvailable')}</p>`;
                 }
             } else {
