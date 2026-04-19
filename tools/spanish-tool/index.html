@@ -4194,24 +4194,24 @@
     function updateDictStatusIndicators() {
         const expEl = document.getElementById('dictStatusExpanded');
         const fullEl = document.getElementById('dictStatusFull');
-        if (expEl) {
-            if (typeof esExpLookup === 'function') {
-                expEl.textContent = '\u2713 cached';
-                expEl.style.color = '#28a745';
+        // Check if scripts were previously downloaded (in browser HTTP cache)
+        // by looking at performance entries for our script URLs
+        const perfEntries = typeof performance !== 'undefined' ? performance.getEntriesByType('resource') : [];
+        const expDownloaded = perfEntries.some(e => e.name.includes('es-en-expanded.js'));
+        const fullDownloaded = perfEntries.some(e => e.name.includes('es-en-full.js'));
+
+        function setStatus(el, loaded, downloaded) {
+            if (!el) return;
+            if (loaded) {
+                el.innerHTML = '<span style="color:#28a745;">\u2713 loaded</span>';
+            } else if (downloaded) {
+                el.innerHTML = '<span style="color:#856404;">\u25CB downloaded (select to activate)</span>';
             } else {
-                expEl.textContent = 'not downloaded';
-                expEl.style.color = 'var(--text-muted)';
+                el.innerHTML = '<span style="color:var(--text-muted);">not downloaded</span>';
             }
         }
-        if (fullEl) {
-            if (typeof esFullLookup === 'function') {
-                fullEl.textContent = '\u2713 cached';
-                fullEl.style.color = '#28a745';
-            } else {
-                fullEl.textContent = 'not downloaded';
-                fullEl.style.color = 'var(--text-muted)';
-            }
-        }
+        setStatus(expEl, typeof esExpLookup === 'function', expDownloaded);
+        setStatus(fullEl, typeof esFullLookup === 'function', fullDownloaded);
     }
 
     let extDictLoading = false;
