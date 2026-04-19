@@ -959,7 +959,7 @@
                     <div class="settings-group-content" style="padding: 12px;">
                         <p style="font-size:13px;font-weight:600;margin:0 0 8px;">
                             <span data-i18n="dictionarySize">Dictionary Size</span>
-                            <span onclick="alert('Your browser does not re-download the dictionary each time — it is cached after the first download. However, it needs to be loaded into memory each session, which takes a moment on page load.')" style="cursor:pointer;font-weight:normal;font-size:12px;color:var(--primary);margin-left:4px;" title="Info">&#9432;</span>
+                            <span onclick="showInfoModal('Your browser does not re-download the dictionary each time — it is cached after the first download. However, it needs to be loaded into memory each session, which takes a moment on page load.')" style="cursor:pointer;font-weight:normal;font-size:12px;color:var(--primary);margin-left:4px;" title="Info">&#9432;</span>
                         </p>
                         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
@@ -4056,12 +4056,18 @@
         const isInfinitive = (w.endsWith('ar') || w.endsWith('er') || w.endsWith('ir')) && w.length > 3;
         const isVerb = isInfinitive && (englishDef.startsWith('to ') || englishDef.startsWith('To '));
 
-        // Resolve infinitive: if already an infinitive use it, otherwise look up via form-to-inf
+        // Resolve infinitive: if already an infinitive use it, otherwise look up via form-to-inf or stemmer
         let infinitive = null;
         if (isInfinitive) {
             infinitive = w;
-        } else if (typeof esFormToInfLookup === 'function') {
-            infinitive = esFormToInfLookup(w);
+        } else {
+            if (typeof esFormToInfLookup === 'function') infinitive = esFormToInfLookup(w);
+            if (!infinitive && typeof stemSpanish === 'function') {
+                var stem = stemSpanish(w);
+                if (stem && stem !== w && (stem.endsWith('ar') || stem.endsWith('er') || stem.endsWith('ir'))) {
+                    infinitive = stem;
+                }
+            }
         }
 
         let html = '<h2>' + escapeHtml(spanishWord);
@@ -4069,10 +4075,12 @@
         html += '</h2>';
         html += '<div class="word-translation">' + escapeHtml(englishDef) + '</div>';
 
-        // Show the resolved infinitive if the searched word is a conjugated form
+        // Show the resolved infinitive and conjugation info if the searched word is a conjugated form
         if (infinitive && infinitive !== w) {
+            var conjId = identifyConjugation(w, infinitive);
+            var conjDesc = conjId ? ' — ' + conjId.pronoun + ', ' + conjId.tense : '';
             html += '<p style="font-size:12px;color:var(--text-muted);margin:4px 0 4px;font-style:italic;">'
-                + escapeHtml(w) + ' &rarr; infinitive: <strong>' + escapeHtml(infinitive) + '</strong></p>';
+                + escapeHtml(w) + ' &rarr; <strong>' + escapeHtml(infinitive) + '</strong>' + escapeHtml(conjDesc) + '</p>';
         }
 
         html += '<p style="font-size:11px;color:var(--text-muted);margin:4px 0 8px;font-style:italic;">From external dictionary</p>';
@@ -4291,6 +4299,38 @@
         }
     }
 
+    function showInfoModal(message) {
+        var existing = document.getElementById('infoModalOverlay');
+        if (existing) existing.remove();
+        var overlay = document.createElement('div');
+        overlay.id = 'infoModalOverlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:10000;';
+        overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+        var box = document.createElement('div');
+        box.style.cssText = 'background:white;border-radius:12px;padding:24px;max-width:400px;margin:20px;box-shadow:0 4px 20px rgba(0,0,0,0.15);';
+        box.innerHTML = '<p style="margin:0 0 16px;line-height:1.5;">' + escapeHtml(message) + '</p>'
+            + '<button onclick="document.getElementById(\'infoModalOverlay\').remove()" style="background:var(--primary);color:white;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-size:14px;">OK</button>';
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+    }
+
+    // Identify which conjugation a form belongs to by generating all forms and matching
+    function identifyConjugation(form, infinitive) {
+        if (!infinitive || typeof autoConjugate !== 'function') return null;
+        if (typeof isIrregularVerb === 'function' && isIrregularVerb(infinitive)) return null;
+        var conj = autoConjugate(infinitive);
+        if (!conj) return null;
+        var f = form.toLowerCase();
+        for (var tense in conj) {
+            for (var pronoun in conj[tense]) {
+                if (conj[tense][pronoun].toLowerCase() === f) {
+                    return { tense: tense, pronoun: pronoun };
+                }
+            }
+        }
+        return null;
+    }
+
     function externalDictLookup(word) {
         const w = word.toLowerCase();
         const size = progress.dictSize || 'light';
@@ -4405,10 +4445,12 @@
                         if (inf && !matchedKeys.has(inf)) {
                             const en = externalDictLookup(inf);
                             if (en) {
-                                // Show as "conjugatedForm → infinitive: definition"
+                                // Identify which conjugation this form is
+                                var conjInfo = identifyConjugation(form, inf);
+                                var conjLabel = conjInfo ? ' [' + conjInfo.pronoun + ', ' + conjInfo.tense + ']' : '';
                                 matches.push({
-                                    entry: { spanish: form, english: inf + ': ' + en, days: [], isVerb: true, gender: null, _fromDict: true, _resolvedInfinitive: inf, _isConjugatedForm: true },
-                                    score: 0.8 // lower than lemma matches
+                                    entry: { spanish: form, english: inf + ': ' + en + conjLabel, days: [], isVerb: true, gender: null, _fromDict: true, _resolvedInfinitive: inf, _isConjugatedForm: true, _conjInfo: conjInfo },
+                                    score: 0.8
                                 });
                                 matchedKeys.add(form);
                             }
@@ -4440,14 +4482,16 @@
                 }
                 let displayEnglish = extResult;
                 let displayIsVerb = isExtVerb;
+                let conjInfo = null;
                 if (resolvedInfinitive) {
-                    // Look up the infinitive's definition too
                     const infDef = externalDictLookup(resolvedInfinitive);
-                    displayEnglish = extResult + ' (→ ' + resolvedInfinitive + (infDef ? ': ' + infDef : '') + ')';
+                    conjInfo = identifyConjugation(q, resolvedInfinitive);
+                    var conjDesc = conjInfo ? ' [' + conjInfo.pronoun + ', ' + conjInfo.tense + ']' : '';
+                    displayEnglish = (infDef || extResult) + ' (\u2192 ' + resolvedInfinitive + conjDesc + ')';
                     displayIsVerb = true;
                 }
                 matches.push({
-                    entry: { spanish: q, english: displayEnglish, days: [], isVerb: displayIsVerb, gender: null, _fromDict: true, _resolvedInfinitive: resolvedInfinitive },
+                    entry: { spanish: q, english: displayEnglish, days: [], isVerb: displayIsVerb, gender: null, _fromDict: true, _resolvedInfinitive: resolvedInfinitive, _isConjugatedForm: !!resolvedInfinitive && !isExtInfinitive, _conjInfo: conjInfo },
                     score: matches.length === 0 ? 3 : 0.5
                 });
             }
@@ -4471,7 +4515,10 @@
 
         results.innerHTML = matches.map(({ entry }) => {
             const safeWord = escapeHtml(entry.spanish).replace(/'/g, '&#39;');
-            const badge = entry._isConjugatedForm ? '<span class="word-result-badge" style="background:#fff3cd;color:#856404;">\u2192 ' + escapeHtml(entry._resolvedInfinitive) + '</span>'
+            const conjBadge = entry._isConjugatedForm
+                ? '\u2192 ' + escapeHtml(entry._resolvedInfinitive) + (entry._conjInfo ? ' <small>(' + escapeHtml(entry._conjInfo.pronoun) + ', ' + escapeHtml(entry._conjInfo.tense) + ')</small>' : '')
+                : null;
+            const badge = conjBadge ? '<span class="word-result-badge" style="background:#fff3cd;color:#856404;">' + conjBadge + '</span>'
                 : entry._fromDict ? '<span class="word-result-badge" style="background:#e8f0fe;color:#1a73e8;">dict</span>'
                 : entry.gender ? '<span class="word-result-badge">' + (entry.gender === 'm' ? 'masc' : 'fem') + '</span>'
                 : entry.isVerb ? '<span class="word-result-badge">' + t('verb') + '</span>' : '';
