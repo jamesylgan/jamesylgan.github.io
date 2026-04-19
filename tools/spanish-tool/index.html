@@ -1809,9 +1809,16 @@
         applyTranslations();
         updateProgressUI();
         renderConjTypeSelector();
+        renderLookupConjSettings();
         // If lesson view is open, re-render it
         if (document.getElementById('lessonView').classList.contains('active') && currentDay) {
             openLesson(currentDay);
+        }
+        // If learn lesson is open, re-render it
+        if (currentLearnIdx !== null) {
+            openLearnLesson(currentLearnIdx);
+        } else {
+            renderLearnGrid();
         }
     }
 
