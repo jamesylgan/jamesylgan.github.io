@@ -1779,6 +1779,23 @@
     // Change language and re-render
     async function changeLanguage(lang) {
         progress.uiLanguage = lang;
+        if (lang === 'vi') {
+            // Vietnamese: force light dict and disable hard mode (no Vietnamese translations for expanded/full)
+            if (progress.dictSize !== 'light') {
+                progress.dictSize = 'light';
+                const radio = document.querySelector('input[name="dictSize"][value="light"]');
+                if (radio) radio.checked = true;
+                const statusEl = document.getElementById('dictLoadStatus');
+                if (statusEl) statusEl.textContent = '';
+            }
+            if (progress.hardModeVocab) {
+                progress.hardModeVocab = false;
+                const cb = document.getElementById('hardModeCheckbox');
+                if (cb) cb.checked = false;
+                const section = document.getElementById('hardModeVocabSection');
+                if (section) section.style.display = 'none';
+            }
+        }
         autoSave();
         if (lang === 'vi') {
             await loadVietnameseTranslations();
@@ -2837,6 +2854,12 @@
     }
 
     function toggleHardMode(enabled) {
+        if (enabled && progress.uiLanguage === 'vi') {
+            alert(t('dictEnglishOnly'));
+            const cb = document.getElementById('hardModeCheckbox');
+            if (cb) cb.checked = false;
+            return;
+        }
         progress.hardModeVocab = enabled;
         autoSave();
         const section = document.getElementById('hardModeVocabSection');
