@@ -261,7 +261,11 @@
                 },
                 {
                     section: 'D. Sworn Declarations (Notary Visit)',
-                    desc: 'Book a notary (notario) this week. Both declarations in one visit. Cost: ~30-50 EUR each.',
+                    desc: 'Book a notary (notario) this week. Both declarations in one visit. Ask for an "acta de manifestaciones" -- the notary records your statements officially.',
+                    infoBlock: {
+                        type: 'info',
+                        content: '<strong>Finding a notary:</strong><br>&bull; <a href="https://madrid.notariado.org" target="_blank">Colegio Notarial de Madrid</a> -- official directory / search<br>&bull; <a href="https://www.notariado.org" target="_blank">Consejo General del Notariado</a> -- national notary finder<br>&bull; <a href="https://buscanotario.com" target="_blank">BuscaNotario.com</a> -- search by location<br><br><strong>Nearby options (central Madrid):</strong><br>&bull; Notaria Madridejos Tena -- C/ Francisco de Rojas 10, 28010 (tel: 91 447 08 52)<br>&bull; Notaria Orense 8 -- C/ Orense 8, 1o (near Santiago Bernabeu)<br>&bull; Notaria Garcia Ortiz -- centro (tel: 91 360 09 27)<br><br><strong>Cost:</strong> ~50-80 EUR per acta de manifestaciones. Both declarations in one visit.<br><strong>Tip:</strong> Call ahead and explain you need two "actas de manifestaciones" for a recurso de extranjeria. Bring passports + NIE originals. Bring someone to interpret for the parent if needed.'
+                    },
                     checks: [
                         { id: 's2d_parent', title: 'Sworn declaration from parent (declaracion jurada)', detail: 'Contents: only child is sponsor\'s spouse, no other children. No family in the US. Siblings in Vietnam never provided support. No savings, no retirement, no pension. Not worked in ~2+ years. Not fluent in English, no Spanish. Fully dependent on household.', importance: 'essential' },
                         { id: 's2d_sponsor', title: 'Sworn declaration from EU citizen sponsor', detail: 'Contents: parent lived in household since Nov 2023 in US + ~4 months Spain. Pays all expenses. Provides $100/month spending money. Parent has no independent means.', importance: 'essential' },
