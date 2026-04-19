@@ -2809,7 +2809,7 @@ const translationsVI = {
     "he": "tôi có (trợ động từ)",
     "ha": "anh ấy/cô ấy có (trợ động từ)",
     "opinar": "nghĩ/cho ý kiến",
-  }
+  },
 
   // Learn lesson translations (Vietnamese)
   learnLessons: {
