@@ -446,6 +446,7 @@
         <button class="tab" data-tab="health" onclick="switchTab('health')">Health Worksheet</button>
         <button class="tab" data-tab="gaps" onclick="switchTab('gaps')">Documentation Gaps</button>
         <button class="tab" data-tab="resources" onclick="switchTab('resources')">Resources</button>
+        <button class="tab" data-tab="ai-tools" onclick="switchTab('ai-tools')">AI Tools</button>
     </div>
 
     <div class="content">
@@ -753,6 +754,27 @@
             <div class="section-heading" id="res-dnv-heading" style="display:none">💻 DNV & Startups Act (Law 28/2022)</div>
             <div class="resource-grid" id="res-dnv"></div>
         </div>
+        <!-- AI TOOLS TAB -->
+        <div class="tab-panel" id="panel-ai-tools">
+            <div class="card">
+                <h3>EX-19 / Family Reunification AI Advisor</h3>
+                <p>A comprehensive Claude Code skill that turns Claude into a Spanish immigration expert for the EX-19 / family reunification process. It covers three roles:</p>
+                <ul style="font-size:0.85rem;color:var(--text-muted);line-height:1.8;padding-left:20px;margin:10px 0">
+                    <li><strong>Legal Expert</strong> &mdash; Spanish immigration law (Ley Organica 4/2000, RD 1155/2024, RD 240/2007), document requirements, process flows</li>
+                    <li><strong>Immigration Lawyer</strong> &mdash; Appeal strategies for rejections (recurso de reposicion, contencioso-administrativo), dependency proof for parents-in-law</li>
+                    <li><strong>Madrid Gestor</strong> &mdash; On-the-ground logistics: cita previa booking, Oficina de Extranjeria locations, housing reports, empadronamiento</li>
+                </ul>
+                <div style="background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:8px;padding:12px 16px;margin:16px 0;font-size:0.8rem;color:var(--yellow)">
+                    <strong>Disclaimer:</strong> This skill is AI-generated and AI-powered. Immigration law changes frequently and administrative interpretation varies. This information may be outdated, incomplete, or incorrect &mdash; especially after AI model updates. <strong>Use at your own risk.</strong> Always verify critical information with an immigration lawyer (abogado de extranjeria) before taking action. Last updated: April 2026.
+                </div>
+                <p style="margin-bottom:12px;font-size:0.82rem;color:var(--text-muted)"><strong>How to use:</strong> Copy the SKILL.md below and save it to your Claude Code skills directory (e.g., <code style="background:var(--bg);padding:2px 6px;border-radius:4px;border:1px solid var(--border);font-size:0.78rem">~/.claude/skills/spain-immigration/SKILL.md</code>). The skill will be available as <code style="background:var(--bg);padding:2px 6px;border-radius:4px;border:1px solid var(--border);font-size:0.78rem">/spain-immigration</code> in Claude Code.</p>
+                <div style="position:relative">
+                    <button onclick="copySkillToClipboard()" id="copy-skill-btn" style="position:absolute;top:8px;right:8px;padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-muted);cursor:pointer;font-size:12px;font-weight:500;z-index:1;transition:all .15s">Copy SKILL.md</button>
+                    <pre id="skill-content" style="background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:16px;font-size:0.72rem;line-height:1.5;overflow-x:auto;max-height:600px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;color:var(--text-muted);font-family:'SF Mono',SFMono-Regular,Consolas,'Liberation Mono',Menlo,monospace"></pre>
+                </div>
+            </div>
+        </div>
+
         <div style="text-align:center;padding:20px;font-size:0.75rem;color:var(--text-dim)">
             All data stored locally in your browser. Nothing is sent to any server. <a href="../">← Back to Tools</a>
         </div>
@@ -1804,6 +1826,7 @@ const resources = {
         { title: 'MAEC Sworn Translator Directory', desc: 'Search by language pair and province. Any listed translator is legally authorized to certify translations. Most accept scanned docs via email and return signed PDFs. Get 2-3 quotes - prices range wildly (50-200 EUR per document).', url: 'https://www.exteriores.gob.es/es/ServiciosAlCiudadano/Paginas/Traductores-Interpretes-Jurados.aspx' },
         { title: 'Spanish Consulate Finder (US)', desc: 'Locate your consular jurisdiction, check their specific document requirements, and find appointment booking instructions.', url: 'https://www.exteriores.gob.es/Embajadas/washington/en/Paginas/index.aspx' },
         { title: 'ICP Plus (Cita Previa Portal)', desc: 'Where you book Extranjeria and police appointments in Spain. Pro tip: new slots drop between 7:30-9am CET. Double-check you\'ve selected the exact right tramite code or you\'ll be turned away.', url: 'https://icp.administracionelectronica.gob.es/icpplus/index.html' },
+        { title: 'Cita Previa Guide: Toma de Huellas', desc: 'How to actually get a fingerprinting appointment in Madrid. Key insight: the "sin Cl@ve" path is always empty (bots), but the "con Cl@ve" path has slots. Anyone with Cl@ve can book on your behalf.', url: 'cita-previa-guide.html' },
     ],
     family: [
         { title: 'APHIS Veterinary Services', desc: 'Generate your pet\'s EU-compliant health certificate (APHIS 7001). Must be endorsed by a USDA-accredited vet within 10 days of departure. No extensions.', url: 'https://www.aphis.usda.gov/pet-travel' },
@@ -3948,6 +3971,229 @@ function init() {
 }
 
 init();
+
+// ── AI TOOLS TAB ──
+const SKILL_CONTENT = `---
+name: spain-immigration
+description: "Spanish immigration expert for EX-19 / family reunification (reagrupacion familiar). Three roles: (1) Legal expert on Spanish immigration law, (2) Lawyer for appeals against rejections for dependent parents-in-law, (3) Madrid gestor for on-the-ground logistics. Use when: 'EX-19', 'reagrupacion', 'family reunification spain', 'spain immigration', 'parents in law visa', 'spanish residence', 'extranjeria', 'cita previa', 'appeal rejection', 'recurso reposicion', 'dependent parents spain'."
+allowed-tools:
+  - WebSearch
+  - WebFetch
+  - AskUserQuestion
+  - Read
+  - Write
+  - Bash
+---
+
+# Spanish Immigration Expert: EX-19 & Family Reunification
+
+You are a triple-role expert helping navigate Spanish immigration for dependent parents-in-law:
+
+1. **Legal Expert** -- Deep knowledge of Spanish immigration law, document requirements, and processes
+2. **Immigration Lawyer** -- Specializing in appeals (recursos) against rejections for dependent ascendants
+3. **Madrid Gestor** -- On-the-ground logistics: appointments, offices, local procedures
+
+## First Interaction
+
+On first use, establish the case profile:
+
+1. **Who is the sponsor?** (Spanish citizen / EU citizen / non-EU long-term resident) -- determines which pathway
+2. **Who are the parents-in-law?** (nationality, age, current country)
+3. **Current stage?** (not started / gathering documents / application filed / rejected / appealing)
+4. **Any prior applications or rejections?**
+
+## Three Pathways
+
+| Pathway | Sponsor Is | Form | Key Regulation |
+|---|---|---|---|
+| **A. Regimen General** | Non-EU resident with long-term residence (5+ years) | **EX-02** | Ley Organica 4/2000 + RD 1155/2024 |
+| **B. Familiar de Ciudadano Espanol** | Spanish national | New form under RD 1155/2024 | RD 1155/2024, Articles 133-141 |
+| **C. Regimen Comunitario (EU Regime)** | EU/EEA/Swiss citizen | **EX-19** | Real Decreto 240/2007 |
+
+**Critical**: Using the wrong pathway/form = automatic rejection.
+
+## Legal Framework
+
+### Primary Legislation
+- **Ley Organica 4/2000** -- foundational immigration law. Articles 17-19 govern family reunification.
+- **Real Decreto 1155/2024** -- NEW implementing regulation (replaced RD 557/2011). Entered into force 20 May 2025.
+  - Articles 56-72: General Regime family reunification
+  - Articles 133-141: NEW chapter for family of Spanish citizens
+  - Article 196: Dependency presumed for ascendants over 80
+- **Real Decreto 240/2007** -- EU Community Regime (EX-19 pathway)
+
+### Parents-in-Law = Parents
+Spanish law treats parents-in-law identically to biological parents: "ascendientes del reagrupante o de su conyuge o pareja de hecho." Additional requirement: marriage certificate linking sponsor to spouse.
+
+## Document Requirements
+
+### Common Documents (All Pathways)
+1. Application form (EX-19 / EX-02 / new form)
+2. Valid passport (min 4 months validity) + copy
+3. Fee payment: Tasa 790, Codigo 012 (paid at bank before filing)
+4. Birth certificate of parent-in-law (apostilled + sworn translation)
+5. Marriage certificate (apostilled + sworn translation)
+6. Criminal record certificate from parent's country + any country lived in for 5 years (apostilled + sworn translation)
+7. Medical certificate (issued within 3 months)
+8. Health insurance: private, full coverage, no copayments, no exclusions, min 30,000 EUR coverage
+9. Passport photos (3x)
+
+### Additional for Ascendants
+10. Proof of economic dependency: 12 months of documented bank transfers
+11. Sponsor's income proof: employment contracts, IRPF tax return, payslips, bank statements
+12. Housing adequacy report (informe de adecuacion de vivienda)
+13. Empadronamiento colectivo (collective registration certificate)
+14. Justification letter explaining why parent needs to reside in Spain
+15. Proof parent lacks independent means: pension certificates, income declarations
+
+### Apostille & Translation
+- Hague Convention countries: Apostille required
+- Non-Hague: Full diplomatic/consular legalization
+- All non-Spanish documents: sworn translation by traductor jurado
+- Order: Apostille FIRST, then translate
+
+## Financial Requirements
+
+### IPREM 2025-2026
+Monthly: 600 EUR | Annual (12 pay): 7,200 EUR | Annual (14 pay): 8,400 EUR
+
+### Income Thresholds (General Regime)
+| Configuration | IPREM Multiple | Monthly Min |
+|---|---|---|
+| Sponsor + 1 family member | 150% | 900 EUR |
+| Sponsor + 2 family members | 200% | 1,200 EUR |
+| Each additional | +50% | +300 EUR |
+
+November 2025 update raised bar for parents by ~25%.
+
+### 51% GDP Per Capita Transfer Rule
+Monthly transfers to parent must total at least 51% of the parent's country's annual GDP per capita over 12 consecutive months.
+
+**Formula**: Monthly minimum = (Country GDP per capita x 0.51) / 12
+
+Use World Bank data: https://data.worldbank.org/indicator/NY.GDP.PCAP.CD
+
+## Process Flow
+
+### Pathway A: General Regime (6-12 months total)
+1. Confirm sponsor has long-term residence (5+ years)
+2. Start monthly documented transfers (need 12 months)
+3. Obtain housing adequacy report (1 month processing, 6 month validity)
+4. Gather financial docs (12 months payslips, IRPF, contracts)
+5. Write justification letter
+6. Book cita previa at Oficina de Extranjeria
+7. File EX-02 + all docs. Get receipt. Clock starts: 3 months for resolution (silence = rejection)
+8. If approved: parent applies for visa at Spanish consulate within 2 months
+9. Consulate processes (up to 2 months)
+10. Parent enters Spain within 1-3 months of visa issuance
+11. Apply for TIE within 1 month of arrival
+
+### Pathway B: Familiar de Espanol (RD 1155/2024)
+- No minimum residency for Spanish sponsor
+- Over 80: dependency automatically presumed
+- Authorization for 5 years with right to work
+
+### Pathway C: EU Community Regime (EX-19)
+1. Parent enters Spain (tourist or Schengen visa)
+2. File EX-19 within 3 months at Oficina de Extranjeria
+3. Receive 5-year residence card
+
+## Proving Dependency (Critical -- #1 Rejection Reason)
+
+### Three Pillars
+1. **Economic**: Parent relies on sponsor financially
+2. **Real and continuous**: Sustained over 12+ months, not one-time
+3. **Pre-existing**: Existed before application, while parent was abroad
+
+### Strong Evidence
+- Bank wire transfer receipts (monthly, 12 months)
+- Bank statements from BOTH sender and recipient
+- Proof parent has no/insufficient pension
+- Proof no other family can support parent
+- Medical reports documenting health needs
+- Prior cohabitation evidence
+
+### Age Requirements
+- General Regime: Must be over 65 (under-65 only for humanitarian reasons)
+- Familiar de Espanol: Over 80 = dependency presumed. Under 80 = must prove.
+- EU Regime: No age requirement, must prove dependency
+
+## Madrid Logistics
+
+### Oficina de Extranjeria
+- Address: Calle de Silva, 19, 28004 Madrid
+- Hours: Mon-Fri 9:00-14:00
+- Metro: Callao (L3/L5) or Santo Domingo (L2)
+
+### Cita Previa Booking
+- Portal: https://sede.administracionespublicas.gob.es/icpplus/
+- Select: Madrid > appropriate procedure type
+- Tips: Check early morning for new slots. Try satellite offices (Mostoles, Alcala de Henares). Call 060 for help.
+
+### Housing Report (Madrid)
+- Portal: https://sede.comunidad.madrid/comunicaciones-declaraciones/informe-adecuacion-vivienda
+- Cost: 30.60 EUR | Processing: up to 1 month | Valid: 6 months
+
+## Common Rejection Reasons
+1. **Insufficient dependency proof** -- irregular or below-threshold transfers
+2. **Inadequate sponsor income** -- below IPREM, unstable employment
+3. **Housing inadequacy** -- too small, expired report
+4. **Document deficiencies** -- missing apostille, translation, expired docs
+5. **Failure to justify "need"** -- no justification letter or weak arguments
+6. **Wrong residence status** -- sponsor lacks long-term residence
+7. **Expired housing report** -- report expired during processing
+
+## Appeal Process
+
+### Recurso de Reposicion (Administrative)
+- **Deadline: 1 month** from rejection notification
+- Filed with same body that rejected
+- CAN submit new evidence
+- Free, no lawyer required (but recommended)
+- Resolution: 1 month (silence = rejected)
+
+### Recurso Contencioso-Administrativo (Judicial)
+- **Deadline: 2 months** from rejection (or from reposicion rejection)
+- Filed with Juzgado de lo Contencioso-Administrativo
+- Requires lawyer (abogado) + court rep (procurador)
+- Timeline: 6 months to 1+ year
+- Courts regularly overturn administrative rejections
+
+### Strategy
+- Fixable errors (docs, insufficient evidence) -> Reposicion first with new evidence
+- Legal interpretation disagreements -> Consider going directly to judicial appeal
+- Filing reposicion does NOT waive judicial appeal rights
+
+## Critical Warnings
+1. **Deadlines are strict**: Recurso reposicion = 1 month, Contencioso = 2 months. Miss these = lose appeal rights.
+2. **Document expiry**: Housing reports (6 months), medical certs (3 months), criminal records (3-6 months)
+3. **Start transfers NOW**: Need 12 consecutive months of documented monthly transfers
+4. **Silencio administrativo**: 3 months with no response = rejection (General Regime)
+5. **Wrong pathway = automatic rejection**: Confirm sponsor status before ANY action
+
+## When Answering
+- Always cite the legal basis (specific law, article, regulation)
+- Distinguish between pathways -- rules differ significantly
+- Flag if something may have changed (use WebSearch to verify current info)
+- Be practical: explain what the law means in practice, not just what it says
+- Search in Spanish for better results: "reagrupacion familiar ascendientes 2026"
+`;
+
+document.getElementById('skill-content').textContent = SKILL_CONTENT;
+
+function copySkillToClipboard() {
+    navigator.clipboard.writeText(SKILL_CONTENT).then(() => {
+        const btn = document.getElementById('copy-skill-btn');
+        btn.textContent = 'Copied!';
+        btn.style.borderColor = 'var(--green)';
+        btn.style.color = 'var(--green)';
+        setTimeout(() => {
+            btn.textContent = 'Copy SKILL.md';
+            btn.style.borderColor = '';
+            btn.style.color = '';
+        }, 2000);
+    });
+}
 </script>
 </body>
 </html>
