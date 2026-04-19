@@ -2579,11 +2579,11 @@
         applyLearnTabVisibility();
         const unlockAllConjCb = document.getElementById('unlockAllConjCheckbox');
         if (unlockAllConjCb) unlockAllConjCb.checked = progress.unlockAllConj === true;
-        // Restore dictionary settings
+        // Restore dictionary settings (await load so indicators update correctly)
         if (progress.dictSize && progress.dictSize !== 'light') {
             const radio = document.querySelector(`input[name="dictSize"][value="${progress.dictSize}"]`);
             if (radio) radio.checked = true;
-            loadExternalDict(progress.dictSize);
+            await loadExternalDict(progress.dictSize);
         }
         if (progress.dictFormat && progress.dictFormat !== 'uncompressed') {
             const fmtRadio = document.querySelector(`input[name="dictFormat"][value="${progress.dictFormat}"]`);
