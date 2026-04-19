@@ -4149,13 +4149,19 @@
             return;
         }
 
-        results.innerHTML = matches.map(({ entry }) => `
-            <div class="word-result-item" ${entry._fromDict ? 'style="cursor:default;"' : `onclick="openWordModal('${escapeHtml(entry.spanish).replace(/'/g, "\\'")}')"` }>
-                <span class="word-result-spanish">${escapeHtml(entry.spanish)}</span>
-                ${entry._fromDict ? '<span class="word-result-badge" style="background:#e8f0fe;color:#1a73e8;">dict</span>' : entry.gender ? `<span class="word-result-badge">${entry.gender === 'm' ? 'masc' : 'fem'}</span>` : entry.isVerb ? `<span class="word-result-badge">${t('verb')}</span>` : ''}
-                <span class="word-result-english">${escapeHtml(entry._fromDict ? entry.english : getWordTranslation(entry))}</span>
-            </div>
-        `).join('');
+        results.innerHTML = matches.map(({ entry }) => {
+            const safeWord = escapeHtml(entry.spanish).replace(/'/g, '&#39;');
+            const badge = entry._fromDict ? '<span class="word-result-badge" style="background:#e8f0fe;color:#1a73e8;">dict</span>'
+                : entry.gender ? '<span class="word-result-badge">' + (entry.gender === 'm' ? 'masc' : 'fem') + '</span>'
+                : entry.isVerb ? '<span class="word-result-badge">' + t('verb') + '</span>' : '';
+            const translation = escapeHtml(entry._fromDict ? entry.english : getWordTranslation(entry));
+            const click = entry._fromDict ? '' : "onclick=\"openWordModal('" + safeWord + "')\"";
+            return '<div class="word-result-item" ' + click + '>'
+                + '<span class="word-result-spanish">' + escapeHtml(entry.spanish) + '</span>'
+                + badge
+                + '<span class="word-result-english">' + translation + '</span>'
+                + '</div>';
+        }).join('');
     }
 
     function makeWordsClickable(text) {
