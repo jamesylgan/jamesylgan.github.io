@@ -835,6 +835,15 @@
                     <button class="btn btn-outline" onclick="selectVocabCount(this, 20)">20 <span data-i18n="words">Words</span></button>
                     <button class="btn btn-outline" onclick="selectVocabCount(this, 0)" data-i18n="allWords">All Words</button>
                 </div>
+                <div id="hardModeVocabSection" style="display:none;margin-top:12px;">
+                    <p style="font-size:13px;font-weight:600;margin:0 0 8px;color:var(--primary);" data-i18n="hardModeTitle">Hard Mode (Extended Dictionary)</p>
+                    <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px;" data-i18n="hardModeDesc">Random words from the expanded/full dictionary. Much harder — tests words beyond your lessons.</p>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <button class="btn btn-outline" style="border-color:var(--primary);color:var(--primary);" onclick="startHardVocabQuiz(10, this)">10 <span data-i18n="words">Words</span></button>
+                        <button class="btn btn-outline" style="border-color:var(--primary);color:var(--primary);" onclick="startHardVocabQuiz(20, this)">20 <span data-i18n="words">Words</span></button>
+                        <button class="btn btn-outline" style="border-color:var(--primary);color:var(--primary);" onclick="startHardVocabQuiz(50, this)">50 <span data-i18n="words">Words</span></button>
+                    </div>
+                </div>
             </div>
             <div class="section" style="margin-top: 20px;">
                 <h3 style="margin-bottom: 15px;" data-i18n="conjQuizTitle">Conjugation Quiz (Anki-style)</h3>
@@ -977,6 +986,11 @@
                             <p style="font-size:11px;color:var(--text-muted);margin:4px 0 0;">
                                 Compressed relies on server gzip. Use Standard if loading from local files.
                             </p>
+                        </div>
+                        <p style="font-size:13px;font-weight:600;margin:12px 0 8px;" data-i18n="hardModeSettingTitle">Hard Mode Vocabulary Quiz</p>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <input type="checkbox" id="hardModeCheckbox" onchange="toggleHardMode(this.checked)" style="width:18px;height:18px;cursor:pointer;">
+                            <label for="hardModeCheckbox" style="cursor:pointer;" data-i18n="hardModeSettingLabel">Enable hard mode quiz (random words from expanded/full dictionary)</label>
                         </div>
                     </div>
                 </div>
@@ -1493,11 +1507,12 @@
                 unlockAllConj: false,
                 lookupConjTenses: data.lookupConjTenses || {}
             }),
-            // v10: Add dictSize and dictFormat settings
+            // v10: Add dictSize, dictFormat, hardModeVocab settings
             10: (data) => ({
                 ...data,
                 dictSize: 'light',
-                dictFormat: 'uncompressed'
+                dictFormat: 'uncompressed',
+                hardModeVocab: false
             })
         }
     });
@@ -1630,6 +1645,10 @@
             dictionarySize: 'Dictionary Size',
             dictionaryFormat: 'Dictionary Format',
             dictEnglishOnly: 'Expanded/Full dictionaries are Spanish↔English only. Switch to English mode to use them.',
+            hardModeTitle: 'Hard Mode (Extended Dictionary)',
+            hardModeDesc: 'Random words from the expanded/full dictionary. Much harder — tests words beyond your lessons.',
+            hardModeSettingTitle: 'Hard Mode Vocabulary Quiz',
+            hardModeSettingLabel: 'Enable hard mode quiz (random words from expanded/full dictionary)',
             wordLookupTitle: 'Word Lookup',
             wordLookupDesc: 'Search for any Spanish word to see its definition and conjugation tables.',
             wordLookupPlaceholder: 'Type a Spanish or English word...',
@@ -2550,6 +2569,13 @@
             const fmtRadio = document.querySelector(`input[name="dictFormat"][value="${progress.dictFormat}"]`);
             if (fmtRadio) fmtRadio.checked = true;
         }
+        // Restore hard mode setting
+        if (progress.hardModeVocab) {
+            const cb = document.getElementById('hardModeCheckbox');
+            if (cb) cb.checked = true;
+            const section = document.getElementById('hardModeVocabSection');
+            if (section) section.style.display = '';
+        }
         setInterval(autoSave, 30000); // Auto-save every 30 seconds
     }
 
@@ -2808,6 +2834,61 @@
         });
         btn.classList.add('selected');
         btn.classList.remove('btn-outline');
+    }
+
+    function toggleHardMode(enabled) {
+        progress.hardModeVocab = enabled;
+        autoSave();
+        const section = document.getElementById('hardModeVocabSection');
+        if (section) section.style.display = enabled ? '' : 'none';
+    }
+
+    function startHardVocabQuiz(count, btn) {
+        // Build word pool from external dictionary (expanded or full)
+        const dictObj = typeof esFull === 'object' ? esFull : typeof esExp === 'object' ? esExp : null;
+        const dictVals = typeof esFullV !== 'undefined' ? esFullV : typeof esExpV !== 'undefined' ? esExpV : null;
+        if (!dictObj || !dictVals) {
+            alert('Load an expanded or full dictionary first (Advanced Settings).');
+            return;
+        }
+
+        // Collect all entries, shuffle, pick `count`
+        const keys = Object.keys(dictObj);
+        const pool = [];
+        // Shuffle keys using Fisher-Yates on a sample (avoid shuffling 81k entries)
+        const sampleSize = Math.min(count * 5, keys.length);
+        const sampled = new Set();
+        while (sampled.size < sampleSize) {
+            sampled.add(keys[Math.floor(Math.random() * keys.length)]);
+        }
+        for (const key of sampled) {
+            const idx = dictObj[key];
+            if (typeof idx !== 'number') continue;
+            const en = dictVals[idx];
+            if (!en || en.length < 2) continue;
+            // Skip words already in lesson vocab (those are in normal quiz)
+            if (wordDictionary && wordDictionary.has(key)) continue;
+            pool.push({ spanish: key, english: en, vietnamese: null, day: 0, _hardMode: true });
+        }
+
+        if (pool.length < 4) {
+            alert('Not enough dictionary words found. Try a larger dictionary.');
+            return;
+        }
+
+        // Shuffle and pick
+        pool.sort(() => Math.random() - 0.5);
+        vocabAllWords = pool;
+        vocabQueue = pool.slice(0, Math.min(count, pool.length));
+        vocabCorrectCount = 0;
+        vocabTotalAttempts = 0;
+        vocabInitialCount = vocabQueue.length;
+
+        if (btn) highlightVocabButton(btn);
+        renderVocabQuestion();
+        setTimeout(() => {
+            document.getElementById('quizContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
     }
 
     function startVocabQuiz(count, btn) {
@@ -4222,7 +4303,7 @@
         }
 
         // Autocomplete from external dictionaries (expanded/full)
-        if (q.length >= 2 && matches.length < 50) {
+        if (q.length >= 3 && matches.length < 50) {
             const extDicts = [];
             if (typeof esExp === 'object') extDicts.push(esExp);
             if (typeof esFull === 'object') extDicts.push(esFull);
