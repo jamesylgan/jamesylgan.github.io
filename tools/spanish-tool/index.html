@@ -962,14 +962,17 @@
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
                                 <input type="radio" name="dictSize" value="light" onchange="setDictSize('light')" checked>
                                 <span><strong>Light</strong> — 5k words + stemmer (instant, no download)</span>
+                                <span id="dictStatusLight" style="font-size:11px;color:#28a745;">&#10003; loaded</span>
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
                                 <input type="radio" name="dictSize" value="expanded" onchange="setDictSize('expanded')">
                                 <span><strong>Expanded</strong> — 10k words (~300KB). Try: madrugada, vecino, paraguas</span>
+                                <span id="dictStatusExpanded" style="font-size:11px;"></span>
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
                                 <input type="radio" name="dictSize" value="full" onchange="setDictSize('full')">
                                 <span><strong>Full</strong> — 81k words (~2.5MB). Try: vislumbrar, alborada, jolgorio</span>
+                                <span id="dictStatusFull" style="font-size:11px;"></span>
                             </label>
                             <div id="dictLoadStatus" style="font-size:12px;color:var(--text-muted);"></div>
                         </div>
@@ -2593,6 +2596,7 @@
             const section = document.getElementById('hardModeVocabSection');
             if (section) section.style.display = '';
         }
+        updateDictStatusIndicators();
         setInterval(autoSave, 30000); // Auto-save every 30 seconds
     }
 
@@ -4187,6 +4191,29 @@
     });
 
     // ── External Dictionary Loading ──
+    function updateDictStatusIndicators() {
+        const expEl = document.getElementById('dictStatusExpanded');
+        const fullEl = document.getElementById('dictStatusFull');
+        if (expEl) {
+            if (typeof esExpLookup === 'function') {
+                expEl.textContent = '\u2713 cached';
+                expEl.style.color = '#28a745';
+            } else {
+                expEl.textContent = 'not downloaded';
+                expEl.style.color = 'var(--text-muted)';
+            }
+        }
+        if (fullEl) {
+            if (typeof esFullLookup === 'function') {
+                fullEl.textContent = '\u2713 cached';
+                fullEl.style.color = '#28a745';
+            } else {
+                fullEl.textContent = 'not downloaded';
+                fullEl.style.color = 'var(--text-muted)';
+            }
+        }
+    }
+
     let extDictLoading = false;
     async function loadExternalDict(size) {
         if (extDictLoading) return;
@@ -4228,6 +4255,7 @@
             console.error('[Dict] Load error:', e);
         }
         extDictLoading = false;
+        updateDictStatusIndicators();
     }
 
     function setDictSize(size) {
