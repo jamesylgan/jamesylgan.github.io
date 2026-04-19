@@ -4302,8 +4302,19 @@
                 if (size === 'full' && typeof esFullLookup === 'function') { const r = esFullLookup(inf); if (r) return r; }
             }
         }
-        // Fall back to stemmer-based lookup (always available)
-        if (typeof lookupSpanish === 'function') return lookupSpanish(w);
+        // Fall back to stemmer-based lookup
+        if (typeof lookupSpanish === 'function') {
+            const r = lookupSpanish(w);
+            if (r) return r;
+        }
+        // Last resort: stem the word and try expanded/full dicts with the stem
+        if (typeof stemSpanish === 'function') {
+            const stem = stemSpanish(w);
+            if (stem && stem !== w) {
+                if (size !== 'light' && typeof esExpLookup === 'function') { const r = esExpLookup(stem); if (r) return r; }
+                if (size === 'full' && typeof esFullLookup === 'function') { const r = esFullLookup(stem); if (r) return r; }
+            }
+        }
         return null;
     }
 
@@ -4415,8 +4426,14 @@
                 const isExtVerb = isExtInfinitive && extResult.toLowerCase().startsWith('to ');
                 // Try to resolve conjugated form to infinitive
                 let resolvedInfinitive = null;
-                if (!isExtInfinitive && typeof esFormToInfLookup === 'function') {
-                    resolvedInfinitive = esFormToInfLookup(q);
+                if (!isExtInfinitive) {
+                    if (typeof esFormToInfLookup === 'function') resolvedInfinitive = esFormToInfLookup(q);
+                    if (!resolvedInfinitive && typeof stemSpanish === 'function') {
+                        const stem = stemSpanish(q);
+                        if (stem && stem !== q && (stem.endsWith('ar') || stem.endsWith('er') || stem.endsWith('ir'))) {
+                            resolvedInfinitive = stem;
+                        }
+                    }
                 }
                 let displayEnglish = extResult;
                 let displayIsVerb = isExtVerb;
