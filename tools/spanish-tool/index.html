@@ -1784,22 +1784,42 @@
 
     // Change language and re-render
     async function changeLanguage(lang) {
+        const prevLang = progress.uiLanguage;
         progress.uiLanguage = lang;
         if (lang === 'vi') {
-            // Vietnamese: force light dict and disable hard mode (no Vietnamese translations for expanded/full)
-            if (progress.dictSize !== 'light') {
-                progress.dictSize = 'light';
-                const radio = document.querySelector('input[name="dictSize"][value="light"]');
-                if (radio) radio.checked = true;
-                const statusEl = document.getElementById('dictLoadStatus');
-                if (statusEl) statusEl.textContent = '';
+            // Vietnamese: save English dict preference, then use light for Vietnamese
+            if (progress.dictSize && progress.dictSize !== 'light') {
+                progress._savedDictSize = progress.dictSize;
             }
+            progress.dictSize = 'light';
+            const radio = document.querySelector('input[name="dictSize"][value="light"]');
+            if (radio) radio.checked = true;
+            const statusEl = document.getElementById('dictLoadStatus');
+            if (statusEl) statusEl.textContent = '';
             if (progress.hardModeVocab) {
+                progress._savedHardMode = true;
                 progress.hardModeVocab = false;
                 const cb = document.getElementById('hardModeCheckbox');
                 if (cb) cb.checked = false;
                 const section = document.getElementById('hardModeVocabSection');
                 if (section) section.style.display = 'none';
+            }
+        } else if (prevLang === 'vi') {
+            // Switching back from Vietnamese: restore saved dict preference
+            if (progress._savedDictSize) {
+                progress.dictSize = progress._savedDictSize;
+                delete progress._savedDictSize;
+                const radio = document.querySelector(`input[name="dictSize"][value="${progress.dictSize}"]`);
+                if (radio) radio.checked = true;
+                await loadExternalDict(progress.dictSize);
+            }
+            if (progress._savedHardMode) {
+                progress.hardModeVocab = true;
+                delete progress._savedHardMode;
+                const cb = document.getElementById('hardModeCheckbox');
+                if (cb) cb.checked = true;
+                const section = document.getElementById('hardModeVocabSection');
+                if (section) section.style.display = '';
             }
         }
         autoSave();
