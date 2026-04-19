@@ -4221,6 +4221,56 @@
             });
         }
 
+        // Autocomplete from external dictionaries (expanded/full)
+        if (q.length >= 2 && matches.length < 50) {
+            const extDicts = [];
+            if (typeof esExp === 'object') extDicts.push(esExp);
+            if (typeof esFull === 'object') extDicts.push(esFull);
+            for (const dict of extDicts) {
+                for (const key in dict) {
+                    if (matchedKeys.has(key)) continue;
+                    if (key.startsWith(q) || key === q) {
+                        const idx = dict[key];
+                        const values = dict === esExp ? esExpV : (typeof esFullV !== 'undefined' ? esFullV : null);
+                        if (values && typeof idx === 'number') {
+                            const en = values[idx];
+                            const isInf = (key.endsWith('ar') || key.endsWith('er') || key.endsWith('ir')) && key.length > 3;
+                            const isVerb = isInf && en && en.startsWith('to ');
+                            matches.push({
+                                entry: { spanish: key, english: en, days: [], isVerb: isVerb, gender: null, _fromDict: true },
+                                score: key === q ? 2.8 : 1.5
+                            });
+                            matchedKeys.add(key);
+                            if (matches.length >= 50) break;
+                        }
+                    }
+                }
+                if (matches.length >= 50) break;
+            }
+            // Also autocomplete conjugated forms (only if few matches so far, and query is specific enough)
+            if (typeof esFormToInf === 'object' && q.length >= 4 && matches.length < 10) {
+                let formChecked = 0;
+                for (const form in esFormToInf) {
+                    if (++formChecked > 50000) break; // cap iteration for performance
+                    if (matchedKeys.has(form) || matches.length >= 50) continue;
+                    if (form.startsWith(q)) {
+                        const infIdx = esFormToInf[form];
+                        const inf = typeof esFormToInfV !== 'undefined' ? esFormToInfV[infIdx] : null;
+                        if (inf) {
+                            const en = externalDictLookup(inf);
+                            if (en) {
+                                matches.push({
+                                    entry: { spanish: form, english: en + ' (\u2192 ' + inf + ')', days: [], isVerb: true, gender: null, _fromDict: true, _resolvedInfinitive: inf },
+                                    score: 1.2
+                                });
+                                matchedKeys.add(form);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         matches.sort((a, b) => b.score - a.score);
         matches = matches.slice(0, 50);
 
