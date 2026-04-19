@@ -2563,10 +2563,9 @@
             if (key === undefined) return true; // unknown tense, show by default
             // Check user's explicit visibility setting
             const setting = (progress.lookupConjTenses || {})[key];
-            // For non-finite: follow the explicit setting if set, otherwise show if present is visible
+            // Non-finite: always available, just check explicit setting (default: on)
             if (key === '_non_finite') {
-                if (setting !== undefined) return setting;
-                return isLookupTenseVisible('present', true);
+                return setting !== undefined ? setting : true;
             }
             // Is this tense unlocked? (by lesson progress or unlock-all toggle)
             const unlocked = progress.unlockAllConj || conjugationTypes.some(ct => ct.tense === key && isConjTypeUnlocked(ct));
@@ -2592,7 +2591,8 @@
     function lookupConjCheckAll(checked) {
         if (!progress.lookupConjTenses) progress.lookupConjTenses = {};
         lookupTenseOrder.forEach(tense => {
-            const unlocked = conjugationTypes.some(ct => ct.tense === tense && isConjTypeUnlocked(ct));
+            const isNonFinite = tense === '_non_finite';
+            const unlocked = isNonFinite || conjugationTypes.some(ct => ct.tense === tense && isConjTypeUnlocked(ct));
             if (unlocked) progress.lookupConjTenses[tense] = checked;
         });
         autoSave();
@@ -2607,16 +2607,19 @@
             <button class="btn btn-outline" onclick="lookupConjCheckAll(false)" style="font-size:0.8rem;padding:4px 10px;">${t('uncheckAll')}</button>
         </div>`;
         lookupTenseOrder.forEach(tense => {
-            const unlocked = conjugationTypes.some(ct => ct.tense === tense && isConjTypeUnlocked(ct));
-            const checked = unlocked && isLookupTenseVisible(tense);
-            const label = tenseLabels[tense] || tense;
-            const unlocksAt = conjugationTypes.find(ct => ct.tense === tense)?.unlocksAt;
+            // Non-finite is always available (not tied to lesson progress)
+            const isNonFinite = tense === '_non_finite';
+            const unlocked = isNonFinite || conjugationTypes.some(ct => ct.tense === tense && isConjTypeUnlocked(ct));
+            const setting = (progress.lookupConjTenses || {})[tense];
+            const checked = isNonFinite ? (setting !== undefined ? setting : true) : (unlocked && isLookupTenseVisible(tense));
+            const label = isNonFinite ? 'Non-Finite (infinitive, gerund, participle)' : (tenseLabels[tense] || tense);
+            const unlocksAt = isNonFinite ? null : conjugationTypes.find(ct => ct.tense === tense)?.unlocksAt;
             html += `
                 <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;${!unlocked ? 'opacity:0.5' : ''}">
                     <input type="checkbox" id="lookupConj_${tense}" ${checked ? 'checked' : ''} ${!unlocked ? 'disabled' : ''}
                         onchange="toggleLookupConjTense('${tense}', this.checked)"
                         style="width:18px;height:18px;cursor:${unlocked ? 'pointer' : 'not-allowed'}">
-                    <label for="lookupConj_${tense}" style="cursor:${unlocked ? 'pointer' : 'not-allowed'}">${label}${!unlocked ? ` <span style="font-size:0.75rem;color:var(--text-muted)">(${t('day')} ${unlocksAt})</span>` : ''}</label>
+                    <label for="lookupConj_${tense}" style="cursor:${unlocked ? 'pointer' : 'not-allowed'}">${label}${!unlocked && unlocksAt ? ` <span style="font-size:0.75rem;color:var(--text-muted)">(${t('day')} ${unlocksAt})</span>` : ''}</label>
                 </div>
             `;
         });
