@@ -4158,10 +4158,17 @@
 
     function externalDictLookup(word) {
         const w = word.toLowerCase();
-        // Try expanded dict first (fast hash lookup)
+        // Try direct lemma lookup first
         if (typeof esExpLookup === 'function') { const r = esExpLookup(w); if (r) return r; }
-        // Try full dict
         if (typeof esFullLookup === 'function') { const r = esFullLookup(w); if (r) return r; }
+        // Try resolving conjugated form → infinitive → definition
+        if (typeof esFormToInfLookup === 'function') {
+            const inf = esFormToInfLookup(w);
+            if (inf) {
+                if (typeof esExpLookup === 'function') { const r = esExpLookup(inf); if (r) return r; }
+                if (typeof esFullLookup === 'function') { const r = esFullLookup(inf); if (r) return r; }
+            }
+        }
         // Fall back to stemmer-based lookup
         if (typeof lookupSpanish === 'function') return lookupSpanish(w);
         return null;

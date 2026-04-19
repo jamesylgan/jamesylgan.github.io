@@ -100,6 +100,13 @@ if (fs.existsSync(expandedDictPath)) {
   window.document.body.appendChild(expScript);
   console.log(`Loaded expanded dict: ${typeof window.esExpLookup === 'function' ? 'OK' : 'MISSING esExpLookup'}`);
 }
+const formToInfPath = path.join(__dirname, '..', 'lib', 'es-form-to-inf.js');
+if (fs.existsSync(formToInfPath)) {
+  const f2iScript = window.document.createElement('script');
+  f2iScript.textContent = fs.readFileSync(formToInfPath, 'utf8');
+  window.document.body.appendChild(f2iScript);
+  console.log(`Loaded form→inf: ${typeof window.esFormToInfLookup === 'function' ? 'OK' : 'MISSING'}`);
+}
 
 // Stub alert/confirm
 window.alert = () => {};
