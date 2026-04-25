@@ -172,7 +172,7 @@
     <div class="app-header">
         <h1>EX-19 Appeal Checklist</h1>
         <div class="header-right">
-            <span class="header-meta">Recurso de Reposicion</span>
+            <span class="header-meta">Recurso de Reposicion &mdash; Deadline: 22 May 2026</span>
             <button class="btn-icon" id="themeToggle" title="Toggle dark mode">&#9789;</button>
         </div>
     </div>
@@ -193,156 +193,167 @@
 
     const DATA = [
         {
-            id: 'step1',
-            title: 'STEP 1: Get the Rejection Letter (Monday April 21)',
+            id: 'summary',
+            title: 'Rejection Analysis',
             items: [
                 {
-                    section: null,
+                    section: 'Case Summary',
                     desc: null,
                     infoBlock: {
                         type: 'info',
-                        content: '<strong>Where:</strong> Oficina de Extranjeria, Calle de Silva 19, 28004 Madrid<br><strong>When:</strong> 9:00 AM - 2:00 PM (arrive early)<br><strong>Metro:</strong> Callao (Lines 3, 5) or Santo Domingo (Line 2)<br><br><strong>What to bring:</strong><br>&bull; Parent\'s passport (original)<br>&bull; Sponsor\'s NIE (original)<br>&bull; Original application receipt/resguardo<br>&bull; Phone with rejection status screen (check sede.policia.gob.es beforehand)<br>&bull; A pen for signing the notification receipt<br>&bull; A folder to keep the documents safe'
+                        content: '<strong>Application filed:</strong> 19/03/2026<br><strong>Decision:</strong> 14/04/2026<br><strong>Notified:</strong> 21/04/2026<br><strong style="color:var(--red)">Appeal deadline (reposicion): 22/05/2026</strong>'
                     }
                 },
                 {
-                    section: 'What to do',
+                    section: 'What Was Originally Submitted',
                     desc: null,
-                    checks: [
-                        { id: 's1_notif', title: 'Request the formal notification (notificacion) for the EX-19 rejection', detail: 'Ask for the complete resolution, not just a summary -- you need the full text with the motivo(s) de denegacion', importance: 'essential' },
-                        { id: 's1_date', title: 'Note the EXACT DATE of notification', detail: 'This starts the 1-month appeal clock', importance: 'essential' },
-                        { id: 's1_exp', title: 'Ask for the expediente number (reference number)', detail: 'If you don\'t already have it', importance: 'important' },
-                        { id: 's1_copy', title: 'Get a copy for your records', detail: 'Photograph every page as backup', importance: 'important' },
-                    ]
-                },
-                {
-                    section: 'After pickup',
-                    desc: null,
-                    checks: [
-                        { id: 's1_read', title: 'Read the rejection letter and identify every specific reason cited', detail: null, importance: 'essential' },
-                        { id: 's1_share', title: 'Determine how rejection reasons affect the appeal strategy', detail: 'Tailor the recurso de reposicion to the specific motivo(s)', importance: 'essential' },
-                    ]
-                }
-            ]
-        },
-        {
-            id: 'step2',
-            title: 'STEP 2: Gather Evidence (April 21-27)',
-            items: [
-                {
-                    section: 'A. Cohabitation Proof -- Country of Origin (TOP PRIORITY)',
-                    desc: 'This is the evidence the office never saw. It\'s the core of the appeal.',
-                    checks: [
-                        { id: 's2a_lease', title: 'US lease(s) with parent\'s name covering ~2 year cohabitation', detail: 'Named on the lease -- single strongest document. Get all versions/renewals. Digital/PDF fine. Ideally needs apostille + sworn translation (see Step 4 on timing).', importance: 'essential' },
-                        { id: 's2a_statement', title: 'Signed bilingual statement from EU citizen\'s parents', detail: 'Confirming cohabitation during transitional period before Spain. Already have this -- make a clean copy.', importance: 'important' },
-                        { id: 's2a_flight', title: 'Flight records showing travel to Spain together (~Dec 29, 2025)', detail: 'Booking confirmation, boarding passes, or airline account records', importance: 'helpful' },
-                        { id: 's2a_empad', title: 'Empadronamiento colectivo in Madrid', detail: 'Go to local Oficina de Atencion al Ciudadano. Request "volante de empadronamiento colectivo" (free, issued same day). Shows all residents at the address.', importance: 'essential' },
-                    ]
-                },
-                {
-                    section: 'B. Financial Inability to Self-Support (CRITICAL)',
-                    desc: 'Objective proof of inability to live independently.',
-                    checks: [
-                        { id: 's2b_tax', title: 'US tax returns (last 2-3 years)', detail: 'Download from IRS.gov > "Get Transcript Online" or call 1-800-908-9946. Shows poverty-level / no income. Needs apostille (US Dept of State) + sworn translation. APOSTILLE TAKES 4-8 WEEKS -- request NOW, may not arrive in time.', importance: 'important' },
-                        { id: 's2b_bank', title: 'US bank statements (last 6-12 months)', detail: 'Download from bank\'s online portal. Should show minimal balance / no significant savings.', importance: 'important' },
-                        { id: 's2b_retire', title: 'Proof of no retirement savings', detail: 'If 401k/IRA accounts exist: get statements showing zero/near-zero. If none exist: state this in sworn declaration.', importance: 'helpful' },
-                        { id: 's2b_ssa', title: 'US Social Security statement', detail: 'Download from ssa.gov/myaccount. Shows no/minimal benefits.', importance: 'optional' },
-                    ]
-                },
-                {
-                    section: 'C. Transfer Records & Direct Expense Payments',
-                    desc: 'Reframes the narrative: $100/month was pocket money on top of full household support.',
-                    checks: [
-                        { id: 's2c_transfers', title: '$100/month transfer records for the past ~12 months', detail: 'Bank statements, Venmo, Zelle, Wise -- whatever method used. Shows regularity.', importance: 'important' },
-                        { id: 's2c_rent', title: 'Your rent/mortgage payments (bank statements or receipts)', detail: 'Proves parent lives rent-free in your household.', importance: 'helpful' },
-                        { id: 's2c_bills', title: 'Any bills/expenses paid directly for parent', detail: 'Medical bills, phone plan, insurance premiums, etc. Receipts showing your name as payer.', importance: 'helpful' },
-                        { id: 's2c_insurance', title: 'Health insurance policy (if you\'re paying it)', detail: 'Shows you as policyholder or payer.', importance: 'helpful' },
-                        { id: 's2c_oldrent', title: 'Joint bank account records showing parent\'s rent was paid from shared funds', detail: 'Joint account with spouse used for parent\'s rent before cohabitation. Shows financial interdependence.', importance: 'helpful' },
-                    ]
-                },
-                {
-                    section: 'D. Sworn Declarations (Notary Visit)',
-                    desc: 'Book a notary (notario) this week. Both declarations in one visit. Ask for an "acta de manifestaciones" -- the notary records your statements officially.',
                     infoBlock: {
                         type: 'info',
-                        content: '<strong>Finding a notary:</strong><br>&bull; <a href="https://madrid.notariado.org" target="_blank">Colegio Notarial de Madrid</a> -- official directory / search<br>&bull; <a href="https://www.notariado.org" target="_blank">Consejo General del Notariado</a> -- national notary finder<br>&bull; <a href="https://buscanotario.com" target="_blank">BuscaNotario.com</a> -- search by location<br><br><strong>Nearby options (central Madrid):</strong><br>&bull; Notaria Madridejos Tena -- C/ Francisco de Rojas 10, 28010 (tel: 91 447 08 52)<br>&bull; Notaria Orense 8 -- C/ Orense 8, 1o (near Santiago Bernabeu)<br>&bull; Notaria Garcia Ortiz -- centro (tel: 91 360 09 27)<br><br><strong>Cost:</strong> ~50-80 EUR per acta de manifestaciones. Both declarations in one visit.<br><strong>Tip:</strong> Call ahead and explain you need two "actas de manifestaciones" for a recurso de extranjeria. Bring passports + NIE originals. Bring someone to interpret for the parent if needed.'
-                    },
-                    checks: [
-                        { id: 's2d_parent', title: 'Sworn declaration from parent (declaracion jurada)', detail: 'Contents: only child is sponsor\'s spouse, no other children. No family in the US. Siblings in Vietnam never provided support. No savings, no retirement, no pension. Not worked in ~2+ years. Not fluent in English, no Spanish. Fully dependent on household.', importance: 'essential' },
-                        { id: 's2d_sponsor', title: 'Sworn declaration from EU citizen sponsor', detail: 'Contents: parent lived in household since Nov 2023 in US + ~4 months Spain. Pays all expenses. Provides $100/month spending money. Parent has no independent means.', importance: 'essential' },
-                    ]
+                        content: 'EX-19 form &bull; Parent\'s passport &bull; Daughter\'s birth certificate (US CRBA, traductor jurado translation) &bull; Marriage certificate (apostilled + traductor jurado translation) &bull; EU sponsor\'s passport &bull; EU sponsor\'s CUE &bull; EU sponsor\'s Spanish job contract &bull; Non-notarized letter of support from EU sponsor &bull; Combined family padron &bull; Health insurance for parent &bull; Fee &bull; Photos<br><br><strong style="color:var(--orange)">What was MISSING/DEFICIENT:</strong> CRBA was &gt;6 months old and not apostilled (updated copy took &gt;6 months to process). No bank transfer records. No proof of parent\'s financial inability. No sworn/notarized declarations. No US lease proving cohabitation. No sponsor payslips. The letter of support was non-notarized &mdash; easily dismissed as a "mere commitment."'
+                    }
                 },
                 {
-                    section: 'E. Madrid Lease (Current)',
+                    section: 'Ground 1: Document Deficiency',
                     desc: null,
-                    checks: [
-                        { id: 's2e_lease', title: 'Copy of Madrid rental contract or property deed', detail: 'Shows the household parent lives in. Combine with empadronamiento.', importance: 'important' },
-                    ]
-                }
-            ]
-        },
-        {
-            id: 'step3',
-            title: 'STEP 3: Review Rejection Letter (April 21-23)',
-            items: [
-                {
-                    section: null,
-                    desc: null,
-                    checks: [
-                        { id: 's3_reasons', title: 'Identify the specific rejection reason(s)', detail: null, importance: 'essential' },
-                        { id: 's3_draft', title: 'Draft the recurso de reposicion tailored to those reasons', detail: null, importance: 'essential' },
-                        { id: 's3_adjust', title: 'Adjust evidence priority based on what they actually cited', detail: null, importance: 'important' },
-                    ]
-                }
-            ]
-        },
-        {
-            id: 'step4',
-            title: 'STEP 4: Prepare the Recurso de Reposicion (April 23-30)',
-            items: [
-                {
-                    section: 'Apostille Timing Decision',
-                    desc: 'US documents need apostille + sworn translation. Apostille takes 4-8 weeks. Deadline is ~1 month from notification.',
                     infoBlock: {
                         type: 'warn',
-                        content: '<strong>Options:</strong><br>1. File recurso with un-apostilled copies + note originals are forthcoming<br>2. Use an expediting service (1-2 weeks, costs more)<br>3. File brief recurso to stop the clock, then submit evidence as supplementary filing'
-                    },
+                        content: '<strong>What they said:</strong> Documents proving the family link are not properly translated and/or apostilled and/or expired (&gt;6 months).<br><strong>Legal basis:</strong> Art. 15.1 Ley 39/2015, LO 4/2000, Hague Convention 1954, Art. 2 RD 240/2007<br><br><strong>Actual issues:</strong> (1) The CRBA was &gt;6 months old at time of filing &mdash; we had requested an updated one but it took over half a year to process. (2) The original CRBA also lacked an apostille.<br><strong>Fix:</strong> New CRBA with apostille already in hand. Just needs traductor jurado translation. US date format note (MM/DD vs DD/MM) still worth including as general clarification for all US documents.'
+                    }
+                },
+                {
+                    section: 'Ground 2: Dependency Not Proven',
+                    desc: null,
+                    infoBlock: {
+                        type: 'warn',
+                        content: '<strong>What they said:</strong> Not proven that parent is a dependent ascendant. "A mere commitment to assume support is NOT sufficient to demonstrate a real situation of dependency."<br><strong>Legal basis:</strong> Arts. 2 &amp; 8.3 RD 240/2007, CJEU case law (SSTS 10/06/1987, 16/01/2014, 10 &amp; 13/06/2013)<br><br><strong>Why rejected:</strong> The only dependency evidence was a non-notarized letter &mdash; exactly the "mere commitment" they cite as insufficient. No bank transfers, no financial proof, no sworn declarations were submitted.<br><strong>Fix:</strong> Submit comprehensive evidence proving real, pre-existing dependency in country of origin.'
+                    }
+                }
+            ]
+        },
+        {
+            id: 'ground1',
+            title: 'GROUND 1: Fix Document Deficiency (Family Link)',
+            items: [
+                {
+                    section: 'Birth Certificate (CRBA)',
+                    desc: 'New CRBA with apostille already obtained. Just needs sworn translation.',
                     checks: [
-                        { id: 's4_apostille', title: 'Decide on apostille approach based on timing', detail: null, importance: 'important' },
-                        { id: 's4_traductor', title: 'Get sworn translations (traductor jurado) for US documents', detail: 'Madrid has many sworn translators for English > Spanish. Cost: ~30-50 EUR per page. Turnaround: 2-5 business days.', importance: 'important' },
+                        { id: 'g1_birth_translate', title: 'Get traductor jurado translation of the new apostilled CRBA', detail: 'Find a traductor jurado at MAEC official list. Cost: ~30-50 EUR/page. Turnaround: 2-5 business days.', importance: 'essential' },
                     ]
                 },
                 {
-                    section: 'The Recurso Document',
-                    desc: null,
+                    section: 'Marriage Certificate',
+                    desc: 'Original was apostilled + sworn-translated. Should be fine, but re-submit with the recurso for completeness.',
                     checks: [
-                        { id: 's4_write', title: 'Draft the recurso de reposicion', detail: null, importance: 'essential' },
-                        { id: 's4_review', title: 'Review and approve final version', detail: null, importance: 'essential' },
-                        { id: 's4_print', title: 'Print and sign', detail: null, importance: 'essential' },
+                        { id: 'g1_marriage_verify', title: 'Verify original marriage certificate apostille + translation are in order', detail: 'If already apostilled and translated by traductor jurado, just include a copy with the recurso. No new action needed unless there\'s a deficiency.', importance: 'important' },
                     ]
                 },
                 {
-                    section: 'Legal Basis (for the recurso)',
-                    desc: null,
-                    legalList: [
-                        'Core: The original application did not include the full scope of dependency evidence. New evidence submitted.',
-                        'RD 240/2007 Article 2.d -- "ascendientes que vivan a cargo"',
-                        'CJEU C-607/21 (April 2025) -- dependency assessed at both departure and application time',
-                        'CJEU Jia (C-1/05) -- dependency = EU citizen guarantees family member\'s subsistence',
-                        'CJEU Reyes (C-423/12) -- reasons for dependency are irrelevant, only existence matters',
+                    section: 'US Date Format Note',
+                    desc: 'The rejection\'s "exceeds 6 months" claim likely stems from misreading US date formats.',
+                    checks: [
+                        { id: 'g1_date_note', title: 'Include explanatory note about US date format (MM/DD/YYYY) in the recurso', detail: 'US documents use MM/DD/YYYY, not the European DD/MM/YYYY. A date like 01/10/2026 = January 10, not October 1. This may have caused the "expired" misreading. Include a brief clarification in the recurso text.', importance: 'essential' },
                     ]
                 }
             ]
         },
         {
-            id: 'step5',
-            title: 'STEP 5: File the Recurso (Before ~May 21)',
+            id: 'ground2',
+            title: 'GROUND 2: Prove Dependency ("a cargo")',
             items: [
                 {
-                    section: null,
+                    section: 'A. Financial Transfers & Sponsor Means',
+                    desc: 'The rejection says a "mere commitment" is not enough. Must show actual financial support. Lawyer flagged: daughter transfers (bank) + sponsor payslips.',
+                    checks: [
+                        { id: 's2c_transfers', title: 'Monthly transfer records from daughter to parent (12+ months)', detail: 'Bank statements, Venmo, Zelle, Wise &mdash; whatever method used. Shows regular, documented support. Lawyer specifically flagged this.', importance: 'essential' },
+                        { id: 'g2_payslips', title: 'EU sponsor\'s payslips (3 most recent nominas)', detail: 'Lawyer-recommended. Proves sponsor has stable income to sustain support. Not just a promise &mdash; backed by real earnings.', importance: 'essential' },
+                        { id: 's2c_rent', title: 'Rent/housing payments proving parent lives rent-free', detail: 'Bank statements or receipts showing sponsor pays all household expenses.', importance: 'important' },
+                        { id: 's2c_bills', title: 'Bills/expenses paid directly for parent', detail: 'Medical, phone, insurance &mdash; receipts showing sponsor/daughter as payer.', importance: 'helpful' },
+                        { id: 's2c_insurance', title: 'Health insurance details (already submitted originally)', detail: 'Re-include for completeness. Shows ongoing financial provision.', importance: 'helpful' },
+                        { id: 's2c_oldrent', title: 'Joint account records showing parent\'s US rent paid from shared funds', detail: 'If applicable &mdash; shows financial interdependence before cohabitation.', importance: 'helpful' },
+                    ]
+                },
+                {
+                    section: 'B. Parent\'s Inability to Self-Support',
+                    desc: 'The rejection requires proof that parent "cannot meet their own basic needs." Need objective US financial documents.',
+                    checks: [
+                        { id: 's2b_tax', title: 'Parent\'s US tax returns (last 2-3 years)', detail: 'IRS.gov > "Get Transcript Online" or call 1-800-908-9946. Shows poverty-level / no income. Strongest objective proof. Apostille takes 4-8 weeks &mdash; submit copies first if needed.', importance: 'essential' },
+                        { id: 's2b_bank', title: 'Parent\'s US bank statements (last 6-12 months)', detail: 'Download from bank portal. Should show minimal balance, no significant savings.', importance: 'essential' },
+                        { id: 's2b_retire', title: 'Proof of no retirement savings', detail: '401k/IRA statements showing zero/near-zero. If none exist, state in sworn declaration.', importance: 'important' },
+                        { id: 's2b_ssa', title: 'US Social Security statement', detail: 'Download from ssa.gov/myaccount. Shows no/minimal benefits.', importance: 'helpful' },
+                    ]
+                },
+                {
+                    section: 'C. Cohabitation Proof (Country of Origin)',
+                    desc: 'The rejection requires dependency "in the country of origin at time of application." Must prove parent lived with the family in the US BEFORE Spain.',
+                    checks: [
+                        { id: 's2a_lease', title: 'US lease(s) with parent\'s name (~2 year cohabitation)', detail: 'Named on the lease = strongest cohabitation proof. All versions/renewals. Proves dependency existed in the US before Spain.', importance: 'essential' },
+                        { id: 's2a_empad', title: 'Empadronamiento colectivo (updated)', detail: 'Lawyer flagged: "certificado empadronamiento actualizado." Oficina de Atencion al Ciudadano. Free, same day. Shows continued cohabitation in Spain.', importance: 'essential' },
+                        { id: 's2a_statement', title: 'Bilingual statement from EU sponsor\'s parents confirming cohabitation', detail: 'Confirming parent lived with the family during the transitional period. Already have this &mdash; make a clean copy.', importance: 'important' },
+                        { id: 's2a_flight', title: 'Flight records showing travel to Spain together', detail: 'Booking confirmations, boarding passes. Shows parent traveled as part of the family unit.', importance: 'helpful' },
+                    ]
+                },
+                {
+                    section: 'D. Sworn Declarations (Notary)',
+                    desc: 'CRITICAL: The original had only a non-notarized letter &mdash; exactly the "mere commitment" the rejection cites. Sworn notarized declarations carry far more legal weight.',
+                    infoBlock: {
+                        type: 'info',
+                        content: '<strong>Notary (notario):</strong> Search <a href="https://madrid.notariado.org" target="_blank">madrid.notariado.org</a> or <a href="https://buscanotario.com" target="_blank">buscanotario.com</a><br><strong>Ask for:</strong> "Actas de manifestaciones para recurso de extranjeria"<br><strong>Cost:</strong> ~50-80 EUR per acta<br><strong>Bring:</strong> Passports + NIE originals. Interpreter for parent if needed.'
+                    },
+                    checks: [
+                        { id: 's2d_parent', title: 'Sworn declaration from parent (declaracion jurada)', detail: 'MUST address the "country of origin" requirement: (1) only child is sponsor\'s spouse, (2) no family support in the US, (3) siblings abroad never provided support, (4) no savings/retirement/pension, (5) not worked in ~2+ years, (6) limited English, no Spanish, (7) was dependent on daughter\'s household in the US BEFORE Spain, (8) cannot return to self-sufficient living.', importance: 'essential' },
+                        { id: 's2d_sponsor', title: 'Sworn declaration from EU citizen sponsor', detail: 'MUST cover: (1) parent lived in household since ~Nov 2023 in US, (2) pays ALL expenses (rent, food, utilities, insurance), (3) provides monthly pocket money via documented transfers, (4) parent has zero independent means, (5) dependency existed in the US before moving to Spain.', importance: 'essential' },
+                        { id: 'g2_daughter_decl', title: 'Sworn declaration from daughter (direct family link)', detail: 'Strengthens case: daughter confirms mother has always depended on the household, has no other family support, lived together in US. Provides the direct child\'s perspective.', importance: 'important' },
+                    ]
+                },
+                {
+                    section: 'E. Madrid Housing',
                     desc: null,
                     checks: [
-                        { id: 's5_submit', title: 'Submit the recurso de reposicion with all evidence', detail: 'In person: Registro General, Delegacion del Gobierno en Madrid. Online: Sede electronica (with digital certificate / Cl@ve).', importance: 'essential' },
-                        { id: 's5_copy', title: 'Keep a copy of everything submitted + filing receipt (resguardo)', detail: 'The resguardo proves you met the deadline.', importance: 'essential' },
+                        { id: 's2e_lease', title: 'Copy of Madrid rental contract', detail: 'Shows the household parent lives in. Combine with updated empadronamiento.', importance: 'important' },
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'recurso',
+            title: 'Prepare the Recurso de Reposicion',
+            items: [
+                {
+                    section: 'Legal Arguments',
+                    desc: 'The recurso must address BOTH grounds, citing evidence for each.',
+                    legalList: [
+                        'GROUND 1: Document deficiency fully cured. New apostilled CRBA with traductor jurado translation submitted. Marriage certificate re-submitted. US date format (MM/DD/YYYY) clarification included.',
+                        'GROUND 2: Comprehensive dependency evidence now submitted. The original non-notarized letter was insufficient, but the following proves real, pre-existing dependency.',
+                        'RD 240/2007 Art. 2.d &mdash; "ascendientes que vivan a cargo" &mdash; parent qualifies as dependent ascendant of EU citizen\'s spouse.',
+                        'CJEU Jia (C-1/05) &mdash; dependency = EU citizen guarantees family member\'s subsistence. Bank transfers + full household provision prove this.',
+                        'CJEU Reyes (C-423/12) &mdash; the REASONS for dependency are irrelevant; only the EXISTENCE of dependency matters.',
+                        'CJEU C-607/21 &mdash; dependency assessed at both departure from country of origin AND application time. US + Spain evidence covers both.',
+                        'Art. 8 ECHR &mdash; right to family life. Proportionality principle.',
+                    ]
+                },
+                {
+                    section: 'Preparation Tasks',
+                    desc: null,
+                    checks: [
+                        { id: 's4_write', title: 'Draft the recurso de reposicion', detail: 'Address both grounds. For each rejection reason, cite counter-evidence + legal argument. Structure: HECHOS > FUNDAMENTOS DE DERECHO > SOLICITO.', importance: 'essential' },
+                        { id: 's4_traductor', title: 'Get sworn translations for any new US documents', detail: 'Priority: new CRBA. Then any supporting US docs (tax returns, bank statements if submitting originals). Traductor jurado in Madrid, ~30-50 EUR/page, 2-5 days.', importance: 'essential' },
+                        { id: 's4_review', title: 'Review and approve final recurso', detail: 'Verify all evidence is referenced, legal arguments are sound, annexes are numbered.', importance: 'essential' },
+                        { id: 's4_print', title: 'Print, sign, and prepare complete submission package', detail: 'Cover page + recurso text + numbered annexes (all evidence). Make 2 copies: one to submit, one to keep.', importance: 'essential' },
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'file',
+            title: 'File the Recurso (DEADLINE: 22 May 2026)',
+            items: [
+                {
+                    section: 'Submission',
+                    desc: null,
+                    checks: [
+                        { id: 's5_submit', title: 'Submit the recurso with all evidence', detail: 'In person: Registro General, Delegacion del Gobierno en Madrid. Online: Sede electronica (with Cl@ve digital certificate).', importance: 'essential' },
+                        { id: 's5_copy', title: 'Keep complete copies + filing receipt (resguardo)', detail: 'The resguardo proves you met the deadline. Photograph everything before submission.', importance: 'essential' },
                     ]
                 },
                 {
@@ -350,21 +361,20 @@
                     desc: null,
                     infoBlock: {
                         type: 'info',
-                        content: 'The office has <strong>1 month</strong> to respond. No response = rejected (silencio negativo).<br>If rejected again: <strong>2 months</strong> to file recurso contencioso-administrativo (judicial, requires lawyer).'
+                        content: 'The office has <strong>1 month</strong> to respond.<br>No response = rejected (silencio negativo).<br>If rejected again: <strong>2 months</strong> to file recurso contencioso-administrativo (judicial, requires lawyer + procurador).'
                     }
                 },
                 {
-                    section: 'Key Dates',
+                    section: 'Timeline',
                     desc: null,
                     table: [
-                        ['April 21 (Mon)', 'Pick up rejection letter at Oficina de Extranjeria'],
-                        ['April 21-23', 'Analyze rejection reasons, draft recurso'],
-                        ['April 21-27', 'Gather all evidence, book notary, get empadronamiento'],
-                        ['April 21', 'Start IRS tax transcript request + apostille process'],
-                        ['April 23-30', 'Get sworn translations, finalize recurso'],
-                        ['Before ~May 21', 'FILE the recurso de reposicion'],
-                        ['~June 21', 'Office should respond (silence = rejection)'],
-                        ['If rejected again', '2 months for contencioso-administrativo'],
+                        ['21/04/2026', 'Notification received (appeal clock started)'],
+                        ['25/04 &ndash; 05/05', 'Gather evidence, book notary, get empadronamiento, CRBA translation'],
+                        ['05/05 &ndash; 12/05', 'Sworn translations complete, notary declarations done'],
+                        ['12/05 &ndash; 19/05', 'Draft recurso, review, assemble final package'],
+                        ['<strong>22/05/2026</strong>', '<strong style="color:var(--red)">DEADLINE &mdash; File recurso de reposicion</strong>'],
+                        ['~22/06/2026', 'Office should respond (silence = rejection)'],
+                        ['If rejected', '2 months for recurso contencioso-administrativo (judicial)'],
                     ]
                 }
             ]

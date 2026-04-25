@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <title>Recurso Submission Documents</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #f0f2f5; --bg-card: white; --bg-hover: #f9fafb; --text: #1a1a1a;
+            --text-muted: #6b7280; --border: #e5e7eb; --border-light: #f3f4f6;
+            --accent: #2563eb; --accent-hover: #1d4ed8; --accent-light: #dbeafe;
+            --green: #16a34a; --green-light: #dcfce7; --red: #dc2626; --red-light: #fee2e2;
+            --yellow: #f59e0b; --yellow-light: #fef3c7; --orange: #f97316; --orange-light: #ffedd5;
+        }
+        [data-theme="dark"] {
+            --bg: #111827; --bg-card: #1f2937; --bg-hover: #374151; --text: #f3f4f6;
+            --text-muted: #9ca3af; --border: #374151; --border-light: #374151;
+            --accent: #3b82f6; --accent-hover: #2563eb; --accent-light: #1e3a5f;
+            --green: #22c55e; --green-light: #14532d; --red: #ef4444; --red-light: #7f1d1d;
+            --yellow: #fbbf24; --yellow-light: #713f12; --orange: #fb923c; --orange-light: #7c2d12;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 860px; margin: 0 auto; padding: 16px;
+            background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5;
+        }
+        .app-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; margin-bottom: 16px; border-bottom: 3px solid var(--red);
+            flex-wrap: wrap; gap: 8px;
+        }
+        .app-header h1 { font-size: 1.3rem; }
+        .header-right { display: flex; align-items: center; gap: 8px; }
+        .header-meta { font-size: 12px; color: var(--text-muted); }
+        button { cursor: pointer; font-family: inherit; }
+        .btn-icon { background: none; border: none; font-size: 18px; padding: 4px; color: var(--text-muted); }
+        .btn-icon:hover { color: var(--text); }
+        .progress-bar-container {
+            background: var(--border-light); border-radius: 8px; height: 8px;
+            margin-bottom: 20px; overflow: hidden; border: 1px solid var(--border);
+        }
+        .progress-bar {
+            height: 100%; background: var(--green); border-radius: 8px;
+            transition: width 0.3s ease;
+        }
+        .progress-label {
+            font-size: 12px; color: var(--text-muted); margin-bottom: 6px;
+            display: flex; justify-content: space-between;
+        }
+        .step {
+            background: var(--bg-card); border-radius: 8px; margin-bottom: 12px;
+            border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            overflow: hidden;
+        }
+        .step-header {
+            display: flex; align-items: center; gap: 10px; padding: 14px 16px;
+            cursor: pointer; user-select: none; font-weight: 600; font-size: 15px;
+        }
+        .step-header:hover { background: var(--bg-hover); }
+        .step-chevron {
+            font-size: 12px; color: var(--text-muted); transition: transform 0.2s;
+            flex-shrink: 0; width: 16px; text-align: center;
+        }
+        .step.collapsed .step-chevron { transform: rotate(-90deg); }
+        .step-badge {
+            font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px;
+            margin-left: auto; flex-shrink: 0;
+        }
+        .step-badge.pending { background: var(--yellow-light); color: var(--yellow); }
+        .step-badge.done { background: var(--green-light); color: var(--green); }
+        .step-badge.partial { background: var(--orange-light); color: var(--orange); }
+        .step-body { padding: 0 16px 16px 16px; }
+        .step.collapsed .step-body { display: none; }
+        .subsection { margin-top: 14px; }
+        .subsection:first-child { margin-top: 0; }
+        .subsection-title {
+            font-size: 13px; font-weight: 600; color: var(--accent);
+            margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border-light);
+        }
+        .subsection-desc {
+            font-size: 12px; color: var(--text-muted); margin-bottom: 8px; font-style: italic;
+        }
+        .check-item {
+            display: flex; gap: 8px; padding: 6px 0; align-items: flex-start;
+        }
+        .check-item input[type="checkbox"] {
+            margin-top: 3px; flex-shrink: 0; width: 16px; height: 16px;
+            accent-color: var(--green); cursor: pointer;
+        }
+        .check-item label { cursor: pointer; flex: 1; }
+        .check-item.checked label { color: var(--text-muted); text-decoration: line-through; }
+        .check-item .item-title { font-weight: 500; }
+        .check-item .item-detail {
+            font-size: 12px; color: var(--text-muted); margin-top: 2px; line-height: 1.4;
+        }
+        .check-item.checked .item-detail { text-decoration: none; }
+        .info-block {
+            background: var(--accent-light); border-left: 3px solid var(--accent);
+            padding: 10px 12px; border-radius: 0 6px 6px 0; margin: 10px 0;
+            font-size: 13px;
+        }
+        .info-block strong { display: block; margin-bottom: 2px; }
+        .warn-block {
+            background: var(--red-light); border-left: 3px solid var(--red);
+            padding: 10px 12px; border-radius: 0 6px 6px 0; margin: 10px 0;
+            font-size: 13px;
+        }
+        .warn-block strong { display: block; margin-bottom: 2px; }
+        .importance {
+            display: inline-block; font-size: 10px; font-weight: 600; padding: 1px 6px;
+            border-radius: 4px; margin-left: 6px; vertical-align: middle; letter-spacing: 0.3px;
+        }
+        .importance.essential { background: var(--red-light); color: var(--red); }
+        .importance.important { background: var(--orange-light); color: var(--orange); }
+        .importance.helpful { background: var(--accent-light); color: var(--accent); }
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .step-header { padding: 12px; font-size: 14px; }
+            .step-body { padding: 0 12px 12px 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-header">
+        <h1>Recurso Submission Package</h1>
+        <div class="header-right">
+            <span class="header-meta">Documents to include when filing</span>
+            <button class="btn-icon" id="themeToggle" title="Toggle dark mode">&#9789;</button>
+        </div>
+    </div>
+
+    <div class="progress-label">
+        <span id="progressText">0 / 0 docs</span>
+        <span id="progressPercent">0%</span>
+    </div>
+    <div class="progress-bar-container">
+        <div class="progress-bar" id="progressBar" style="width:0%"></div>
+    </div>
+
+    <div id="steps"></div>
+
+    <script>
+    const STORAGE_KEY = 'submissionChecklist';
+    const COLLAPSE_KEY = 'submissionCollapsed';
+
+    const DATA = [
+        {
+            id: 'cover',
+            title: 'Cover Documents',
+            items: [
+                {
+                    section: null,
+                    desc: 'The recurso itself and the formal cover page.',
+                    checks: [
+                        { id: 'doc_recurso', title: 'Recurso de reposicion (signed original)', detail: 'The formal appeal document addressing both rejection grounds. Signed by sponsor.', importance: 'essential' },
+                        { id: 'doc_rejection', title: 'Copy of the rejection letter (resolucion de denegacion)', detail: 'Include the full rejection letter for reference.', importance: 'essential' },
+                        { id: 'doc_date_note', title: 'Nota aclaratoria sobre formato de fechas de EEUU', detail: 'Explains US date format (MM/DD/YYYY) vs European (DD/MM/YYYY).', importance: 'important' },
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'ground1',
+            title: 'Ground 1: Family Link Documents',
+            items: [
+                {
+                    section: null,
+                    desc: 'Fixes the document deficiency -- apostilled + traductor jurado translated.',
+                    checks: [
+                        { id: 'doc_crba', title: 'Daughter\'s birth certificate (new CRBA with apostille + traductor jurado translation)', detail: 'New copy, properly apostilled by US State Dept, with sworn translation. Proves parent > daughter link.', importance: 'essential' },
+                        { id: 'doc_marriage', title: 'Marriage certificate (apostilled + traductor jurado translation)', detail: 'Re-include the original or fresh copy. Proves daughter > EU sponsor link.', importance: 'essential' },
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'ground2_financial',
+            title: 'Ground 2: Financial Evidence',
+            items: [
+                {
+                    section: 'Transfers & Sponsor Income',
+                    desc: 'Proves actual financial support flow (not just a promise).',
+                    checks: [
+                        { id: 'doc_transfers', title: 'Monthly transfer records from daughter to parent (12+ months)', detail: 'Bank statements, Venmo, Zelle, Wise records showing regular transfers.', importance: 'essential' },
+                        { id: 'doc_payslips', title: 'EU sponsor\'s payslips (3 most recent nominas)', detail: 'Proves stable income and ability to sustain support.', importance: 'essential' },
+                        { id: 'doc_rent_proof', title: 'Rent/housing payment records', detail: 'Bank statements showing sponsor pays household expenses. Parent lives rent-free.', importance: 'important' },
+                        { id: 'doc_bills', title: 'Bills paid for parent (medical, phone, insurance)', detail: 'Any receipts showing sponsor/daughter paid for parent\'s benefit.', importance: 'helpful' },
+                    ]
+                },
+                {
+                    section: 'Parent\'s Inability to Self-Support',
+                    desc: 'Proves parent cannot meet her own basic needs.',
+                    checks: [
+                        { id: 'doc_parent_bank', title: 'Parent\'s US bank statements -- 2 checking accounts', detail: 'Account 1: ~$3,905. Account 2 (BofA): ~$3,218. Total liquid: ~$7,123 (~4 months US living expenses). No income since 2021.', importance: 'essential' },
+                        { id: 'doc_parent_retirement', title: 'Parent\'s retirement account statement', detail: 'Balance: ~$12,990 (~\u20AC11,083). Subject to significant early withdrawal penalties until age 59.5 (~2029). Not a currently available resource.', importance: 'essential' },
+                        { id: 'doc_parent_ssa', title: 'US Social Security statement (if available)', detail: 'Shows no/minimal benefits. Download from ssa.gov/myaccount.', importance: 'helpful' },
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'ground2_cohab',
+            title: 'Ground 2: Cohabitation & Housing',
+            items: [
+                {
+                    section: 'US Cohabitation (Country of Origin)',
+                    desc: 'Proves dependency existed in the US before the application.',
+                    checks: [
+                        { id: 'doc_us_lease', title: 'US lease(s) with parent\'s name (~2 year cohabitation)', detail: 'All versions/renewals. Named on lease = strongest cohabitation proof.', importance: 'essential' },
+                        { id: 'doc_parent_statement', title: 'Bilingual statement from EU sponsor\'s parents', detail: 'Confirming cohabitation during transitional period. Already have this.', importance: 'important' },
+                        { id: 'doc_flights', title: 'Flight records showing family traveled to Spain together', detail: 'Booking confirmations, boarding passes.', importance: 'helpful' },
+                    ]
+                },
+                {
+                    section: 'Current Spain Housing',
+                    desc: null,
+                    checks: [
+                        { id: 'doc_empad', title: 'Empadronamiento colectivo (updated/current)', detail: 'From Oficina de Atencion al Ciudadano. Free, same day. Shows all residents.', importance: 'essential' },
+                        { id: 'doc_madrid_lease', title: 'Madrid rental contract', detail: 'Shows the current household.', importance: 'important' },
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'ground2_decl',
+            title: 'Ground 2: Sworn Declarations',
+            items: [
+                {
+                    section: null,
+                    desc: 'Notarized declarations replacing the original non-notarized letter.',
+                    checks: [
+                        { id: 'doc_decl_parent', title: 'Sworn declaration from parent (notarized acta de manifestaciones)', detail: 'Covers: only child, no family support, COVID unemployment, no savings/income, language barrier, full dependency since Nov 2023 in US.', importance: 'essential' },
+                        { id: 'doc_decl_sponsor', title: 'Sworn declaration from EU sponsor (notarized acta de manifestaciones)', detail: 'Covers: family chain, cohabitation since Nov 2023, all expenses paid, real dependency in country of origin, what happens without support.', importance: 'essential' },
+                        { id: 'doc_decl_daughter', title: 'Sworn declaration from daughter (if doing)', detail: 'Optional but strengthens: daughter\'s perspective on mother\'s dependency.', importance: 'important' },
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'identity',
+            title: 'Identity Documents (Copies)',
+            items: [
+                {
+                    section: null,
+                    desc: 'Copies of ID documents to include for completeness.',
+                    checks: [
+                        { id: 'doc_parent_passport', title: 'Parent\'s passport (copy)', detail: null, importance: 'essential' },
+                        { id: 'doc_parent_nie', title: 'Parent\'s NIE card (copy)', detail: null, importance: 'essential' },
+                        { id: 'doc_sponsor_passport', title: 'EU sponsor\'s passport (copy)', detail: null, importance: 'important' },
+                        { id: 'doc_sponsor_nie', title: 'EU sponsor\'s NIE/CUE (copy)', detail: null, importance: 'important' },
+                        { id: 'doc_daughter_passport', title: 'Daughter\'s passport (copy)', detail: null, importance: 'important' },
+                        { id: 'doc_daughter_nie', title: 'Daughter\'s NIE (copy)', detail: null, importance: 'important' },
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'filing',
+            title: 'Filing Checklist',
+            items: [
+                {
+                    section: null,
+                    desc: null,
+                    infoBlock: {
+                        type: 'warn',
+                        content: '<strong>Before you go:</strong><br>&bull; Make 2 complete copies of everything (one to submit, one to keep)<br>&bull; Number all annexes and reference them in the recurso text<br>&bull; Bring the originals of all documents in case they ask to verify<br>&bull; Ensure the recurso is signed<br>&bull; Bring your NIE/passport for identification'
+                    },
+                    checks: [
+                        { id: 'doc_2copies', title: 'Made 2 complete copies of full package', detail: 'One to submit, one to keep. The kept copy is your proof of what was filed.', importance: 'essential' },
+                        { id: 'doc_numbered', title: 'All annexes numbered and referenced in recurso', detail: 'e.g., "Documento 1: Certificado de nacimiento...", referenced in the recurso text.', importance: 'essential' },
+                        { id: 'doc_signed', title: 'Recurso signed by sponsor', detail: null, importance: 'essential' },
+                        { id: 'doc_originals', title: 'Originals packed to bring (for verification)', detail: 'They may ask to see originals of apostilled documents, passports, etc.', importance: 'important' },
+                    ]
+                }
+            ]
+        }
+    ];
+
+    // --- State ---
+    function loadChecked() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
+    }
+    function saveChecked(state) { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    function loadCollapsed() {
+        try { return JSON.parse(localStorage.getItem(COLLAPSE_KEY)) || {}; } catch { return {}; }
+    }
+    function saveCollapsed(state) { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(state)); }
+
+    let checked = loadChecked();
+    let collapsed = loadCollapsed();
+
+    function getAllCheckIds() {
+        const ids = [];
+        DATA.forEach(step => step.items.forEach(item => {
+            if (item.checks) item.checks.forEach(c => ids.push(c.id));
+        }));
+        return ids;
+    }
+
+    function getStepCheckIds(step) {
+        const ids = [];
+        step.items.forEach(item => {
+            if (item.checks) item.checks.forEach(c => ids.push(c.id));
+        });
+        return ids;
+    }
+
+    function stepStatus(step) {
+        const ids = getStepCheckIds(step);
+        if (ids.length === 0) return 'none';
+        const done = ids.filter(id => checked[id]).length;
+        if (done === ids.length) return 'done';
+        if (done > 0) return 'partial';
+        return 'pending';
+    }
+
+    function render() {
+        const container = document.getElementById('steps');
+        container.innerHTML = '';
+
+        DATA.forEach(step => {
+            const el = document.createElement('div');
+            el.className = 'step' + (collapsed[step.id] ? ' collapsed' : '');
+
+            const status = stepStatus(step);
+            const ids = getStepCheckIds(step);
+            const doneCount = ids.filter(id => checked[id]).length;
+            let badgeHtml = '';
+            if (ids.length > 0) {
+                const cls = status === 'done' ? 'done' : status === 'partial' ? 'partial' : 'pending';
+                const label = status === 'done' ? 'Done' : `${doneCount}/${ids.length}`;
+                badgeHtml = `<span class="step-badge ${cls}">${label}</span>`;
+            }
+
+            el.innerHTML = `
+                <div class="step-header">
+                    <span class="step-chevron">&#9660;</span>
+                    <span>${step.title}</span>
+                    ${badgeHtml}
+                </div>
+                <div class="step-body"></div>
+            `;
+
+            el.querySelector('.step-header').addEventListener('click', () => {
+                collapsed[step.id] = !collapsed[step.id];
+                saveCollapsed(collapsed);
+                render();
+            });
+
+            const body = el.querySelector('.step-body');
+
+            step.items.forEach(item => {
+                const sub = document.createElement('div');
+                sub.className = 'subsection';
+
+                if (item.section) {
+                    sub.innerHTML += `<div class="subsection-title">${item.section}</div>`;
+                }
+                if (item.desc) {
+                    sub.innerHTML += `<div class="subsection-desc">${item.desc}</div>`;
+                }
+                if (item.infoBlock) {
+                    const cls = item.infoBlock.type === 'warn' ? 'warn-block' : 'info-block';
+                    sub.innerHTML += `<div class="${cls}">${item.infoBlock.content}</div>`;
+                }
+                if (item.checks) {
+                    item.checks.forEach(c => {
+                        const isChecked = !!checked[c.id];
+                        const div = document.createElement('div');
+                        div.className = 'check-item' + (isChecked ? ' checked' : '');
+                        const impBadge = c.importance ? `<span class="importance ${c.importance}">${c.importance}</span>` : '';
+                        div.innerHTML = `
+                            <input type="checkbox" id="cb_${c.id}" ${isChecked ? 'checked' : ''}>
+                            <label for="cb_${c.id}">
+                                <div class="item-title">${c.title}${impBadge}</div>
+                                ${c.detail ? `<div class="item-detail">${c.detail}</div>` : ''}
+                            </label>
+                        `;
+                        div.querySelector('input').addEventListener('change', (e) => {
+                            checked[c.id] = e.target.checked;
+                            saveChecked(checked);
+                            render();
+                        });
+                        sub.appendChild(div);
+                    });
+                }
+                body.appendChild(sub);
+            });
+
+            container.appendChild(el);
+        });
+
+        updateProgress();
+    }
+
+    function updateProgress() {
+        const all = getAllCheckIds();
+        const done = all.filter(id => checked[id]).length;
+        const pct = all.length ? Math.round((done / all.length) * 100) : 0;
+        document.getElementById('progressText').textContent = `${done} / ${all.length} docs`;
+        document.getElementById('progressPercent').textContent = `${pct}%`;
+        document.getElementById('progressBar').style.width = `${pct}%`;
+    }
+
+    function loadTheme() {
+        const t = localStorage.getItem('submissionTheme');
+        if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    }
+    document.getElementById('themeToggle').addEventListener('click', () => {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+        localStorage.setItem('submissionTheme', isDark ? 'light' : 'dark');
+    });
+
+    loadTheme();
+    render();
+    </script>
+</body>
+</html>
