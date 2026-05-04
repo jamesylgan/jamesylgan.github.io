@@ -2918,14 +2918,14 @@
             const u = unit || 'booked';
             return `<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>${label}</span><span style="color:var(--text-muted)">${booked}/${total} ${u}</span></div><div class="progress-bar"><div class="progress-fill ${cls}" style="width:${pct}%"></div></div></div>`;
         }
-        const _progressBody = progressBarHTML('Lodging', progress.bookedNights, progress.totalNights, 'nights booked') + progressBarHTML('Transport', progress.bookedTransport, progress.totalTransport) + progressBarHTML('Activities', progress.bookedActivities, progress.totalReservations) + progressBarHTML('Choose Lodging', progress.legsWithHotelOptions, progress.legsNeedingLodging, 'cities researched');
-        const progressHTML = _progressBody ? `<div class="card" style="margin-bottom:12px"><div class="card-header"><strong>Booking Progress</strong></div><div class="card-body">${_progressBody}</div></div>` : '';
-        let actionsHTML = '';
-        if (topActions.length > 0) {
-            actionsHTML = `<div class="card" style="margin-bottom:12px"><div class="card-header"><strong>Action Items</strong><button class="btn btn-ghost btn-sm" onclick="switchTripTab('actions')">View All</button></div><div class="card-body" style="padding:8px 0">${topActions.map(a => `<div class="item-row" style="cursor:pointer;margin:0 8px 4px" onclick="${esc(a.action)}"><div class="item-body"><div class="item-title" style="font-size:13px">${esc(a.text)}</div></div><span style="color:var(--text-light);font-size:14px">\u203A</span></div>`).join('')}</div></div>`;
-        }
         const _travelActive = isTravelMode();
         const _tripStatus = getTripTravelStatus(trip);
+        const _progressBody = progressBarHTML('Lodging', progress.bookedNights, progress.totalNights, 'nights booked') + progressBarHTML('Transport', progress.bookedTransport, progress.totalTransport) + progressBarHTML('Activities', progress.bookedActivities, progress.totalReservations) + progressBarHTML('Choose Lodging', progress.legsWithHotelOptions, progress.legsNeedingLodging, 'cities researched');
+        const progressHTML = _progressBody && !_travelActive ? `<div class="card" style="margin-bottom:12px"><div class="card-header"><strong>Booking Progress</strong></div><div class="card-body">${_progressBody}</div></div>` : '';
+        let actionsHTML = '';
+        if (topActions.length > 0 && !_travelActive) {
+            actionsHTML = `<div class="card" style="margin-bottom:12px"><div class="card-header"><strong>Action Items</strong><button class="btn btn-ghost btn-sm" onclick="switchTripTab('actions')">View All</button></div><div class="card-body" style="padding:8px 0">${topActions.map(a => `<div class="item-row" style="cursor:pointer;margin:0 8px 4px" onclick="${esc(a.action)}"><div class="item-body"><div class="item-title" style="font-size:13px">${esc(a.text)}</div></div><span style="color:var(--text-light);font-size:14px">\u203A</span></div>`).join('')}</div></div>`;
+        }
         const quickActionsHTML = _travelActive ? '' : `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px"><button class="btn btn-sm" onclick="openLegModal()">+ City</button><button class="btn btn-sm" onclick="openLodgingModal()">+ Lodging</button><button class="btn btn-sm" onclick="openTransportModal()">+ Transport</button><button class="btn btn-sm" onclick="openActivityModal()">+ Activity</button></div>`;
         let countdownHTML = '';
         if (trip.startDate && _tripStatus === 'pre') {
@@ -2937,11 +2937,48 @@
         }
         const dateRange = trip.startDate ? formatDateRange(trip.startDate, trip.endDate) : 'No dates set';
         const durationText = totalDays > 0 ? `${totalDays} day${totalDays !== 1 ? 's' : ''}` : '';
+        let travelDayHTML = '';
+        if (_travelActive && _tripStatus === 'during') {
+            const _today = localDateStr(new Date());
+            const curLeg = getCurrentTravelLeg(trip);
+            const _legs = (trip.legs || []).slice().sort((a,b) => (a.order||0) - (b.order||0));
+            const curIdx = curLeg ? _legs.findIndex(l => l.id === curLeg.id) : -1;
+            const nextLeg = curIdx >= 0 && curIdx < _legs.length - 1 ? _legs[curIdx + 1] : null;
+            const todayActivities = (trip.activities || []).filter(a => a.date === _today);
+            const todayTransport = (trip.transport || []).filter(t => t.departure && t.departure.split('T')[0] === _today);
+            const todayLodging = (trip.lodging || []).filter(l => l.checkIn === _today || l.checkOut === _today);
+            let dayItems = '';
+            todayTransport.forEach(t => {
+                const time = t.departure ? t.departure.split('T')[1] || '' : '';
+                dayItems += `<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-light)">
+                    <span style="font-size:16px">\u{1F680}</span>
+                    <div style="flex:1"><strong>${esc(t.carrier||'Transport')}</strong> ${esc(t.from||t.fromCity||'')} \u2192 ${esc(t.to||t.toCity||'')}<br><span style="font-size:12px;color:var(--text-muted)">${esc(time)}</span></div></div>`;
+            });
+            todayActivities.forEach(a => {
+                const time = a.time || '';
+                dayItems += `<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-light)">
+                    <span style="font-size:16px">\u{1F4CD}</span>
+                    <div style="flex:1"><strong>${esc(a.name||'Activity')}</strong><br><span style="font-size:12px;color:var(--text-muted)">${esc(time)} ${esc(a.category||'')}</span></div></div>`;
+            });
+            todayLodging.forEach(l => {
+                const isCheckIn = l.checkIn === _today;
+                dayItems += `<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-light)">
+                    <span style="font-size:16px">${isCheckIn ? '\u{1F3E8}' : '\u{1F9F3}'}</span>
+                    <div style="flex:1"><strong>${esc(l.name||'Hotel')}</strong> \u2014 ${isCheckIn ? 'Check-in' : 'Check-out'}</div></div>`;
+            });
+            if (!dayItems) dayItems = '<div style="padding:8px 0;color:var(--text-muted)">No scheduled items today \u2014 free day!</div>';
+            const nextInfo = nextLeg ? `<div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:8px;font-size:13px">
+                <strong>Next:</strong> ${esc(nextLeg.city || 'Next city')} ${nextLeg.startDate ? '\u2014 ' + nextLeg.startDate : ''}</div>` : '';
+            travelDayHTML = `<div class="card" style="margin-bottom:12px">
+                <div class="card-header"><strong>\u{1F4C5} Today${curLeg ? ' in ' + esc(curLeg.city||'') : ''}</strong>
+                <span style="font-size:12px;color:var(--text-muted)">${_today}</span></div>
+                <div style="padding:12px">${dayItems}${nextInfo}</div></div>`;
+        }
         const _fabHTML = _travelActive ? '' : `<button class="fab" onclick="openDashboardFAB()" title="Quick Add">+</button>`;
         mc.innerHTML = `<div class="view-content">
             ${renderLegTimeline(trip)}
             <div style="text-align:center;margin:8px 0 16px;font-size:13px;color:var(--text-muted)">${dateRange}${durationText ? ' &middot; ' + durationText : ''}</div>
-            ${countdownHTML}${statsHTML}${budgetHTML}${progressHTML}${actionsHTML}${quickActionsHTML}
+            ${countdownHTML}${travelDayHTML}${statsHTML}${budgetHTML}${progressHTML}${actionsHTML}${quickActionsHTML}
         </div>${_fabHTML}`;
     }
 
@@ -3426,9 +3463,22 @@
         const _today = localDateStr(new Date());
         let transport = trip.transport || []; let lodging = trip.lodging || []; let activities = trip.activities || [];
         if (_travelActive) {
-            transport = transport.filter(t => !t.departure || t.departure.split('T')[0] >= _today);
-            lodging = lodging.filter(l => !l.checkOut || l.checkOut >= _today);
-            activities = activities.filter(a => !a.date || a.date >= _today);
+            const _curLeg = getCurrentTravelLeg(trip);
+            const _allLegs = (trip.legs || []).slice().sort((a,b) => (a.order||0) - (b.order||0));
+            const _curIdx = _curLeg ? _allLegs.findIndex(l => l.id === _curLeg.id) : -1;
+            const _nextLeg = _curIdx >= 0 && _curIdx < _allLegs.length - 1 ? _allLegs[_curIdx + 1] : null;
+            const _relevantLegIds = new Set();
+            if (_curLeg) _relevantLegIds.add(_curLeg.id);
+            if (_nextLeg) _relevantLegIds.add(_nextLeg.id);
+            if (_relevantLegIds.size > 0) {
+                transport = transport.filter(t => !t.fromLegId && !t.toLegId ? (!t.departure || t.departure.split('T')[0] >= _today) : _relevantLegIds.has(t.fromLegId) || _relevantLegIds.has(t.toLegId));
+                lodging = lodging.filter(l => !l.legId ? (!l.checkOut || l.checkOut >= _today) : _relevantLegIds.has(l.legId));
+                activities = activities.filter(a => !a.legId ? (!a.date || a.date >= _today) : _relevantLegIds.has(a.legId));
+            } else {
+                transport = transport.filter(t => !t.departure || t.departure.split('T')[0] >= _today);
+                lodging = lodging.filter(l => !l.checkOut || l.checkOut >= _today);
+                activities = activities.filter(a => !a.date || a.date >= _today);
+            }
         }
         const flights = transport.filter(t => t.type === 'flight').sort((a, b) => (a.departure || '').localeCompare(b.departure || ''));
         const trains = transport.filter(t => t.type === 'train').sort((a, b) => (a.departure || '').localeCompare(b.departure || ''));
@@ -4155,6 +4205,10 @@
         const days = getDayRange(trip); const today = localDateStr(new Date());
         const _travelActive = isTravelMode();
         const filter = state.itineraryFilter; const mode = state.itineraryMode;
+        if (_travelActive && getTripTravelStatus(trip) === 'during' && !filter.legId) {
+            const _curLeg = getCurrentTravelLeg(trip);
+            if (_curLeg) filter.legId = _curLeg.id;
+        }
         const statusOpts = [{value:'',label:'All status'},{value:'booked',label:'Booked'},{value:'unbooked',label:'Unbooked'},{value:'visited',label:'Visited'}];
         const catOpts = [{value:'',label:'All categories'}].concat(Object.entries(CATEGORIES).map(([k,v]) => ({value:k,label:v+' '+k.charAt(0).toUpperCase()+k.slice(1)})));
         const _modeSegmented = `<div class="segmented" style="flex-shrink:0">
@@ -4162,7 +4216,21 @@
                 <button class="segmented-btn${mode === 'unordered' ? ' active' : ''}" onclick="state.itineraryMode='unordered';render()">Unordered</button>
                 <button class="segmented-btn${mode === 'dayplans' ? ' active' : ''}" onclick="state.itineraryMode='dayplans';render()">Day Plans</button>
             </div>`;
+        function travelLegOptions(trip, selected) {
+            if (!trip) return '';
+            const _legs = (trip.legs || []).slice().sort((a,b) => (a.order||0)-(b.order||0));
+            const _curLeg = getCurrentTravelLeg(trip);
+            const _curIdx = _curLeg ? _legs.findIndex(l => l.id === _curLeg.id) : -1;
+            const _nextLeg = _curIdx >= 0 && _curIdx < _legs.length - 1 ? _legs[_curIdx + 1] : null;
+            return `<option value="">All legs</option>` + _legs.map(l => {
+                let label = esc(l.city);
+                if (_curLeg && l.id === _curLeg.id) label += ' (Now)';
+                else if (_nextLeg && l.id === _nextLeg.id) label += ' (Next)';
+                return `<option value="${l.id}"${l.id === selected ? ' selected' : ''}>${label}</option>`;
+            }).join('');
+        }
         let filterBarHTML = _travelActive ? `<div class="filter-bar">
+            <select class="select" onchange="state.itineraryFilter.legId=this.value||null;render()">${travelLegOptions(trip, filter.legId)}</select>
             <select class="select" onchange="state.itineraryFilter.category=this.value||null;render()">${catOpts.map(o => `<option value="${o.value}"${o.value === (filter.category || '') ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select>
             ${_modeSegmented}</div>` : `<div class="filter-bar">
             <select class="select" onchange="state.itineraryFilter.legId=this.value||null;render()">${legOptions(trip, filter.legId)}</select>
@@ -4346,7 +4414,7 @@
                 const todayBadge = isToday ? ' <span class="badge badge-in-progress" style="font-size:10px;margin-left:6px">Today</span>' : '';
                 const usedPlan = (trip.dayPlans || []).find(dp => dp.usedDate === dateStr);
                 const planBadge = usedPlan ? ` <span style="font-size:11px;color:var(--purple)">&middot; ${esc(usedPlan.name)}</span>` : '';
-                dayCardsHTML += `<div class="card day-card" ${isToday ? 'style="border-left:3px solid var(--purple)"' : ''} ondragover="event.preventDefault()" ondrop="var aid=event.dataTransfer.getData('application/x-activity-id');if(aid){event.stopPropagation();moveActivityToDate(aid,'${dateStr}')}">
+                dayCardsHTML += `<div class="card day-card" data-day="${dateStr}" ${isToday ? 'style="border-left:3px solid var(--purple)"' : ''} ondragover="event.preventDefault()" ondrop="var aid=event.dataTransfer.getData('application/x-activity-id');if(aid){event.stopPropagation();moveActivityToDate(aid,'${dateStr}')}">
                     <div class="day-card-header" onclick="toggleDayCollapsed('${dateStr}')">
                         <div><div class="day-title">Day ${_dayNum+1} &mdash; ${formatDate(dateStr)}${todayBadge}</div><div class="day-subtitle">${dayOfWeek}${legLabel ? ' &middot; '+legLabel : ''}${planBadge}</div></div>
                         <span style="font-size:18px;transition:transform .2s;${collapsed ? '' : 'transform:rotate(180deg)'}">\u25BC</span>
@@ -4449,8 +4517,33 @@
             }
         }
 
+        const _dayNavHTML = _travelActive && _renderDays.length > 0 ? `<div style="display:flex;gap:8px;align-items:center;justify-content:center;margin:8px 0">
+            <button class="btn btn-sm" onclick="itineraryNavDay(-1)">\u2190 Prev Day</button>
+            <button class="btn btn-sm" style="background:var(--accent);color:white" onclick="itineraryNavDay(0)">Today</button>
+            <button class="btn btn-sm" onclick="itineraryNavDay(1)">Next Day \u2192</button>
+        </div>` : '';
         const _itinFab = _travelActive ? '' : `<button class="fab" onclick="openActivityModal()" title="Add Activity">+</button>`;
-        mc.innerHTML = `<div class="view-content">${filterBarHTML}${smartPasteBtn}${dayCardsHTML}${floatingHTML}${poolHTML}</div>${_itinFab}`;
+        mc.innerHTML = `<div class="view-content">${filterBarHTML}${smartPasteBtn}${_dayNavHTML}${dayCardsHTML}${floatingHTML}${poolHTML}</div>${_itinFab}`;
+    }
+
+    function itineraryNavDay(offset) {
+        const trip = getTrip(state.tripId);
+        if (!trip) return;
+        const days = getDayRange(trip);
+        if (days.length === 0) return;
+        const today = localDateStr(new Date());
+        let targetIdx;
+        if (offset === 0) {
+            targetIdx = days.indexOf(today);
+            if (targetIdx < 0) targetIdx = days.findIndex(d => d >= today);
+        } else {
+            const curIdx = days.indexOf(today);
+            targetIdx = Math.max(0, Math.min(days.length - 1, (curIdx >= 0 ? curIdx : 0) + offset));
+        }
+        if (targetIdx >= 0 && targetIdx < days.length) {
+            const dayEl = document.querySelector(`[data-day="${days[targetIdx]}"]`);
+            if (dayEl) dayEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     }
 
     function _applyActivityFilters(activities, filter) {
@@ -4716,10 +4809,16 @@
         html += '</select>';
 
         // Leg filter
+        const _mapCurLeg = _travelActive ? getCurrentTravelLeg(trip) : null;
+        const _mapCurIdx = _mapCurLeg ? legs.findIndex(l => l.id === _mapCurLeg.id) : -1;
+        const _mapNextLeg = _mapCurIdx >= 0 && _mapCurIdx < legs.length - 1 ? legs[_mapCurIdx + 1] : null;
         html += `<select class="select" style="min-width:0" onchange="state.mapFilter.legId=this.value||null;state.mapFilter.dayPlanId=null;state.mapFilter.dayDate=null;render()">`;
         html += `<option value="">All legs</option>`;
         legs.forEach(l => {
-            html += `<option value="${esc(l.id)}"${l.id === selectedLegId ? ' selected' : ''}>${esc(l.city)}</option>`;
+            let _legLabel = esc(l.city);
+            if (_mapCurLeg && l.id === _mapCurLeg.id) _legLabel += ' (Now)';
+            else if (_mapNextLeg && l.id === _mapNextLeg.id) _legLabel += ' (Next)';
+            html += `<option value="${esc(l.id)}"${l.id === selectedLegId ? ' selected' : ''}>${_legLabel}</option>`;
         });
         html += '</select>';
 
@@ -4783,6 +4882,15 @@
         initMap();
         updateMapMarkers();
         updateMapRoutes();
+
+        // In travel mode during trip, auto-zoom to visible items
+        if (_travelActive && _tripStatus === 'during' && map) {
+            const _vizItems = visibleItems.filter(i => i.data.coordinates && i.data.coordinates.lat != null && i.data.coordinates.lng != null);
+            if (_vizItems.length > 0) {
+                const _bounds = _vizItems.map(i => [i.data.coordinates.lat, i.data.coordinates.lng]);
+                setTimeout(() => { if (map) map.fitBounds(_bounds, { padding: [30, 30], maxZoom: 14 }); }, 300);
+            }
+        }
     }
 
     function getVisibleMapItems(trip) {
@@ -5713,7 +5821,49 @@
         }
 
         if (state.mapFilter.showTripRoute && !dayPlanId) {
-            drawTripRoute(trip, state.mapFilter.legId || null);
+            const _travelActive = isTravelMode();
+            const _tripStatus = getTripTravelStatus(trip);
+            if (_travelActive && _tripStatus === 'during') {
+                // In travel mode, draw route for current leg segment only (prev -> current -> next)
+                const _curLeg = getCurrentTravelLeg(trip);
+                if (_curLeg) {
+                    const _legs = (trip.legs || []).slice().sort((a,b) => (a.order||0) - (b.order||0));
+                    const _ci = _legs.findIndex(l => l.id === _curLeg.id);
+                    const _routeCoords = [];
+                    if (_ci > 0 && _legs[_ci-1].coordinates?.lat != null) {
+                        _routeCoords.push({ lat: _legs[_ci-1].coordinates.lat, lng: _legs[_ci-1].coordinates.lng, name: _legs[_ci-1].city || 'City' });
+                    } else if (_ci === 0 && trip.startLocationCoords?.lat != null) {
+                        _routeCoords.push({ lat: trip.startLocationCoords.lat, lng: trip.startLocationCoords.lng, name: trip.startLocation || 'Start' });
+                    }
+                    if (_curLeg.coordinates?.lat != null) {
+                        _routeCoords.push({ lat: _curLeg.coordinates.lat, lng: _curLeg.coordinates.lng, name: _curLeg.city || 'City' });
+                    }
+                    if (_ci >= 0 && _ci < _legs.length - 1 && _legs[_ci+1].coordinates?.lat != null) {
+                        _routeCoords.push({ lat: _legs[_ci+1].coordinates.lat, lng: _legs[_ci+1].coordinates.lng, name: _legs[_ci+1].city || 'City' });
+                    }
+                    if (_routeCoords.length >= 2) {
+                        const _osrmCoords = _routeCoords.map(c => [c.lng, c.lat]);
+                        getOSRMRoute(_osrmCoords).then(result => {
+                            if (!map || !mapRoutes) return;
+                            if (result && result.geometry) {
+                                const routeCoords = result.geometry.coordinates.map(c => [c[1], c[0]]);
+                                const routeLine = L.polyline(routeCoords, { color: '#f59e0b', weight: 4, opacity: 0.8 });
+                                mapRoutes.addLayer(routeLine);
+                            } else {
+                                drawFallbackTripRouteLines(_routeCoords);
+                            }
+                            addTripRouteArrows(_routeCoords);
+                        }).catch(() => {
+                            drawFallbackTripRouteLines(_routeCoords);
+                            addTripRouteArrows(_routeCoords);
+                        });
+                    }
+                } else {
+                    drawTripRoute(trip, state.mapFilter.legId || null);
+                }
+            } else {
+                drawTripRoute(trip, state.mapFilter.legId || null);
+            }
         }
     }
 

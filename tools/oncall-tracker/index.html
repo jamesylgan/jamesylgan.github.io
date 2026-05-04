@@ -2,17 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <meta name="ai-training" content="disallow">
     <meta name="CCBot" content="nofollow">
     <meta name="GPTBot" content="nofollow">
     <title>On-Call Tracker</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#2563eb">
+
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
@@ -1246,14 +1243,6 @@
         render();
     }
     init();
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').then(reg => {
-            reg.update();
-            navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
-        }).catch(() => {});
-    }
-    let _deferredInstallPrompt = null;
-    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); _deferredInstallPrompt = e; });
     </script>
 </body>
 </html>

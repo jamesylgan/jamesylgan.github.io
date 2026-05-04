@@ -491,7 +491,7 @@
 
         /* Mobile */
         @media (max-width: 640px) {
-            body { padding: 10px; }
+            body { padding: 10px; overflow-x: hidden; }
             .app-header h1 { font-size: 1.1rem; }
             .header-actions button, .header-actions label { padding: 6px 8px; font-size: 12px; }
             .group { padding: 12px; }
@@ -499,6 +499,30 @@
             .task-actions button { width: 32px; height: 32px; font-size: 16px; }
             .input-row input[type="text"] { min-width: 100%; }
             .settings-panel { padding: 16px; resize: none; }
+
+            /* Touch targets */
+            .task-check input[type="checkbox"] { width: 24px; height: 24px; }
+            .task-actions button, .btn-icon { min-width: 44px; min-height: 44px; padding: 8px; }
+            .group-actions button { min-height: 40px; padding: 8px 12px; }
+
+            /* Group header stacking */
+            .group-header { flex-direction: column; align-items: flex-start; gap: 6px; }
+            .group-actions { width: 100%; justify-content: flex-start; }
+
+            /* Input rows stack vertically */
+            .input-row { flex-direction: column; }
+            .input-row input, .input-row select { width: 100%; min-height: 44px; }
+
+            /* Modal adjustments */
+            .settings-panel, .edit-modal { max-width: 95vw; padding: 16px; }
+
+            /* Toast safety */
+            .toast { max-width: 90vw; }
+        }
+        @media (max-width: 400px) {
+            .header h1 { font-size: 1rem; }
+            .header-actions { flex-wrap: wrap; gap: 4px; }
+            .tab { padding: 6px 10px; font-size: 12px; }
         }
     </style>
 </head>
@@ -1934,19 +1958,20 @@ function renderGroups() {
         // Column header with resize handles
         let colHeaderHtml = '';
         if (useColumns) {
+            const isMobile = window.innerWidth < 640;
             const totalCols = group.customColumns.length;
             const defaultPct = Math.floor(30 / totalCols); // ~30% total for columns
             const colWidthSum = group.customColumns.reduce((s, c) => s + (c.width || defaultPct), 0);
-            const titlePct = group.titleColumnWidth || Math.max(20, 100 - colWidthSum - 10);
-            const showNotes = settings.notes && group.showNotesInColumns;
+            const titlePct = isMobile ? 100 : (group.titleColumnWidth || Math.max(20, 100 - colWidthSum - 10));
+            const showNotes = !isMobile && settings.notes && group.showNotesInColumns;
             colHeaderHtml = `<div class="task-col-header" data-gid="${group.id}">`
                 + `<div style="width:18px;flex-shrink:0;"></div>`
                 + `<div class="col-h-title" style="width:${titlePct}%;position:relative;">Task<div class="col-resize-handle" data-col-id="__title__" data-gid="${group.id}"></div></div>`
                 + (showNotes ? `<div class="col-h-cell" style="width:${group.notesColumnWidth || 15}%;">Notes<div class="col-resize-handle" data-col-id="__notes__" data-gid="${group.id}"></div></div>` : '')
-                + group.customColumns.map(c => {
+                + (isMobile ? '' : group.customColumns.map(c => {
                     const w = c.width || defaultPct;
                     return `<div class="col-h-cell" data-col-id="${c.id}" style="width:${w}%;">${esc(c.name)}<div class="col-resize-handle" data-col-id="${c.id}" data-gid="${group.id}"></div></div>`;
-                }).join('')
+                }).join(''))
                 + `<div class="col-h-actions"></div></div>`;
         }
 
@@ -2109,10 +2134,11 @@ function renderTaskColumned(task, groupId, group) {
     }
 
     // Build column cells
+    const isMobile = window.innerWidth < 640;
     const cf = task.customFields || {};
     const totalCols = (columns || []).length;
     const defaultPct = Math.floor(30 / Math.max(1, totalCols));
-    const colCells = (columns || []).map(col => {
+    const colCells = isMobile ? '' : (columns || []).map(col => {
         const val = cf[col.id] || '';
         const w = col.width || defaultPct;
         let cellHtml = '';
@@ -2139,7 +2165,7 @@ function renderTaskColumned(task, groupId, group) {
     const metaHtml = metaParts.length > 0 ? `<div class="task-meta" style="margin-top:2px;">${metaParts.join('')}</div>` : '';
     const priClass = settings.priorityColors && task.priority ? `priority-${task.priority}` : '';
     const colWidthSum = columns.reduce((s, c) => s + (c.width || defaultPct), 0);
-    const titlePct = group.titleColumnWidth || Math.max(20, 100 - colWidthSum - 10);
+    const titlePct = isMobile ? 100 : (group.titleColumnWidth || Math.max(20, 100 - colWidthSum - 10));
 
     return `
         <div class="task task-columned ${task.done ? 'completed' : ''} ${dueClass} ${priClass}">
@@ -2149,7 +2175,7 @@ function renderTaskColumned(task, groupId, group) {
                 ${metaHtml}
                 ${settings.images && task.images && task.images.length > 0 ? `<div class="task-image-thumbs">${task.images.map(src => `<img class="task-image-thumb" src="${src}" onclick="openImageLightbox(this.src)" alt="task image">`).join('')}</div>` : ''}
             </div>
-            ${settings.notes && group.showNotesInColumns ? `<div class="task-col-cell" data-col-id="__notes__" style="width:${group.notesColumnWidth || 15}%;" title="${esc(task.notes || '')}">${esc((task.notes || '').substring(0, 30))}${(task.notes || '').length > 30 ? '...' : ''}</div>` : ''}
+            ${!isMobile && settings.notes && group.showNotesInColumns ? `<div class="task-col-cell" data-col-id="__notes__" style="width:${group.notesColumnWidth || 15}%;" title="${esc(task.notes || '')}">${esc((task.notes || '').substring(0, 30))}${(task.notes || '').length > 30 ? '...' : ''}</div>` : ''}
             ${colCells}
             <div class="task-actions" id="actions-${task.id}">
                 ${settings.nextTasks ? `<button class="btn-pin" onclick="addToNextTasks('${groupId}','${task.id}')" title="Pin to Next TODOs">\uD83D\uDCCC</button>` : ''}
