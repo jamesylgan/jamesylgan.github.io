@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta name="ai-training" content="disallow">
+<meta name="CCBot" content="nofollow">
+<meta name="GPTBot" content="nofollow">
+<title>Floor Plan Furniture Planner</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#e94560">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; overflow: hidden; height: 100vh; height: 100dvh; display: flex; }
+
+  /* ─── Sidebar ─── */
+  #sidebar {
+    width: 250px; min-width: 250px; height: 100vh; height: 100dvh;
+    background: #16213e; border-right: 1px solid #0f3460;
+    overflow-y: auto; padding: 10px; z-index: 100;
+  }
+  #sidebar h2 { font-size: 14px; margin-bottom: 6px; color: #e94560; }
+
+  /* Plan manager - collapsible */
+  #plan-section { margin-bottom: 6px; border-bottom: 1px solid #0f3460; padding-bottom: 6px; }
+  .section-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; user-select: none; padding: 4px 0;
+  }
+  .section-toggle h3 { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 1px; margin: 0; }
+  .section-toggle:hover h3 { color: #e94560; }
+  .section-toggle .chev { font-size: 8px; color: #666; transition: transform 0.15s; }
+  .section-toggle.open .chev { transform: rotate(90deg); }
+  .section-body { display: none; padding-top: 6px; }
+  .section-body.open { display: block; }
+
+  #plan-select {
+    width: 100%; padding: 5px 8px; background: #0f3460; border: 1px solid #1a4a8a;
+    color: #eee; border-radius: 4px; font-size: 11px; margin-bottom: 5px; cursor: pointer;
+  }
+  #plan-select:focus { outline: 2px solid #e94560; outline-offset: 1px; border-color: #e94560; }
+  #plan-select option { background: #0f3460; }
+  .plan-btns { display: flex; gap: 4px; margin-bottom: 4px; }
+  .plan-btn {
+    flex: 1; padding: 5px 4px; background: #0f3460; border: 1px solid #1a4a8a;
+    color: #bbb; border-radius: 4px; cursor: pointer; font-size: 10px; text-align: center;
+  }
+  .plan-btn:hover { color: #eee; border-color: #e94560; }
+  .plan-btn.primary { background: #e94560; border-color: #e94560; color: #fff; }
+  .plan-btn.primary:hover { background: #c0392b; }
+  .plan-btn.danger:hover { border-color: #c0392b; color: #c0392b; }
+  .plan-btn:disabled { opacity: 0.3; pointer-events: none; }
+  #plan-drop-zone {
+    border: 2px dashed #1a4a8a; border-radius: 6px; padding: 8px;
+    text-align: center; font-size: 10px; color: #888; margin-top: 5px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  #plan-drop-zone:hover, #plan-drop-zone.drag-over { border-color: #e94560; color: #e94560; }
+  #plan-name-input {
+    width: 100%; padding: 4px 8px; background: #0f3460; border: 1px solid #e94560;
+    color: #eee; border-radius: 4px; font-size: 11px; display: none; margin-bottom: 5px;
+  }
+  .plan-thumb {
+    width: 100%; height: 50px; object-fit: contain; border-radius: 4px;
+    border: 1px solid #1a4a8a; margin-bottom: 5px; background: #0a0a1a; display: none;
+  }
+  .plan-thumb.visible { display: block; }
+
+  .field-label { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; margin-top: 4px; }
+  .plan-meta input {
+    width: 100%; padding: 4px 8px; background: #0f3460; border: 1px solid #1a4a8a;
+    color: #eee; border-radius: 4px; font-size: 10px; margin-bottom: 3px;
+  }
+  .plan-meta input:focus { outline: 2px solid #e94560; outline-offset: 1px; }
+  .plan-meta input::placeholder { color: #555; }
+  .plan-link-row { display: flex; gap: 3px; }
+  .plan-link-row input { flex: 1; }
+  .link-go-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 26px; background: #0f3460; border: 1px solid #1a4a8a;
+    color: #999; border-radius: 4px; text-decoration: none; font-size: 13px; flex-shrink: 0;
+  }
+  .link-go-btn:hover { color: #e94560; border-color: #e94560; }
+  .link-go-btn.disabled { pointer-events: none; opacity: 0.3; }
+
+  /* ─── Furniture catalog ─── */
+  #fur-filter {
+    width: 100%; padding: 5px 8px; background: #0f3460; border: 1px solid #1a4a8a;
+    color: #eee; border-radius: 4px; font-size: 11px; margin-bottom: 6px;
+  }
+  #fur-filter:focus { outline: 2px solid #e94560; outline-offset: 1px; }
+  #fur-filter::placeholder { color: #555; }
+  .cat-toggle-row { display: flex; gap: 4px; margin-bottom: 6px; }
+  .cat-toggle-btn {
+    flex: 1; padding: 3px; background: #0f3460; border: 1px solid #1a4a8a;
+    color: #888; border-radius: 4px; cursor: pointer; font-size: 9px; text-align: center;
+  }
+  .cat-toggle-btn:hover { color: #eee; border-color: #e94560; }
+
+  .cat-header {
+    display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;
+    padding: 5px 0 3px; margin-top: 2px;
+  }
+  .cat-header:hover .cat-name { color: #e94560; }
+  .cat-chev { font-size: 8px; color: #666; transition: transform 0.15s; display: inline-block; width: 10px; }
+  .cat-header.open .cat-chev { transform: rotate(90deg); }
+  .cat-name { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 1px; }
+  .cat-count { font-size: 9px; color: #555; margin-left: auto; }
+  .cat-items { display: none; }
+  .cat-items.open { display: block; }
+
+  .fur-btn {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; padding: 5px 8px; margin-bottom: 2px;
+    background: #0f3460; border: 1px solid #1a4a8a; border-radius: 5px;
+    color: #eee; cursor: grab; font-size: 11px; text-align: left;
+  }
+  .fur-btn:hover { background: #1a4a8a; }
+  .fur-btn .ico { font-size: 14px; width: 20px; text-align: center; flex-shrink: 0; }
+  .fur-btn .dims { color: #888; font-size: 9px; }
+  .fur-btn.hidden { display: none; }
+
+  /* ─── Custom item ─── */
+  #custom-item { margin-top: 6px; padding-top: 6px; border-top: 1px solid #0f3460; }
+  #custom-item input {
+    width: 100%; padding: 4px 8px; background: #0f3460; border: 1px solid #1a4a8a;
+    color: #eee; border-radius: 4px; font-size: 10px; margin-bottom: 3px;
+  }
+  #custom-item input:focus { outline: 2px solid #e94560; outline-offset: 1px; }
+  .custom-row { display: flex; gap: 3px; }
+  .custom-row input { flex: 1; }
+  #custom-add {
+    width: 100%; padding: 5px; background: #0f3460; border: 1px solid #1a4a8a;
+    color: #bbb; border-radius: 4px; cursor: pointer; font-size: 10px; margin-top: 3px;
+  }
+  #custom-add:hover { color: #eee; border-color: #e94560; }
+
+  /* ─── Right panel ─── */
+  #props-panel {
+    width: 220px; min-width: 220px; height: 100vh; height: 100dvh;
+    background: #16213e; border-left: 1px solid #0f3460;
+    overflow-y: auto; padding: 12px; z-index: 100;
+  }
+  #props-panel h2 { font-size: 14px; color: #e94560; margin-bottom: 10px; }
+  #props-panel.empty h2 { color: #666; }
+  .prop-group { margin-bottom: 10px; }
+  .prop-group label { display: block; font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+  .prop-group input {
+    width: 100%; padding: 5px 8px; background: #0f3460; border: 1px solid #1a4a8a;
+    color: #eee; border-radius: 4px; font-size: 12px;
+  }
+  .prop-row { display: flex; gap: 6px; }
+  .prop-row .prop-group { flex: 1; }
+  .prop-group input:focus { outline: 2px solid #e94560; outline-offset: 1px; }
+  #props-empty { color: #666; font-size: 12px; text-align: center; margin-top: 40px; }
+  .btn-row { display: flex; gap: 6px; margin-top: 8px; }
+  .btn-sm {
+    flex: 1; padding: 6px; background: #0f3460; border: 1px solid #1a4a8a;
+    color: #bbb; border-radius: 4px; cursor: pointer; font-size: 11px; text-align: center;
+  }
+  .btn-sm:hover { color: #eee; border-color: #e94560; }
+  .btn-sm.danger { border-color: #c0392b; color: #c0392b; }
+  .btn-sm.danger:hover { background: #c0392b; color: #fff; }
+
+  /* ─── Canvas ─── */
+  #canvas-area { flex: 1; height: 100vh; height: 100dvh; overflow: auto; position: relative; cursor: default; }
+  #canvas-container { position: relative; display: inline-block; transform-origin: top left; }
+  #floor-plan { display: block; user-select: none; -webkit-user-drag: none; max-width: none; width: auto; height: auto; }
+
+  /* Welcome */
+  #welcome { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 5; }
+  #welcome.hidden { display: none; }
+  .welcome-box { text-align: center; max-width: 400px; padding: 40px; }
+  .welcome-box h2 { color: #e94560; font-size: 22px; margin-bottom: 12px; }
+  .welcome-box p { color: #888; font-size: 13px; line-height: 1.6; margin-bottom: 16px; }
+  .welcome-drop {
+    border: 2px dashed #1a4a8a; border-radius: 12px; padding: 30px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .welcome-drop:hover, .welcome-drop.drag-over { border-color: #e94560; }
+  .welcome-drop .big { font-size: 40px; margin-bottom: 8px; }
+
+  /* Furniture items */
+  .fur-item {
+    position: absolute; cursor: move; user-select: none;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; border-radius: 2px; z-index: 10;
+  }
+  .fur-item:hover { outline: 2px solid rgba(255,255,255,0.5); z-index: 20; }
+  .fur-item.selected { outline: 2px solid #e94560; box-shadow: 0 0 10px rgba(233,69,96,0.3); z-index: 20; }
+  .fur-item .rot-handle {
+    position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
+    width: 16px; height: 16px; background: #e94560; border-radius: 50%;
+    cursor: grab; display: none; font-size: 10px; line-height: 16px; text-align: center; color: #fff;
+  }
+  .fur-item.selected .rot-handle { display: block; }
+  .fur-label {
+    pointer-events: none; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+    line-height: 1.1; font-size: 9px; font-weight: 600; overflow: hidden; padding: 2px;
+  }
+  .fur-label small { font-weight: 400; opacity: 0.7; }
+
+  /* Calibration */
+  #cal-overlay { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 500; display: flex; align-items: flex-start; justify-content: flex-end; padding: 20px; }
+  #cal-overlay.hidden { display: none; }
+  #cal-overlay .cal-bg { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: rgba(0,0,0,0.4); }
+  .cal-box {
+    background: #16213e; border: 1px solid #0f3460; border-radius: 10px;
+    padding: 20px 24px; max-width: 360px; text-align: center;
+    position: relative; z-index: 502;
+  }
+  .cal-box h2 { color: #e94560; margin-bottom: 8px; font-size: 16px; }
+  .cal-box p { font-size: 12px; color: #bbb; margin-bottom: 12px; line-height: 1.5; }
+  .cal-box input {
+    padding: 8px 12px; background: #0f3460; border: 1px solid #1a4a8a;
+    color: #eee; border-radius: 5px; font-size: 14px; width: 100px; text-align: center;
+  }
+  .cal-box input:focus { outline: 2px solid #e94560; }
+  .cal-box button {
+    padding: 8px 16px; background: #e94560; border: none; color: #fff;
+    border-radius: 5px; cursor: pointer; font-size: 13px; margin-left: 6px;
+  }
+  .cal-box button:hover { background: #c0392b; }
+  .cal-dot {
+    position: absolute; width: 10px; height: 10px; background: #e94560;
+    border: 2px solid #fff; border-radius: 50%; transform: translate(-50%,-50%);
+    z-index: 501; pointer-events: none;
+  }
+  .cal-line { position: absolute; height: 2px; background: #e94560; transform-origin: left center; z-index: 501; pointer-events: none; }
+
+  /* Status / Zoom */
+  #status {
+    position: fixed; bottom: 0; left: 250px; right: 220px; height: 26px;
+    background: #16213e; border-top: 1px solid #0f3460;
+    display: flex; align-items: center; padding: 0 10px;
+    font-size: 10px; color: #999; z-index: 100; gap: 14px;
+  }
+  .sbadge { color: #e94560; font-weight: 600; }
+  #zoom-ctl { position: fixed; bottom: 34px; right: 228px; z-index: 100; display: flex; gap: 3px; }
+  #zoom-ctl button {
+    width: 28px; height: 28px; background: #0f3460; border: 1px solid #1a4a8a;
+    color: #eee; border-radius: 5px; cursor: pointer; font-size: 14px;
+  }
+  #zoom-ctl button:hover { background: #1a4a8a; }
+  .snap-row { display: flex; align-items: center; gap: 5px; margin-bottom: 6px; font-size: 11px; }
+  .snap-row input { accent-color: #e94560; }
+  .color-row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .color-swatch { width: 22px; height: 22px; border-radius: 4px; cursor: pointer; border: 2px solid transparent; }
+  .color-swatch.active { border-color: #fff; }
+  .color-swatch:hover { opacity: 0.8; }
+
+  /* Canvas empty hint */
+  #canvas-hint {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    color: #555; font-size: 13px; text-align: center; pointer-events: none; z-index: 4;
+  }
+  #canvas-hint.hidden { display: none; }
+</style>
+</head>
+<body>
+
+<!-- ═══ LEFT SIDEBAR ═══ -->
+<div id="sidebar">
+  <h2>Furniture Planner</h2>
+
+  <!-- Plan Manager (collapsible) -->
+  <div id="plan-section">
+    <div class="section-toggle open" id="plan-toggle">
+      <h3>Floor Plans</h3>
+      <span class="chev">&#x25B6;</span>
+    </div>
+    <div class="section-body open" id="plan-body">
+      <img id="plan-thumb" class="plan-thumb" alt="Floor plan preview">
+      <select id="plan-select" aria-label="Select floor plan"></select>
+      <input type="text" id="plan-name-input" placeholder="Plan name...">
+      <div class="plan-meta">
+        <div class="field-label">Address</div>
+        <input type="text" id="plan-address" placeholder="e.g. Calle Gran Via 45, Madrid">
+        <div class="field-label">Listing URL</div>
+        <div class="plan-link-row">
+          <input type="text" id="plan-link" placeholder="https://...">
+          <a id="plan-link-go" href="#" target="_blank" title="Open listing" aria-label="Open listing URL" class="link-go-btn disabled">&#8599;</a>
+        </div>
+      </div>
+      <div class="plan-btns">
+        <button class="plan-btn" id="btn-rename" title="Rename plan" disabled>Rename</button>
+        <button class="plan-btn" id="btn-cal" title="Calibrate scale" disabled>Calibrate</button>
+        <button class="plan-btn danger" id="btn-del-plan" title="Delete plan" disabled>Delete</button>
+      </div>
+      <div id="plan-drop-zone">Drop image here or click to add plan</div>
+      <input type="file" id="plan-file-input" accept="image/*" style="display:none;">
+      <div class="plan-btns" style="margin-top:5px;">
+        <button class="plan-btn primary" id="btn-export-json" title="Export all plans as JSON">Export All</button>
+        <button class="plan-btn" id="btn-import-json" title="Import plans from JSON">Import</button>
+      </div>
+      <input type="file" id="import-file-input" accept=".json" style="display:none;">
+    </div>
+  </div>
+
+  <!-- Furniture Catalog -->
+  <div class="snap-row">
+    <input type="checkbox" id="snap" checked><label for="snap" title="Snap furniture to a 10cm grid">Snap (10cm)</label>
+  </div>
+  <input type="text" id="fur-filter" placeholder="Search furniture..." aria-label="Filter furniture items">
+  <div class="cat-toggle-row">
+    <button class="cat-toggle-btn" id="expand-all">Expand All</button>
+    <button class="cat-toggle-btn" id="collapse-all">Collapse All</button>
+  </div>
+  <div id="catalog"></div>
+
+  <!-- Custom item -->
+  <div id="custom-item">
+    <div class="field-label">Add Custom Item</div>
+    <input type="text" id="cust-name" placeholder="Name">
+    <div class="custom-row">
+      <input type="number" id="cust-w" placeholder="W cm" min="10" step="5">
+      <input type="number" id="cust-h" placeholder="D cm" min="10" step="5">
+    </div>
+    <button id="custom-add">+ Add to Canvas</button>
+  </div>
+</div>
+
+<!-- ═══ CANVAS ═══ -->
+<div id="canvas-area">
+  <div id="welcome">
+    <div class="welcome-box">
+      <h2>Floor Plan Furniture Planner</h2>
+      <p>Upload a floor plan image to get started. Calibrate the scale with a known dimension, then drag furniture to plan your layout.</p>
+      <div class="welcome-drop" id="welcome-drop">
+        <div class="big">&#x1F3E0;</div>
+        <p>Drop a floor plan image here<br>or click to browse</p>
+      </div>
+      <p style="margin-top:12px; font-size:11px; color:#555;">Or use Import in the sidebar to load a saved layout</p>
+    </div>
+  </div>
+  <div id="canvas-hint" class="hidden">Drag furniture from the left panel to start planning</div>
+  <div id="canvas-container">
+    <img id="floor-plan" alt="Floor Plan" style="display:none;">
+  </div>
+</div>
+
+<!-- ═══ RIGHT PANEL ═══ -->
+<div id="props-panel" class="empty">
+  <h2>Properties</h2>
+  <div id="props-empty">
+    <p style="margin-bottom:8px;">Select a furniture item<br>or drag one onto the plan</p>
+    <p style="font-size:10px; color:#666; line-height:1.6;">
+      <strong>R</strong> &mdash; Rotate 90&deg;<br>
+      <strong>Delete</strong> &mdash; Remove<br>
+      <strong>Arrows</strong> &mdash; Nudge<br>
+      <strong>Shift+Arrows</strong> &mdash; Large nudge<br>
+      <strong>Ctrl+D</strong> &mdash; Duplicate<br>
+      <strong>Ctrl+Z</strong> &mdash; Undo
+    </p>
+  </div>
+  <div id="props-content" style="display:none;">
+    <div class="prop-group"><label>Name</label><input type="text" id="p-name"></div>
+    <div class="prop-row">
+      <div class="prop-group"><label>Width (cm)</label><input type="number" id="p-width" step="5" min="10"></div>
+      <div class="prop-group"><label>Depth (cm)</label><input type="number" id="p-height" step="5" min="10"></div>
+    </div>
+    <div class="prop-group"><label>Rotation (&deg;)</label><input type="number" id="p-rotation" step="15"></div>
+    <div class="prop-group"><label>Color</label><div class="color-row" id="color-row"></div></div>
+    <div class="prop-group" style="margin-top:6px;">
+      <label>Position (m)</label>
+      <div class="prop-row">
+        <div class="prop-group"><label>X</label><input type="number" id="p-x" step="0.05"></div>
+        <div class="prop-group"><label>Y</label><input type="number" id="p-y" step="0.05"></div>
+      </div>
+    </div>
+    <div class="btn-row"><button class="btn-sm" id="btn-dup">Duplicate</button><button class="btn-sm" id="btn-rot90">Rotate 90&deg;</button></div>
+    <div class="btn-row"><button class="btn-sm" id="btn-flip">Swap W/D</button><button class="btn-sm danger" id="btn-del">Delete</button></div>
+  </div>
+</div>
+
+<!-- ═══ CALIBRATION ═══ -->
+<div id="cal-overlay" class="hidden" role="dialog" aria-modal="true" aria-label="Calibrate scale">
+  <div class="cal-bg" id="cal-clickzone"></div>
+  <div class="cal-box">
+    <h2>Calibrate Scale</h2>
+    <p>Click <strong>two points</strong> on the floor plan along a known distance (e.g. a room dimension label like "3.87m"), then enter that distance.</p>
+    <div id="cal-form" style="display:none; margin-top:12px;">
+      <input type="number" id="cal-dist" step="0.01" placeholder="m" aria-label="Distance in meters">
+      <button id="cal-ok">Set</button>
+    </div>
+    <p id="cal-msg" style="margin-top:8px; color:#e94560; font-size:12px;">Click first point...</p>
+    <button id="cal-cancel" style="margin-top:10px; padding:5px 14px; background:transparent; border:1px solid #1a4a8a; color:#999; border-radius:5px; cursor:pointer; font-size:11px;">Cancel</button>
+  </div>
+</div>
+
+<!-- ═══ STATUS ═══ -->
+<div id="status">
+  <span>Scale: <span class="sbadge" id="s-scale">&mdash;</span></span>
+  <span id="s-cursor"></span>
+  <span id="s-count">0 items</span>
+  <span id="s-plan" style="color:#e94560;"></span>
+  <span style="margin-left:auto; color:#666;">Ctrl+scroll to zoom</span>
+</div>
+<div id="zoom-ctl">
+  <button id="z-in" aria-label="Zoom in">+</button>
+  <button id="z-out" aria-label="Zoom out">&minus;</button>
+  <button id="z-fit" aria-label="Reset zoom">1:1</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  FURNITURE CATALOG DATA (room-based categories)
+// ═══════════════════════════════════════════════════════
+const CATALOG = [
+  { cat: 'Bedroom', items: [
+    { type:'Single Bed', w:0.90, h:1.90, color:'#3498db', ico:'\u{1F6CF}\uFE0F' },
+    { type:'Double Bed', w:1.35, h:1.90, color:'#2980b9', ico:'\u{1F6CF}\uFE0F' },
+    { type:'Queen Bed', w:1.50, h:2.00, color:'#8e44ad', ico:'\u{1F6CF}\uFE0F' },
+    { type:'King Bed', w:1.80, h:2.00, color:'#9b59b6', ico:'\u{1F6CF}\uFE0F' },
+    { type:'Nightstand', w:0.45, h:0.40, color:'#e67e22', ico:'\u{1F532}' },
+    { type:'Wardrobe', w:1.50, h:0.60, color:'#7f8c8d', ico:'\u{1F6AA}' },
+    { type:'Wide Wardrobe', w:2.00, h:0.60, color:'#95a5a6', ico:'\u{1F6AA}' },
+    { type:'Dresser', w:1.00, h:0.45, color:'#6c7a89', ico:'\u{1F5C4}\uFE0F' },
+  ]},
+  { cat: 'Living Room', items: [
+    { type:'2-Seat Sofa', w:1.60, h:0.85, color:'#e67e22', ico:'\u{1F6CB}\uFE0F' },
+    { type:'3-Seat Sofa', w:2.10, h:0.85, color:'#d35400', ico:'\u{1F6CB}\uFE0F' },
+    { type:'L-Shape Sofa', w:2.40, h:1.60, color:'#c0392b', ico:'\u{1F6CB}\uFE0F' },
+    { type:'Armchair', w:0.85, h:0.85, color:'#f39c12', ico:'\u{1FA91}' },
+    { type:'Coffee Table', w:1.00, h:0.50, color:'#f1c40f', ico:'\u2615' },
+    { type:'Side Table', w:0.50, h:0.50, color:'#f39c12', ico:'\u2B1C' },
+    { type:'TV Stand', w:1.40, h:0.40, color:'#2c3e50', ico:'\u{1F4FA}' },
+    { type:'Console Table', w:1.00, h:0.35, color:'#795548', ico:'\u2B1C' },
+    { type:'Bookshelf', w:0.80, h:0.30, color:'#d35400', ico:'\u{1F4DA}' },
+    { type:'Wide Bookshelf', w:1.20, h:0.30, color:'#e67e22', ico:'\u{1F4DA}' },
+    { type:'Rug (medium)', w:2.00, h:1.40, color:'#8e6d47', ico:'\u{1F7EB}' },
+    { type:'Rug (large)', w:2.40, h:1.70, color:'#795548', ico:'\u{1F7EB}' },
+    { type:'Room Divider', w:1.20, h:0.30, color:'#607d8b', ico:'\u2B1C' },
+  ]},
+  { cat: 'Dining', items: [
+    { type:'Dining Table (4P)', w:1.20, h:0.80, color:'#16a085', ico:'\u{1F37D}\uFE0F' },
+    { type:'Dining Table (6P)', w:1.60, h:0.90, color:'#1abc9c', ico:'\u{1F37D}\uFE0F' },
+    { type:'Dining Table (8P)', w:2.00, h:1.00, color:'#0d8c72', ico:'\u{1F37D}\uFE0F' },
+    { type:'Dining Chair', w:0.45, h:0.50, color:'#34495e', ico:'\u{1FA91}' },
+    { type:'Dining Bench', w:1.20, h:0.35, color:'#546e7a', ico:'\u2B1C' },
+    { type:'Bar Cart', w:0.60, h:0.40, color:'#8d6e63', ico:'\u{1F378}' },
+  ]},
+  { cat: 'Office', items: [
+    { type:'Desk', w:1.20, h:0.60, color:'#27ae60', ico:'\u{1F5A5}\uFE0F' },
+    { type:'Large Desk', w:1.60, h:0.80, color:'#2ecc71', ico:'\u{1F5A5}\uFE0F' },
+    { type:'Standing Desk', w:1.40, h:0.70, color:'#1e8449', ico:'\u{1F5A5}\uFE0F' },
+    { type:'Office Chair', w:0.60, h:0.60, color:'#34495e', ico:'\u{1FA91}' },
+    { type:'Filing Cabinet', w:0.40, h:0.60, color:'#7f8c8d', ico:'\u{1F5C4}\uFE0F' },
+  ]},
+  { cat: 'Kitchen', items: [
+    { type:'Fridge', w:0.60, h:0.60, color:'#95a5a6', ico:'\u{1F9CA}' },
+    { type:'Large Fridge', w:0.70, h:0.70, color:'#7f8c8d', ico:'\u{1F9CA}' },
+    { type:'Oven/Cooktop', w:0.60, h:0.60, color:'#e74c3c', ico:'\u{1F373}' },
+    { type:'Dishwasher', w:0.60, h:0.60, color:'#bdc3c7', ico:'\u{1FAE7}' },
+    { type:'Kitchen Counter', w:1.20, h:0.60, color:'#a1887f', ico:'\u2B1C' },
+    { type:'Kitchen Island', w:1.80, h:0.90, color:'#8d6e63', ico:'\u2B1C' },
+    { type:'Sink Unit', w:0.60, h:0.60, color:'#78909c', ico:'\u{1F6B0}' },
+  ]},
+  { cat: 'Bathroom', items: [
+    { type:'Bathtub', w:1.70, h:0.70, color:'#5dade2', ico:'\u{1F6C1}' },
+    { type:'Shower (square)', w:0.80, h:0.80, color:'#85c1e9', ico:'\u{1F6BF}' },
+    { type:'Shower (rect)', w:1.20, h:0.80, color:'#85c1e9', ico:'\u{1F6BF}' },
+    { type:'Toilet', w:0.40, h:0.65, color:'#d5d8dc', ico:'\u{1F6BD}' },
+    { type:'Bidet', w:0.40, h:0.60, color:'#d5d8dc', ico:'\u{1FAA0}' },
+    { type:'Bathroom Sink', w:0.60, h:0.45, color:'#aed6f1', ico:'\u{1F6B0}' },
+    { type:'Double Vanity', w:1.20, h:0.50, color:'#5499c7', ico:'\u{1F6B0}' },
+  ]},
+  { cat: 'Laundry', items: [
+    { type:'Washing Machine', w:0.60, h:0.60, color:'#bdc3c7', ico:'\u{1FAE7}' },
+    { type:'Dryer', w:0.60, h:0.60, color:'#aab7b8', ico:'\u{1FAE7}' },
+  ]},
+  { cat: 'Kids', items: [
+    { type:'Crib', w:0.60, h:1.20, color:'#f8c471', ico:'\u{1F6CF}\uFE0F' },
+    { type:'Toddler Bed', w:0.70, h:1.40, color:'#f0b27a', ico:'\u{1F6CF}\uFE0F' },
+    { type:'Bunk Bed', w:0.90, h:2.00, color:'#eb984e', ico:'\u{1F6CF}\uFE0F' },
+    { type:'Changing Table', w:0.80, h:0.55, color:'#fad7a0', ico:'\u2B1C' },
+    { type:'Kids Desk', w:1.00, h:0.50, color:'#82e0aa', ico:'\u{1F5A5}\uFE0F' },
+  ]},
+  { cat: 'Outdoor', items: [
+    { type:'Bistro Table', w:0.60, h:0.60, color:'#27ae60', ico:'\u2615' },
+    { type:'Outdoor Dining', w:1.00, h:1.00, color:'#229954', ico:'\u{1F37D}\uFE0F' },
+    { type:'Outdoor Sofa', w:1.40, h:0.70, color:'#1e8449', ico:'\u{1F6CB}\uFE0F' },
+    { type:'Sun Lounger', w:0.60, h:1.90, color:'#f4d03f', ico:'\u2600\uFE0F' },
+    { type:'Planter', w:0.80, h:0.30, color:'#28b463', ico:'\u{1FAB4}' },
+  ]},
+  { cat: 'Structural', items: [
+    { type:'Door Swing', w:0.80, h:0.80, color:'#e74c3c', ico:'\u{1F6AA}' },
+    { type:'Wide Door Swing', w:0.90, h:0.90, color:'#c0392b', ico:'\u{1F6AA}' },
+    { type:'Radiator', w:1.00, h:0.15, color:'#e74c3c', ico:'\u{1F525}' },
+    { type:'Column/Pillar', w:0.30, h:0.30, color:'#99a3a4', ico:'\u2B1C' },
+  ]},
+];
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let plans = [], activePlanId = null, db = null;
+let scale = null, zoom = 1, items = [], selected = null, history = [], nextId = 1;
+let switching = false; // guard against rapid plan switching
+
+const COLORS = ['#3498db','#2980b9','#8e44ad','#9b59b6','#e67e22','#d35400','#c0392b',
+  '#f39c12','#27ae60','#2ecc71','#16a085','#1abc9c','#f1c40f','#7f8c8d','#95a5a6',
+  '#2c3e50','#34495e','#bdc3c7','#8e6d47','#e74c3c','#5dade2','#85c1e9','#78909c',
+  '#a1887f','#795548','#607d8b'];
+
+const $ = id => document.getElementById(id);
+const imgEl=$('floor-plan'), box=$('canvas-container'), area=$('canvas-area'), welcome=$('welcome');
+const canvasHint=$('canvas-hint');
+const calOvl=$('cal-overlay'), calMsg=$('cal-msg'), calForm=$('cal-form'), calDist=$('cal-dist');
+const sScale=$('s-scale'), sCursor=$('s-cursor'), sCount=$('s-count'), sPlan=$('s-plan');
+const snapCb=$('snap');
+const planSelect=$('plan-select'), planThumb=$('plan-thumb'), planNameInput=$('plan-name-input');
+const planFileInput=$('plan-file-input'), planDropZone=$('plan-drop-zone');
+const planAddress=$('plan-address'), planLink=$('plan-link'), planLinkGo=$('plan-link-go');
+
+// ═══════════════════════════════════════════════════════
+//  BUILD CATALOG UI
+// ═══════════════════════════════════════════════════════
+const catalogEl = $('catalog');
+CATALOG.forEach(cat => {
+  const hdr = document.createElement('div');
+  hdr.className = 'cat-header';
+  hdr.innerHTML = `<span class="cat-chev">&#x25B6;</span><span class="cat-name">${cat.cat}</span><span class="cat-count">${cat.items.length}</span>`;
+  const body = document.createElement('div');
+  body.className = 'cat-items';
+  cat.items.forEach(it => {
+    const btn = document.createElement('div');
+    btn.className = 'fur-btn'; btn.draggable = true;
+    btn.dataset.type = it.type; btn.dataset.w = it.w; btn.dataset.h = it.h; btn.dataset.color = it.color;
+    btn.innerHTML = `<span class="ico">${it.ico}</span><div>${it.type}<br><span class="dims">${(it.w*100).toFixed(0)}\u00d7${(it.h*100).toFixed(0)}</span></div>`;
+    body.appendChild(btn);
+  });
+  hdr.addEventListener('click', () => { hdr.classList.toggle('open'); body.classList.toggle('open'); });
+  catalogEl.appendChild(hdr);
+  catalogEl.appendChild(body);
+});
+// Open first category by default
+catalogEl.querySelector('.cat-header')?.classList.add('open');
+catalogEl.querySelector('.cat-items')?.classList.add('open');
+
+$('expand-all').addEventListener('click', () => {
+  catalogEl.querySelectorAll('.cat-header').forEach(h => h.classList.add('open'));
+  catalogEl.querySelectorAll('.cat-items').forEach(b => b.classList.add('open'));
+});
+$('collapse-all').addEventListener('click', () => {
+  catalogEl.querySelectorAll('.cat-header').forEach(h => h.classList.remove('open'));
+  catalogEl.querySelectorAll('.cat-items').forEach(b => b.classList.remove('open'));
+});
+
+// Filter
+$('fur-filter').addEventListener('input', e => {
+  const q = e.target.value.toLowerCase();
+  catalogEl.querySelectorAll('.fur-btn').forEach(btn => {
+    btn.classList.toggle('hidden', q && !btn.dataset.type.toLowerCase().includes(q));
+  });
+  catalogEl.querySelectorAll('.cat-items').forEach(body => {
+    const hasVis = [...body.querySelectorAll('.fur-btn')].some(b => !b.classList.contains('hidden'));
+    body.style.display = hasVis ? '' : 'none';
+    body.previousElementSibling.style.display = hasVis ? '' : 'none';
+    if (q && hasVis) { body.classList.add('open'); body.previousElementSibling.classList.add('open'); }
+  });
+});
+
+// Plan section toggle
+$('plan-toggle').addEventListener('click', () => {
+  $('plan-toggle').classList.toggle('open');
+  $('plan-body').classList.toggle('open');
+});
+
+// ═══════════════════════════════════════════════════════
+//  IndexedDB
+// ═══════════════════════════════════════════════════════
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('FurniturePlanner', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('images', { keyPath: 'id' });
+    req.onsuccess = e => { db = e.target.result; resolve(); };
+    req.onerror = reject;
+  });
+}
+function saveImage(id, dataUrl) {
+  if (!db) return Promise.resolve();
+  return new Promise((res, rej) => { const tx=db.transaction('images','readwrite'); tx.objectStore('images').put({id,dataUrl}); tx.oncomplete=res; tx.onerror=rej; });
+}
+function loadImage(id) {
+  if (!db) return Promise.resolve(null);
+  return new Promise((res, rej) => { const tx=db.transaction('images','readonly'); const r=tx.objectStore('images').get(id); r.onsuccess=()=>res(r.result?.dataUrl||null); r.onerror=rej; });
+}
+function deleteImage(id) {
+  if (!db) return Promise.resolve();
+  return new Promise((res, rej) => { const tx=db.transaction('images','readwrite'); tx.objectStore('images').delete(id); tx.oncomplete=res; tx.onerror=rej; });
+}
+
+// ═══════════════════════════════════════════════════════
+//  PLAN MANAGEMENT
+// ═══════════════════════════════════════════════════════
+function savePlans() {
+  if (switching) return; // don't save during plan switch
+  const ap = plans.find(p => p.id === activePlanId);
+  if (ap) { ap.scale=scale; ap.nextId=nextId; ap.items=items.map(i=>({id:i.id,type:i.type,w:i.w,h:i.h,color:i.color,x:i.x,y:i.y,rot:i.rot})); }
+  localStorage.setItem('fp_plans', JSON.stringify(plans.map(p=>({id:p.id,name:p.name,address:p.address||'',link:p.link||'',scale:p.scale,nextId:p.nextId,items:p.items}))));
+  localStorage.setItem('fp_active', activePlanId);
+}
+
+function loadPlans() {
+  try { const r=localStorage.getItem('fp_plans'); if(r) plans=JSON.parse(r); } catch(e){plans=[];}
+  activePlanId=localStorage.getItem('fp_active')||null;
+  if(activePlanId&&!plans.find(p=>p.id===activePlanId)) activePlanId=plans.length?plans[0].id:null;
+}
+
+function updatePlanButtons() {
+  const has = !!activePlanId;
+  $('btn-rename').disabled=!has; $('btn-cal').disabled=!has; $('btn-del-plan').disabled=!has;
+}
+
+function renderPlanSelect() {
+  planSelect.innerHTML='';
+  if(!plans.length){
+    const o=document.createElement('option'); o.textContent='No plans yet'; o.disabled=true; o.selected=true;
+    planSelect.appendChild(o); planAddress.value=''; planLink.value='';
+    planThumb.classList.remove('visible'); updateLinkButton(); sPlan.textContent=''; updatePlanButtons(); return;
+  }
+  plans.forEach(p => {
+    const o=document.createElement('option'); o.value=p.id;
+    o.textContent=p.name+(p.address?' \u2014 '+p.address:'')+(p.items&&p.items.length?` (${p.items.length})`:'');
+    if(p.id===activePlanId) o.selected=true;
+    planSelect.appendChild(o);
+  });
+  const ap=plans.find(p=>p.id===activePlanId);
+  sPlan.textContent=ap?.name||''; planAddress.value=ap?.address||''; planLink.value=ap?.link||'';
+  updateLinkButton(); updatePlanButtons();
+}
+
+function updateLinkButton() {
+  const u=planLink.value.trim();
+  if(u){planLinkGo.href=u.startsWith('http')?u:'https://'+u;planLinkGo.classList.remove('disabled');planLinkGo.title='Open listing';}
+  else{planLinkGo.href='#';planLinkGo.classList.add('disabled');planLinkGo.title='Enter a URL first';}
+}
+
+function showWelcome(show) { welcome.classList.toggle('hidden',!show); imgEl.style.display=show?'none':'block'; }
+function updateCanvasHint() { canvasHint.classList.toggle('hidden', !activePlanId||items.length>0||!scale); }
+
+async function switchToPlan(planId) {
+  if(switching)return;
+  switching=true;
+  try {
+    savePlans(); // save old plan
+    activePlanId=planId;
+    const plan=plans.find(p=>p.id===planId);
+    if(!plan){showWelcome(true);renderPlanSelect();return;}
+
+    items.forEach(i=>{if(i.el)i.el.remove();}); items=[]; selected=null; history=[];
+
+    const dataUrl=await loadImage(plan.id);
+    if(!dataUrl){alert('Image not found for this plan.');showWelcome(true);renderPlanSelect();return;}
+
+    imgEl.src=dataUrl; planThumb.src=dataUrl; planThumb.classList.add('visible');
+
+    await new Promise(res => {
+      if(imgEl.complete && imgEl.naturalWidth>0) res();
+      else { const fn=()=>{imgEl.removeEventListener('load',fn);res();}; imgEl.addEventListener('load',fn); }
+    });
+
+    box.style.width=imgEl.naturalWidth+'px'; box.style.height=imgEl.naturalHeight+'px';
+    showWelcome(false);
+    scale=plan.scale||null; nextId=plan.nextId||1;
+    sScale.textContent=scale?scale.toFixed(1)+' px/m':'not set';
+    if(plan.items) plan.items.forEach(c=>{items.push({...c});buildEl(items[items.length-1]);});
+    updCount(); pushHistory(); renderPlanSelect(); updateCanvasHint();
+    if(!plan.scale) startCal();
+  } finally { switching=false; }
+}
+
+async function addNewPlan(file) {
+  const id='plan_'+Date.now(), name=file.name.replace(/\.[^.]+$/,'');
+  const dataUrl=await new Promise((r,j)=>{const f=new FileReader();f.onload=()=>r(f.result);f.onerror=j;f.readAsDataURL(file);});
+  await saveImage(id,dataUrl);
+  plans.push({id,name,address:'',link:'',scale:null,nextId:1,items:[]});
+  savePlans();
+  await switchToPlan(id);
+}
+
+async function deletePlan(planId) {
+  if(!planId||!plans.find(p=>p.id===planId))return;
+  if(!confirm('Delete this floor plan and its furniture layout?'))return;
+  plans=plans.filter(p=>p.id!==planId);
+  await deleteImage(planId);
+  if(activePlanId===planId){
+    activePlanId=plans.length?plans[0].id:null;
+    if(activePlanId) await switchToPlan(activePlanId);
+    else{showWelcome(true);items.forEach(i=>{if(i.el)i.el.remove()});items=[];selected=null;scale=null;}
+  }
+  savePlans();renderPlanSelect();
+}
+
+// Plan UI events
+planSelect.addEventListener('change',()=>switchToPlan(planSelect.value));
+$('btn-del-plan').addEventListener('click',()=>deletePlan(activePlanId));
+$('btn-rename').addEventListener('click',()=>{
+  const p=plans.find(p=>p.id===activePlanId);if(!p)return;
+  planNameInput.value=p.name;planNameInput.style.display='block';planSelect.style.display='none';
+  planNameInput.focus();planNameInput.select();
+});
+let renaming=false;
+planNameInput.addEventListener('keydown',e=>{if(e.key==='Enter')finishRename();if(e.key==='Escape')cancelRename();});
+planNameInput.addEventListener('blur',finishRename);
+function finishRename(){
+  if(renaming)return;renaming=true;
+  const p=plans.find(p=>p.id===activePlanId);
+  if(p&&planNameInput.value.trim()){p.name=planNameInput.value.trim();savePlans();renderPlanSelect();}
+  planNameInput.style.display='none';planSelect.style.display='';
+  setTimeout(()=>renaming=false,50);
+}
+function cancelRename(){planNameInput.style.display='none';planSelect.style.display='';}
+
+planAddress.addEventListener('change',()=>{const p=plans.find(p=>p.id===activePlanId);if(p){p.address=planAddress.value.trim();savePlans();renderPlanSelect();}});
+planLink.addEventListener('change',()=>{const p=plans.find(p=>p.id===activePlanId);if(p){p.link=planLink.value.trim();savePlans();updateLinkButton();}});
+planLink.addEventListener('input',updateLinkButton);
+
+function handleFileUpload(file){if(file&&file.type.startsWith('image/'))addNewPlan(file);}
+planDropZone.addEventListener('click',()=>planFileInput.click());
+planFileInput.addEventListener('change',e=>{if(e.target.files[0])handleFileUpload(e.target.files[0]);e.target.value='';});
+planDropZone.addEventListener('dragover',e=>{e.preventDefault();planDropZone.classList.add('drag-over');});
+planDropZone.addEventListener('dragleave',()=>planDropZone.classList.remove('drag-over'));
+planDropZone.addEventListener('drop',e=>{e.preventDefault();planDropZone.classList.remove('drag-over');if(e.dataTransfer.files[0])handleFileUpload(e.dataTransfer.files[0]);});
+const welcomeDrop=$('welcome-drop');
+welcomeDrop.addEventListener('click',()=>planFileInput.click());
+welcomeDrop.addEventListener('dragover',e=>{e.preventDefault();welcomeDrop.classList.add('drag-over');});
+welcomeDrop.addEventListener('dragleave',()=>welcomeDrop.classList.remove('drag-over'));
+welcomeDrop.addEventListener('drop',e=>{e.preventDefault();welcomeDrop.classList.remove('drag-over');if(e.dataTransfer.files[0])handleFileUpload(e.dataTransfer.files[0]);});
+
+// Prevent browser navigating away on accidental file drop
+area.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('Files'))e.preventDefault();});
+area.addEventListener('drop',e=>{if(e.dataTransfer.files&&e.dataTransfer.files[0]&&e.dataTransfer.files[0].type.startsWith('image/')){e.preventDefault();handleFileUpload(e.dataTransfer.files[0]);}});
+
+// Custom item
+$('custom-add').addEventListener('click',()=>{
+  if(!scale){startCal();return;}
+  const name=$('cust-name').value.trim()||'Custom';
+  const w=Math.max(10,+$('cust-w').value||60)/100;
+  const h=Math.max(10,+$('cust-h').value||60)/100;
+  const cx=imgEl.naturalWidth/2, cy=imgEl.naturalHeight/2;
+  addItem({type:name,w,h,color:'#607d8b',x:cx,y:cy,rot:0});
+});
+
+// ═══════════════════════════════════════════════════════
+//  CALIBRATION
+// ═══════════════════════════════════════════════════════
+let calPts=[],calEls=[],calLine=null;
+function startCal(){
+  if(!activePlanId)return;
+  calOvl.classList.remove('hidden');calPts=[];
+  calEls.forEach(e=>e.remove());calEls=[];if(calLine)calLine.remove();calLine=null;
+  calMsg.textContent='Click first point...';calForm.style.display='none';calDist.value='';
+}
+function endCal(){calOvl.classList.add('hidden');calEls.forEach(e=>e.remove());calEls=[];if(calLine)calLine.remove();calLine=null;}
+
+$('cal-clickzone').addEventListener('click',e=>{
+  if(calPts.length>=2)return;
+  const r=box.getBoundingClientRect(),x=(e.clientX-r.left)/zoom,y=(e.clientY-r.top)/zoom;
+  calPts.push({x,y});
+  const d=document.createElement('div');d.className='cal-dot';d.style.left=x+'px';d.style.top=y+'px';
+  box.appendChild(d);calEls.push(d);
+  if(calPts.length===1){calMsg.textContent='Click second point...';return;}
+  const dx=calPts[1].x-calPts[0].x,dy=calPts[1].y-calPts[0].y;
+  const dist=Math.hypot(dx,dy),ang=Math.atan2(dy,dx)*180/Math.PI;
+  calLine=document.createElement('div');calLine.className='cal-line';
+  calLine.style.cssText=`left:${calPts[0].x}px;top:${calPts[0].y}px;width:${dist}px;transform:rotate(${ang}deg)`;
+  box.appendChild(calLine);calMsg.textContent=`${Math.round(dist)}px \u2014 enter distance:`;calForm.style.display='block';calDist.focus();
+});
+function confirmCal(){
+  const m=parseFloat(calDist.value);if(!m||m<=0)return;
+  scale=Math.hypot(calPts[1].x-calPts[0].x,calPts[1].y-calPts[0].y)/m;
+  sScale.textContent=scale.toFixed(1)+' px/m';endCal();items.forEach(renderItem);updateCanvasHint();savePlans();
+}
+$('cal-ok').addEventListener('click',confirmCal);
+calDist.addEventListener('keydown',e=>{if(e.key==='Enter')confirmCal();});
+$('btn-cal').addEventListener('click',startCal);
+$('cal-cancel').addEventListener('click',endCal);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!calOvl.classList.contains('hidden'))endCal();});
+
+// ═══════════════════════════════════════════════════════
+//  ZOOM
+// ═══════════════════════════════════════════════════════
+function setZoom(z){zoom=Math.max(0.2,Math.min(4,z));box.style.transform=`scale(${zoom})`;box.style.transformOrigin='top left';}
+$('z-in').onclick=()=>setZoom(zoom*1.25);
+$('z-out').onclick=()=>setZoom(zoom/1.25);
+$('z-fit').onclick=()=>setZoom(1);
+area.addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();setZoom(zoom*(1-e.deltaY*0.003));}},{passive:false});
+
+// ═══════════════════════════════════════════════════════
+//  FURNITURE DROP FROM CATALOG
+// ═══════════════════════════════════════════════════════
+let pending=null;
+catalogEl.addEventListener('dragstart',e=>{
+  const btn=e.target.closest('.fur-btn');if(!btn)return;
+  pending={type:btn.dataset.type,w:+btn.dataset.w,h:+btn.dataset.h,color:btn.dataset.color};
+  e.dataTransfer.setData('text/plain','f');e.dataTransfer.effectAllowed='copy';
+});
+area.addEventListener('dragover',e=>{if(pending){e.preventDefault();e.dataTransfer.dropEffect='copy';}});
+area.addEventListener('drop',e=>{
+  if(!pending)return;e.preventDefault();
+  if(!scale){startCal();pending=null;return;}
+  const r=box.getBoundingClientRect();
+  addItem({type:pending.type,w:pending.w,h:pending.h,color:pending.color,x:(e.clientX-r.left)/zoom,y:(e.clientY-r.top)/zoom,rot:0});
+  pending=null;
+});
+
+// ═══════════════════════════════════════════════════════
+//  ITEM MANAGEMENT
+// ═══════════════════════════════════════════════════════
+function addItem(cfg){
+  const it={id:nextId++,type:cfg.type,w:cfg.w,h:cfg.h,color:cfg.color,x:cfg.x,y:cfg.y,rot:cfg.rot||0};
+  items.push(it);buildEl(it);sel(it);updCount();pushHistory();savePlans();updateCanvasHint();return it;
+}
+
+function buildEl(it){
+  const el=document.createElement('div');el.className='fur-item';el.dataset.id=it.id;
+  el.innerHTML='<div class="rot-handle">\u21BB</div><div class="fur-label"></div>';
+  box.appendChild(el);it.el=el;renderItem(it);
+
+  el.addEventListener('mousedown',e=>{
+    if(e.target.classList.contains('rot-handle'))return;
+    e.preventDefault();sel(it);
+    let drag=true;const r=box.getBoundingClientRect();
+    const ox=(e.clientX-r.left)/zoom-it.x,oy=(e.clientY-r.top)/zoom-it.y;
+    const onMove=ev=>{if(!drag)return;const r2=box.getBoundingClientRect();let nx=(ev.clientX-r2.left)/zoom-ox,ny=(ev.clientY-r2.top)/zoom-oy;if(snapCb.checked&&scale){const s=0.10*scale;nx=Math.round(nx/s)*s;ny=Math.round(ny/s)*s;}it.x=nx;it.y=ny;renderItem(it);updateProps();};
+    const onUp=()=>{drag=false;document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);pushHistory();savePlans();};
+    document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+  });
+
+  el.querySelector('.rot-handle').addEventListener('mousedown',e=>{
+    e.preventDefault();e.stopPropagation();
+    const r=box.getBoundingClientRect();
+    const startA=Math.atan2((e.clientY-r.top)/zoom-it.y,(e.clientX-r.left)/zoom-it.x)*180/Math.PI-it.rot;
+    const onM=ev=>{const r2=box.getBoundingClientRect();let a=Math.atan2((ev.clientY-r2.top)/zoom-it.y,(ev.clientX-r2.left)/zoom-it.x)*180/Math.PI-startA;if(snapCb.checked)a=Math.round(a/15)*15;it.rot=a;renderItem(it);updateProps();};
+    const onU=()=>{document.removeEventListener('mousemove',onM);document.removeEventListener('mouseup',onU);pushHistory();savePlans();};
+    document.addEventListener('mousemove',onM);document.addEventListener('mouseup',onU);
+  });
+}
+
+function renderItem(it){
+  if(!it.el||!scale)return;
+  const wp=it.w*scale,hp=it.h*scale,s=it.el.style;
+  s.width=wp+'px';s.height=hp+'px';s.left=(it.x-wp/2)+'px';s.top=(it.y-hp/2)+'px';
+  s.background=it.color+'bb';s.border='1px solid rgba(255,255,255,0.2)';s.transform=`rotate(${it.rot}deg)`;
+  const lbl=it.el.querySelector('.fur-label');
+  const minDim=Math.min(wp,hp);
+  if(minDim<30){lbl.textContent='';lbl.title=it.type+' '+(it.w*100).toFixed(0)+'\u00d7'+(it.h*100).toFixed(0);}
+  else{const fs=Math.max(7,Math.min(12,minDim/5));lbl.style.fontSize=fs+'px';lbl.innerHTML=it.type+'<br><small>'+(it.w*100).toFixed(0)+'\u00d7'+(it.h*100).toFixed(0)+'</small>';lbl.title='';}
+}
+
+function delItem(it){if(it.el)it.el.remove();items=items.filter(i=>i.id!==it.id);if(selected===it)sel(null);updCount();pushHistory();savePlans();updateCanvasHint();}
+function dupItem(it){addItem({type:it.type,w:it.w,h:it.h,color:it.color,x:it.x+20,y:it.y+20,rot:it.rot});}
+
+// ═══════════════════════════════════════════════════════
+//  SELECTION & PROPERTIES
+// ═══════════════════════════════════════════════════════
+const propsEmpty=$('props-empty'),propsContent=$('props-content');
+const pName=$('p-name'),pW=$('p-width'),pH=$('p-height'),pRot=$('p-rotation'),pX=$('p-x'),pY=$('p-y');
+const colorRow=$('color-row');
+
+COLORS.forEach(c=>{
+  const sw=document.createElement('div');sw.className='color-swatch';sw.style.background=c;sw.dataset.color=c;
+  sw.title=c;sw.setAttribute('aria-label','Color '+c);
+  sw.addEventListener('click',()=>{if(!selected)return;selected.color=c;renderItem(selected);colorRow.querySelectorAll('.color-swatch').forEach(s=>s.classList.toggle('active',s.dataset.color===c));pushHistory();savePlans();});
+  colorRow.appendChild(sw);
+});
+
+function sel(it){
+  if(selected&&selected.el)selected.el.classList.remove('selected');selected=it;
+  if(it&&it.el)it.el.classList.add('selected');
+  if(it){propsEmpty.style.display='none';propsContent.style.display='block';$('props-panel').classList.remove('empty');updateProps();}
+  else{propsEmpty.style.display='block';propsContent.style.display='none';$('props-panel').classList.add('empty');}
+}
+
+function updateProps(){
+  if(!selected)return;
+  pName.value=selected.type;pW.value=Math.round(selected.w*100);pH.value=Math.round(selected.h*100);
+  pRot.value=Math.round(selected.rot);
+  if(scale){pX.value=(selected.x/scale).toFixed(2);pY.value=(selected.y/scale).toFixed(2);}
+  colorRow.querySelectorAll('.color-swatch').forEach(s=>s.classList.toggle('active',s.dataset.color===selected.color));
+}
+
+pName.addEventListener('change',()=>{if(selected){selected.type=pName.value;renderItem(selected);pushHistory();savePlans();}});
+pW.addEventListener('change',()=>{if(selected){selected.w=Math.max(0.1,+pW.value/100);renderItem(selected);pushHistory();savePlans();}});
+pH.addEventListener('change',()=>{if(selected){selected.h=Math.max(0.1,+pH.value/100);renderItem(selected);pushHistory();savePlans();}});
+pRot.addEventListener('change',()=>{if(selected){selected.rot=+pRot.value;renderItem(selected);pushHistory();savePlans();}});
+pX.addEventListener('change',()=>{if(selected&&scale){selected.x=+pX.value*scale;renderItem(selected);pushHistory();savePlans();}});
+pY.addEventListener('change',()=>{if(selected&&scale){selected.y=+pY.value*scale;renderItem(selected);pushHistory();savePlans();}});
+
+$('btn-del').addEventListener('click',()=>{if(selected)delItem(selected);});
+$('btn-dup').addEventListener('click',()=>{if(selected)dupItem(selected);});
+$('btn-rot90').addEventListener('click',()=>{if(!selected)return;selected.rot=(selected.rot+90)%360;renderItem(selected);updateProps();pushHistory();savePlans();});
+$('btn-flip').addEventListener('click',()=>{if(!selected)return;[selected.w,selected.h]=[selected.h,selected.w];renderItem(selected);updateProps();pushHistory();savePlans();});
+
+area.addEventListener('mousedown',e=>{if(e.target===imgEl||e.target===box||e.target===area)sel(null);});
+
+// Escape blurs inputs
+document.querySelectorAll('#props-content input').forEach(inp=>{
+  inp.addEventListener('keydown',e=>{if(e.key==='Escape')inp.blur();});
+});
+
+// ═══════════════════════════════════════════════════════
+//  KEYBOARD
+// ═══════════════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(document.activeElement.tagName==='INPUT')return;
+  if(e.key==='z'&&(e.ctrlKey||e.metaKey)){e.preventDefault();undo();return;}
+  if(!selected)return;
+  if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();delItem(selected);}
+  if(e.key==='r'||e.key==='R'){selected.rot=(selected.rot+90)%360;renderItem(selected);updateProps();pushHistory();savePlans();}
+  if(e.key==='d'&&(e.ctrlKey||e.metaKey)){e.preventDefault();dupItem(selected);}
+  if(e.key.startsWith('Arrow')&&scale){
+    e.preventDefault();const s=e.shiftKey?0.10*scale:0.05*scale;
+    if(e.key==='ArrowLeft')selected.x-=s;if(e.key==='ArrowRight')selected.x+=s;
+    if(e.key==='ArrowUp')selected.y-=s;if(e.key==='ArrowDown')selected.y+=s;
+    renderItem(selected);updateProps();pushHistory();savePlans();
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  CURSOR / COUNT
+// ═══════════════════════════════════════════════════════
+document.addEventListener('mousemove',e=>{
+  if(!scale)return;const r=box.getBoundingClientRect();
+  sCursor.textContent=((e.clientX-r.left)/zoom/scale).toFixed(2)+'m, '+((e.clientY-r.top)/zoom/scale).toFixed(2)+'m';
+});
+function updCount(){sCount.textContent=items.length+' item'+(items.length!==1?'s':'');}
+
+// ═══════════════════════════════════════════════════════
+//  UNDO
+// ═══════════════════════════════════════════════════════
+function pushHistory(){
+  history.push(JSON.stringify(items.map(i=>({id:i.id,type:i.type,w:i.w,h:i.h,color:i.color,x:i.x,y:i.y,rot:i.rot}))));
+  if(history.length>50)history.shift();
+}
+function undo(){
+  if(history.length<2)return;history.pop();
+  const prev=JSON.parse(history[history.length-1]);
+  items.forEach(i=>{if(i.el)i.el.remove();});items=[];selected=null;
+  prev.forEach(c=>{items.push({...c});buildEl(items[items.length-1]);});
+  nextId=items.length?Math.max(...items.map(i=>i.id))+1:1;
+  sel(null);updCount();savePlans();updateCanvasHint();
+}
+
+// ═══════════════════════════════════════════════════════
+//  EXPORT / IMPORT
+// ═══════════════════════════════════════════════════════
+$('btn-export-json').addEventListener('click',async()=>{
+  savePlans();
+  const bundle={version:2,exportedAt:new Date().toISOString(),activePlanId,plans:[]};
+  for(const p of plans){
+    const img=await loadImage(p.id);
+    if(!img)console.warn('Missing image for plan:',p.name);
+    bundle.plans.push({id:p.id,name:p.name,address:p.address||'',link:p.link||'',scale:p.scale,nextId:p.nextId,items:p.items,imageData:img});
+  }
+  const blob=new Blob([JSON.stringify(bundle)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='furniture-plans-'+plans.length+'plans-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+});
+
+const importFileInput=$('import-file-input');
+$('btn-import-json').addEventListener('click',()=>importFileInput.click());
+importFileInput.addEventListener('change',async e=>{
+  const file=e.target.files[0];if(!file)return;e.target.value='';
+  try{
+    const bundle=JSON.parse(await file.text());
+    if(!bundle.plans||!Array.isArray(bundle.plans)){alert('Invalid file format.');return;}
+    const mode=confirm(`Found ${bundle.plans.length} plan(s).\nOK = Replace all.\nCancel = Merge (skip duplicates).`)?'replace':'merge';
+    if(mode==='replace'){for(const p of plans)await deleteImage(p.id);plans=[];}
+    for(const entry of bundle.plans){
+      if(mode==='merge'&&plans.find(p=>p.id===entry.id))continue;
+      if(entry.imageData)await saveImage(entry.id,entry.imageData);
+      if(!plans.find(p=>p.id===entry.id))plans.push({id:entry.id,name:entry.name,address:entry.address||'',link:entry.link||'',scale:entry.scale,nextId:entry.nextId,items:entry.items||[]});
+    }
+    const tid=bundle.activePlanId&&plans.find(p=>p.id===bundle.activePlanId)?bundle.activePlanId:plans.length?plans[0].id:null;
+    savePlans();
+    if(tid)await switchToPlan(tid);else{showWelcome(true);renderPlanSelect();}
+    alert(`Imported ${bundle.plans.length} plan(s).`);
+  }catch(err){console.error(err);alert('Import failed: '+err.message);}
+});
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+async function init(){
+  try{await openDB();}catch(e){console.warn('IndexedDB unavailable, using memory only.',e);}
+  loadPlans();
+  if(!plans.length||!activePlanId){showWelcome(true);renderPlanSelect();return;}
+  await switchToPlan(activePlanId);
+}
+init();
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+        reg.update();
+        navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
+    }).catch(() => {});
+}
+let _deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); _deferredInstallPrompt = e; });
+</script>
+</body>
+</html>

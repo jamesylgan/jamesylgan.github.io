@@ -1,0 +1,4 @@
+#Mon May 04 17:00:06 CEST 2026
+base.0=/Users/james.gan/repos/own-site/tools/task-tracker/android/app/build/intermediates/dex/release/mergeDexRelease/classes.dex
+renamed.0=classes.dex
+path.0=classes.dex

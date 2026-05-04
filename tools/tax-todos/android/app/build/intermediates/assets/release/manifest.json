@@ -1,0 +1,10 @@
+{
+  "name": "Tax Obligations Tracker",
+  "short_name": "Tax Todos",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#111827",
+  "theme_color": "#3b82f6"
+}

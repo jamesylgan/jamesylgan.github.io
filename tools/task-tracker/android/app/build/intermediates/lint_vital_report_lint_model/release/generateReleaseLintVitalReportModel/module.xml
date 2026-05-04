@@ -1,0 +1,19 @@
+<lint-module
+    format="1"
+    dir="/Users/james.gan/repos/own-site/tools/task-tracker/android/app"
+    name=":app"
+    type="APP"
+    maven="tasktracker:app:"
+    agpVersion="8.2.0"
+    buildFolder="build"
+    bootClassPath="/Users/james.gan/Android/sdk/platforms/android-34/android.jar:/Users/james.gan/Android/sdk/build-tools/34.0.0/core-lambda-stubs.jar"
+    javaSourceLevel="17"
+    compileTarget="android-34"
+    neverShrinking="true">
+  <lintOptions
+      abortOnError="true"
+      absolutePaths="true"
+      checkReleaseBuilds="true"
+      explainIssues="true"/>
+  <variant name="release"/>
+</lint-module>
