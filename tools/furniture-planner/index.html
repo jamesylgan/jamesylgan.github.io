@@ -281,25 +281,6 @@
     background: rgba(22, 33, 62, 0.9);
   }
 
-  /* ─── FAB (mobile add furniture) ─── */
-  .fab-add {
-    display: none;
-    position: fixed;
-    bottom: 70px;
-    right: 20px;
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    background: #e94560;
-    color: white;
-    border: none;
-    font-size: 28px;
-    cursor: pointer;
-    z-index: 150;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    align-items: center;
-    justify-content: center;
-  }
 
   /* ─── Mobile props bar (hidden on desktop) ─── */
   #mobile-props { display: none !important; }
@@ -309,7 +290,6 @@
     body { flex-direction: column; }
 
     .sidebar-toggle { display: flex; }
-    .fab-add { display: flex; }
 
     #sidebar {
       display: none;
@@ -385,7 +365,6 @@
 </head>
 <body>
 <button class="sidebar-toggle" id="sidebarToggle" onclick="document.getElementById('sidebar').classList.toggle('sidebar-open'); const open = document.getElementById('sidebar').classList.contains('sidebar-open'); this.textContent = open ? '✕' : '☰'; this.classList.toggle('sidebar-toggle-open', open)">☰</button>
-<button class="fab-add" onclick="document.getElementById('sidebar').classList.add('sidebar-open'); document.getElementById('sidebarToggle').textContent='✕'; document.getElementById('sidebarToggle').classList.add('sidebar-toggle-open')">+</button>
 
 <!-- ═══ LEFT SIDEBAR ═══ -->
 <div id="sidebar">
@@ -665,9 +644,6 @@ CATALOG.forEach(cat => {
       if (window.innerWidth <= 768 && scale) {
         const cx = imgEl.naturalWidth / 2, cy = imgEl.naturalHeight / 2;
         addItem({ type: it.type, w: it.w, h: it.h, color: it.color, x: cx, y: cy, rot: 0 });
-        document.getElementById('sidebar').classList.remove('sidebar-open');
-        const toggle = document.getElementById('sidebarToggle');
-        if (toggle) { toggle.textContent = '\u2630'; toggle.classList.remove('sidebar-toggle-open'); }
       }
     });
     body.appendChild(btn);
@@ -708,6 +684,11 @@ $('plan-toggle').addEventListener('click', () => {
   $('plan-toggle').classList.toggle('open');
   $('plan-body').classList.toggle('open');
 });
+// Collapse plan section by default on mobile — go straight to furniture
+if (window.innerWidth <= 768) {
+  $('plan-toggle').classList.remove('open');
+  $('plan-body').classList.remove('open');
+}
 
 // ═══════════════════════════════════════════════════════
 //  IndexedDB
@@ -946,11 +927,6 @@ area.addEventListener('drop',e=>{
   const r=box.getBoundingClientRect();
   addItem({type:pending.type,w:pending.w,h:pending.h,color:pending.color,x:(e.clientX-r.left)/zoom,y:(e.clientY-r.top)/zoom,rot:0});
   pending=null;
-  if (window.innerWidth <= 768) {
-    document.getElementById('sidebar').classList.remove('sidebar-open');
-    const toggle = document.getElementById('sidebarToggle');
-    if (toggle) { toggle.textContent = '\u2630'; toggle.classList.remove('sidebar-toggle-open'); }
-  }
 });
 
 // ═══════════════════════════════════════════════════════
