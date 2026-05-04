@@ -2,13 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <meta name="ai-training" content="disallow">
     <meta name="CCBot" content="nofollow">
     <meta name="GPTBot" content="nofollow">
     <title>Conversational Spanish A1-B1</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2563eb">
     <style>
         :root {
             --primary: #2563eb;
@@ -963,13 +967,13 @@
                         </p>
                         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                                <input type="radio" name="dictSize" value="light" onchange="setDictSize('light')" checked>
+                                <input type="radio" name="dictSize" value="light" onchange="setDictSize('light')">
                                 <span><strong>Light</strong> — 5k words + stemmer (instant, no download)</span>
                                 <span id="dictStatusLight" style="font-size:11px;color:#28a745;">&#10003; loaded</span>
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                                <input type="radio" name="dictSize" value="expanded" onchange="setDictSize('expanded')">
-                                <span><strong>Expanded</strong> — 10k words (~300KB). Try: madrugada, vecino, paraguas</span>
+                                <input type="radio" name="dictSize" value="expanded" onchange="setDictSize('expanded')" checked>
+                                <span><strong>Expanded</strong> — 10k words (pre-loaded). Try: madrugada, vecino, paraguas</span>
                                 <span id="dictStatusExpanded" style="font-size:11px;"></span>
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
@@ -1033,6 +1037,7 @@
 
     <script src="../lib/storage-version-manager.js"></script>
     <script src="es-en-dict.js"></script>
+    <script src="../lib/es-en-expanded.js"></script>
     <script src="../lib/en-es-reverse.js"></script>
     <script src="../lib/es-conjugator.js"></script>
     <script src="../lib/es-form-to-inf.js"></script>
@@ -1516,7 +1521,7 @@
             // v10: Add dictSize, dictFormat, hardModeVocab settings
             10: (data) => ({
                 ...data,
-                dictSize: 'light',
+                dictSize: 'expanded',
                 dictFormat: 'uncompressed',
                 hardModeVocab: false
             })
@@ -4687,6 +4692,14 @@
     window.saveConjQuizType = saveConjQuizType;
 
     init();
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').then(reg => {
+            reg.update();
+            navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
+        }).catch(() => {});
+    }
+    let _deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); _deferredInstallPrompt = e; });
     </script>
 </body>
 </html>

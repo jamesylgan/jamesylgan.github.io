@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <meta name="ai-training" content="disallow">
+    <meta name="CCBot" content="nofollow">
+    <meta name="GPTBot" content="nofollow">
+    <title>On-Call Tracker</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2563eb">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #f0f2f5; --bg-card: white; --bg-hover: #f9fafb; --text: #1a1a1a;
+            --text-muted: #6b7280; --border: #e5e7eb; --border-light: #f3f4f6;
+            --accent: #2563eb; --accent-hover: #1d4ed8; --accent-light: #dbeafe;
+            --green: #16a34a; --green-light: #dcfce7; --red: #dc2626; --red-light: #fee2e2;
+            --yellow: #f59e0b; --yellow-light: #fef3c7; --orange: #f97316; --orange-light: #ffedd5;
+            --purple: #7c3aed; --purple-light: #ede9fe;
+        }
+        [data-theme="dark"] {
+            --bg: #111827; --bg-card: #1f2937; --bg-hover: #374151; --text: #f3f4f6;
+            --text-muted: #9ca3af; --border: #374151; --border-light: #374151;
+            --accent: #3b82f6; --accent-hover: #2563eb; --accent-light: #1e3a5f;
+            --green: #22c55e; --green-light: #14532d; --red: #ef4444; --red-light: #7f1d1d;
+            --yellow: #fbbf24; --yellow-light: #713f12; --orange: #fb923c; --orange-light: #7c2d12;
+            --purple: #a78bfa; --purple-light: #3b0764;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1000px; margin: 0 auto; padding: 16px;
+            background: var(--bg); color: var(--text);
+        }
+        .app-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; margin-bottom: 16px; border-bottom: 3px solid var(--accent);
+            flex-wrap: wrap; gap: 8px;
+        }
+        .app-header h1 { font-size: 1.4rem; }
+        .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .timer-area { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .timer-widget {
+            display: flex; align-items: center; gap: 6px;
+            background: var(--red-light); border: 1px solid var(--red);
+            border-radius: 8px; padding: 4px 10px; font-size: 12px;
+        }
+        .timer-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .timer-elapsed { font-weight: 600; font-variant-numeric: tabular-nums; }
+        .timer-name { max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); }
+        button { cursor: pointer; font-family: inherit; }
+        .btn {
+            font-size: 13px; padding: 6px 12px; border-radius: 6px;
+            border: 1px solid var(--border); background: var(--bg-card); color: var(--text);
+        }
+        .btn:hover { background: var(--bg-hover); }
+        .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-danger { background: var(--red); color: white; border-color: var(--red); }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-sm { font-size: 12px; padding: 4px 8px; }
+        .btn-icon { background: none; border: none; font-size: 18px; padding: 4px; color: var(--text-muted); }
+        .btn-icon:hover { color: var(--text); }
+        .tabs { display: flex; gap: 4px; margin-bottom: 16px; overflow-x: auto; }
+        .tab {
+            padding: 8px 16px; border-radius: 6px 6px 0 0;
+            border: 1px solid var(--border); border-bottom: none;
+            background: var(--bg-card); color: var(--text-muted); cursor: pointer;
+            font-size: 13px; font-weight: 500; white-space: nowrap;
+        }
+        .tab:hover { color: var(--text); }
+        .tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .card {
+            background: var(--bg-card); border-radius: 8px; padding: 16px;
+            margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid var(--border);
+        }
+        .card-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px; gap: 8px;
+        }
+        .card-title { font-size: 15px; font-weight: 600; }
+        .badge {
+            display: inline-block; font-size: 11px; padding: 2px 8px;
+            border-radius: 4px; font-weight: 500;
+        }
+        .badge-workday { background: var(--accent-light); color: var(--accent); }
+        .badge-weekend { background: var(--purple-light); color: var(--purple); }
+        .badge-holiday { background: var(--orange-light); color: var(--orange); }
+        .badge-away { background: var(--yellow-light); color: var(--yellow); }
+        .badge-l1 { background: var(--green-light); color: var(--green); }
+        .badge-l2 { background: var(--yellow-light); color: var(--yellow); }
+        .badge-off { background: var(--border-light); color: var(--text-muted); }
+        .cal-nav {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px; flex-wrap: wrap; gap: 8px;
+        }
+        .cal-nav-center { font-size: 15px; font-weight: 600; }
+        .cal-summary {
+            display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap;
+            font-size: 13px; color: var(--text-muted);
+        }
+        .cal-summary strong { color: var(--text); }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .cal-header-cell { text-align: center; font-size: 12px; font-weight: 600; color: var(--text-muted); padding: 4px; }
+        .cal-cell {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 6px; padding: 8px; min-height: 110px;
+            cursor: pointer; transition: border-color 0.15s;
+        }
+        .cal-cell:hover { border-color: var(--accent); }
+        .cal-cell.today { border-color: var(--accent); border-width: 2px; }
+        .cal-day-num { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+        .cal-day-info { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+        .cal-day-info .money { color: var(--green); font-weight: 500; }
+        .cal-day-info .pto { color: var(--purple); font-weight: 500; }
+        .cal-incident-bar {
+            background: var(--red-light); border-left: 3px solid var(--red);
+            border-radius: 3px; padding: 2px 4px; margin-top: 4px;
+            font-size: 10px; color: var(--red); overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap;
+        }
+        .form-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; flex-wrap: wrap; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+        input, select, textarea {
+            font-family: inherit; font-size: 14px; padding: 8px 10px;
+            border: 1px solid var(--border); border-radius: 6px;
+            background: var(--bg-card); color: var(--text);
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+        }
+        textarea { resize: vertical; min-height: 60px; }
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px; margin-bottom: 16px;
+        }
+        .stat-box {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 8px; padding: 16px;
+        }
+        .stat-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+        .stat-value { font-size: 24px; font-weight: 700; }
+        .stat-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        .stat-value.money { color: var(--green); }
+        .stat-value.pto { color: var(--purple); }
+        .stat-value.hours { color: var(--accent); }
+        .progress-bar { height: 12px; background: var(--border); border-radius: 6px; overflow: hidden; margin: 8px 0; }
+        .progress-fill { height: 100%; border-radius: 6px; transition: width 0.3s; }
+        .progress-fill.green { background: var(--green); }
+        .progress-fill.yellow { background: var(--yellow); }
+        .progress-fill.red { background: var(--red); }
+        .log-entry {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 8px; padding: 12px 16px; margin-bottom: 8px;
+        }
+        .log-entry-header {
+            display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;
+        }
+        .log-entry-date { font-weight: 600; font-size: 14px; }
+        .log-entry-time { font-size: 13px; color: var(--text-muted); }
+        .log-entry-incident { font-size: 14px; margin-top: 4px; }
+        .log-entry-pay {
+            display: flex; gap: 12px; margin-top: 6px; font-size: 12px;
+            color: var(--text-muted); flex-wrap: wrap;
+        }
+        .log-entry-actions { display: flex; gap: 4px; }
+        /* Grouped log entries - visual connector */
+        .log-group { border: 2px solid var(--accent-light); border-radius: 10px; padding: 8px; margin-bottom: 10px; }
+        .log-group-header {
+            font-size: 12px; color: var(--accent); font-weight: 600;
+            padding: 4px 8px; margin-bottom: 4px;
+        }
+        .log-group .log-entry { margin-bottom: 4px; border-color: var(--accent-light); }
+        .log-group .log-entry:last-child { margin-bottom: 0; }
+        .pay-detail {
+            background: var(--green-light); border-radius: 4px; padding: 4px 8px;
+            font-size: 11px; margin-top: 4px; display: inline-block;
+        }
+        .breakdown-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+        .breakdown-table th, .breakdown-table td {
+            padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border);
+        }
+        .breakdown-table th { font-weight: 600; color: var(--text-muted); font-size: 12px; }
+        .breakdown-table tr:last-child td { border-bottom: none; }
+        .overlay {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: flex-start;
+            padding: 40px 16px; overflow-y: auto;
+        }
+        .overlay.active { display: flex; }
+        .panel {
+            background: var(--bg-card); border-radius: 12px; padding: 24px;
+            max-width: 600px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .panel h2 { font-size: 18px; margin-bottom: 16px; }
+        .panel-section { margin-bottom: 20px; }
+        .panel-section h3 { font-size: 14px; margin-bottom: 8px; color: var(--text-muted); }
+        .day-detail-overlay {
+            display: none; position: fixed; top: 0; right: 0; bottom: 0;
+            width: 380px; max-width: 100vw; background: var(--bg-card);
+            box-shadow: -4px 0 20px rgba(0,0,0,0.15); z-index: 90; overflow-y: auto; padding: 20px;
+        }
+        .day-detail-overlay.active { display: block; }
+        .day-detail-backdrop {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.3); z-index: 89;
+        }
+        .day-detail-backdrop.active { display: block; }
+        .date-list { list-style: none; max-height: 200px; overflow-y: auto; }
+        .date-list li {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 4px 0; font-size: 13px; border-bottom: 1px solid var(--border-light);
+        }
+        .date-list li:last-child { border-bottom: none; }
+        .toast {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: #1f2937; color: white; padding: 10px 20px;
+            border-radius: 8px; font-size: 13px; z-index: 200;
+            opacity: 0; transition: opacity 0.3s; pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+        .rotation-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
+            margin-bottom: 6px; font-size: 13px;
+        }
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+        .empty-state p { font-size: 14px; margin-bottom: 12px; }
+        .rotation-history { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .rotation-chip {
+            font-size: 12px; padding: 4px 10px; border-radius: 4px;
+            border: 1px solid var(--border); background: var(--bg-card);
+        }
+        .rate-display {
+            background: var(--accent-light); border-radius: 6px; padding: 10px;
+            font-size: 13px; margin-top: 8px;
+        }
+        .filter-bar { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; flex-wrap: wrap; }
+        @media (max-width: 700px) {
+            .cal-grid { grid-template-columns: 1fr; }
+            .cal-cell { min-height: auto; }
+            .cal-header-cell { display: none; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .day-detail-overlay { width: 100vw; }
+            .form-row { flex-direction: column; }
+            .form-row .form-group { width: 100%; }
+        }
+        @media (max-width: 480px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            .header-right { width: 100%; justify-content: flex-end; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-header">
+        <h1>On-Call Tracker</h1>
+        <div class="header-right">
+            <div class="timer-area" id="timerArea"></div>
+            <button class="btn btn-sm btn-danger" onclick="openTimerStart()">Start Timer</button>
+            <button class="btn-icon" onclick="openSettings()" title="Settings">&#9881;</button>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('calendar')">Calendar</div>
+        <div class="tab" onclick="switchTab('log')">Log</div>
+        <div class="tab" onclick="switchTab('summary')">Monthly</div>
+        <div class="tab" onclick="switchTab('yearly')">Yearly</div>
+    </div>
+
+    <div id="tab-calendar" class="tab-content active"></div>
+    <div id="tab-log" class="tab-content"></div>
+    <div id="tab-summary" class="tab-content"></div>
+    <div id="tab-yearly" class="tab-content"></div>
+
+    <div class="day-detail-backdrop" id="dayBackdrop" onclick="closeDayDetail()"></div>
+    <div class="day-detail-overlay" id="dayDetail"></div>
+
+    <div class="overlay" id="settingsOverlay">
+        <div class="panel" id="settingsPanel"></div>
+    </div>
+    <div class="overlay" id="editResponseOverlay">
+        <div class="panel" id="editResponsePanel"></div>
+    </div>
+    <div class="overlay" id="addRotationOverlay">
+        <div class="panel" id="addRotationPanel"></div>
+    </div>
+    <div class="overlay" id="timerStartOverlay">
+        <div class="panel" style="max-width:400px;">
+            <h2>Start Timer</h2>
+            <div class="form-group" style="margin-bottom:12px;">
+                <label>Incident Name</label>
+                <input type="text" id="timerIncidentName" placeholder="e.g. PD-12345 Gateway timeout">
+            </div>
+            <div class="form-group" style="margin-bottom:16px;">
+                <label>Notes (optional)</label>
+                <textarea id="timerNotes" rows="2" placeholder="Initial observations..."></textarea>
+            </div>
+            <div class="form-row" style="justify-content:flex-end;">
+                <button class="btn" onclick="closeTimerStart()">Cancel</button>
+                <button class="btn btn-danger" onclick="startTimer()">Start Timer</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="../lib/storage-version-manager.js"></script>
+    <script>
+    'use strict';
+
+    // ── Schema ──
+    const schema = StorageVersionManager.defineSchema('oncall-tracker', {
+        version: 2,
+        default: {
+            settings: {
+                annualSalary: 0,
+                darkMode: false,
+                businessHoursStart: '09:00',
+                businessHoursEnd: '18:00',
+                customHolidays: [],
+                awayDays: [
+                    { date: '2026-01-02', name: 'Bridge Day' },
+                    { date: '2026-05-15', name: 'Away Day' },
+                    { date: '2026-08-17', name: 'Away Day (Asuncion bridge)' },
+                    { date: '2026-11-09', name: 'Away Day' },
+                    { date: '2026-12-24', name: 'Christmas Eve' },
+                    { date: '2026-12-31', name: "New Year's Eve" }
+                ]
+            },
+            rotations: [],
+            responses: [],
+            activeTimers: []
+        },
+        migrations: {
+            1: d => d,
+            2: d => {
+                // Migrate activeTimer (single) to activeTimers (array)
+                if (d.activeTimer) {
+                    d.activeTimers = [d.activeTimer];
+                    delete d.activeTimer;
+                } else {
+                    d.activeTimers = d.activeTimers || [];
+                }
+                // Add default away days if none exist
+                if (!d.settings.awayDays || d.settings.awayDays.length === 0) {
+                    d.settings.awayDays = [
+                        { date: '2026-01-02', name: 'Bridge Day' },
+                        { date: '2026-05-15', name: 'Away Day' },
+                        { date: '2026-08-17', name: 'Away Day (Asuncion bridge)' },
+                        { date: '2026-11-09', name: 'Away Day' },
+                        { date: '2026-12-24', name: 'Christmas Eve' },
+                        { date: '2026-12-31', name: "New Year's Eve" }
+                    ];
+                }
+                return d;
+            }
+        }
+    });
+
+    let data = StorageVersionManager.load(schema);
+    let currentTab = 'calendar';
+    let calWeekStart = getMonday(new Date());
+    let summaryMonth = new Date().getMonth();
+    let summaryYear = new Date().getFullYear();
+    let yearlyYear = new Date().getFullYear();
+    let timerInterval = null;
+
+    // ── Spanish National Holidays ──
+    const SPANISH_HOLIDAYS = {
+        2025: [
+            { date: '2025-01-01', name: 'Ano Nuevo' },
+            { date: '2025-01-06', name: 'Epifania del Senor' },
+            { date: '2025-04-17', name: 'Jueves Santo' },
+            { date: '2025-04-18', name: 'Viernes Santo' },
+            { date: '2025-05-01', name: 'Dia del Trabajador' },
+            { date: '2025-08-15', name: 'Asuncion de la Virgen' },
+            { date: '2025-11-01', name: 'Todos los Santos' },
+            { date: '2025-12-06', name: 'Dia de la Constitucion' },
+            { date: '2025-12-08', name: 'Inmaculada Concepcion' },
+            { date: '2025-12-25', name: 'Navidad' },
+        ],
+        2026: [
+            { date: '2026-01-01', name: 'Ano Nuevo' },
+            { date: '2026-01-06', name: 'Epifania del Senor' },
+            { date: '2026-04-02', name: 'Jueves Santo' },
+            { date: '2026-04-03', name: 'Viernes Santo' },
+            { date: '2026-05-01', name: 'Dia del Trabajador' },
+            { date: '2026-10-12', name: 'Fiesta Nacional' },
+            { date: '2026-11-02', name: 'Todos los Santos (trasladado)' },
+            { date: '2026-12-07', name: 'Dia de la Constitucion (trasladado)' },
+            { date: '2026-12-08', name: 'Inmaculada Concepcion' },
+            { date: '2026-12-25', name: 'Navidad' },
+        ]
+    };
+
+    // ── Utility ──
+    function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+    function save() { StorageVersionManager.save(schema, data); }
+    function toast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg; t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2500);
+    }
+    function fmtEur(n) { return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(n); }
+    function fmtDate(ds) {
+        const d = new Date(ds + 'T12:00:00');
+        return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    }
+    function fmtDateShort(ds) {
+        return new Date(ds + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    }
+    function dateStr(d) {
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    function getMonday(d) {
+        const dt = new Date(d); const day = dt.getDay();
+        dt.setDate(dt.getDate() - day + (day === 0 ? -6 : 1));
+        dt.setHours(0, 0, 0, 0); return dt;
+    }
+    function addDays(d, n) { const dt = new Date(d); dt.setDate(dt.getDate() + n); return dt; }
+    function timeToMin(t) { const [h, m] = t.split(':').map(Number); return h * 60 + m; }
+    function minToTime(m) { return String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
+    function durStr(minutes) {
+        if (minutes <= 0) return '0min';
+        const h = Math.floor(minutes / 60), m = Math.round(minutes % 60);
+        if (h === 0) return m + 'min';
+        if (m === 0) return h + 'h';
+        return h + 'h' + m + 'min';
+    }
+    function getResponseDuration(r) {
+        let s = timeToMin(r.startTime), e = timeToMin(r.endTime);
+        if (e < s) e += 24 * 60;
+        return e - s;
+    }
+
+    // ── Day Type ──
+    function getDayType(ds) {
+        const d = new Date(ds + 'T12:00:00').getDay();
+        if (d === 0 || d === 6) return 'weekend';
+        if (isHoliday(ds)) return 'holiday';
+        if (isAwayDay(ds)) return 'away_day';
+        return 'workday';
+    }
+    function isHoliday(ds) {
+        const y = ds.substring(0, 4);
+        return (SPANISH_HOLIDAYS[y] || []).some(h => h.date === ds) || data.settings.customHolidays.some(h => h.date === ds);
+    }
+    function getHolidayName(ds) {
+        const y = ds.substring(0, 4);
+        const nat = (SPANISH_HOLIDAYS[y] || []).find(h => h.date === ds);
+        if (nat) return nat.name;
+        const cust = data.settings.customHolidays.find(h => h.date === ds);
+        return cust ? cust.name : '';
+    }
+    function isAwayDay(ds) { return data.settings.awayDays.some(a => a.date === ds); }
+    function getAwayDayName(ds) { const a = data.settings.awayDays.find(a => a.date === ds); return a ? (a.name || 'Away Day') : 'Away Day'; }
+    function getDayTypeBadge(ds) {
+        const t = getDayType(ds);
+        if (t === 'weekend') return '<span class="badge badge-weekend">Weekend</span>';
+        if (t === 'holiday') return `<span class="badge badge-holiday" title="${getHolidayName(ds)}">Holiday</span>`;
+        if (t === 'away_day') return `<span class="badge badge-away" title="${getAwayDayName(ds)}">Away Day</span>`;
+        return '<span class="badge badge-workday">Workday</span>';
+    }
+
+    // ── Rotation ──
+    function getRotationForDate(ds) { return data.rotations.find(r => ds >= r.startDate && ds <= r.endDate) || null; }
+    function getRoleBadge(role) {
+        if (role === 'L1') return '<span class="badge badge-l1">L1</span>';
+        if (role === 'L2') return '<span class="badge badge-l2">L2</span>';
+        return '<span class="badge badge-off">Off</span>';
+    }
+    // Shift-aware: if response before 7am, check previous day's rotation
+    function getRotationForResponse(r) {
+        const rot = getRotationForDate(r.date);
+        if (rot) return rot;
+        if (timeToMin(r.startTime) < 7 * 60) {
+            const prevDay = dateStr(addDays(new Date(r.date + 'T12:00:00'), -1));
+            return getRotationForDate(prevDay);
+        }
+        return null;
+    }
+
+    // ── Compensation ──
+    function getHourlyRate() {
+        if (!data.settings.annualSalary || data.settings.annualSalary <= 0) return 0;
+        return data.settings.annualSalary / 2080.08;
+    }
+    function getOvertimeRate() { return getHourlyRate() * 2; }
+    function getDailyStipend(ds, role) {
+        if (role !== 'L1') return 0;
+        return getDayType(ds) === 'workday' ? 20 : 50;
+    }
+    function getDailyPTO(ds, role) {
+        if (role !== 'L1') return 0;
+        return getDayType(ds) === 'workday' ? 0 : 1;
+    }
+
+    function getOutsideBusinessMinutes(ds, startTime, endTime) {
+        const dayType = getDayType(ds);
+        let s = timeToMin(startTime), e = timeToMin(endTime);
+        if (e < s) e += 24 * 60;
+        const total = e - s;
+        if (dayType !== 'workday') return total;
+        const bs = timeToMin(data.settings.businessHoursStart), be = timeToMin(data.settings.businessHoursEnd);
+        let outside = 0;
+        if (s < bs) outside += Math.min(e, bs) - s;
+        if (e > be) outside += e - Math.max(s, be);
+        return Math.max(0, outside);
+    }
+
+    // Returns { paidMinutes, realMinutes, pay, groups[] }
+    function calculateDayResponsePay(dayResponses, ds) {
+        if (!dayResponses || dayResponses.length === 0) return { paidMinutes: 0, realMinutes: 0, pay: 0, groups: [] };
+
+        const dayType = getDayType(ds);
+        const eligible = dayResponses.map(r => {
+            const outsideMin = getOutsideBusinessMinutes(ds, r.startTime, r.endTime);
+            // Check if this response qualifies (outside business hours)
+            const isOutside = dayType !== 'workday' || (
+                timeToMin(r.startTime) < timeToMin(data.settings.businessHoursStart) ||
+                timeToMin(r.startTime) >= timeToMin(data.settings.businessHoursEnd)
+            );
+            if (!isOutside && outsideMin <= 0) return null;
+            let s = timeToMin(r.startTime), e = timeToMin(r.endTime);
+            if (e < s) e += 24 * 60;
+            return { ...r, outsideMin: Math.max(0, outsideMin), _start: s, _end: e };
+        }).filter(Boolean);
+
+        if (eligible.length === 0) return { paidMinutes: 0, realMinutes: 0, pay: 0, groups: [] };
+
+        // Sort by start time and group by temporal overlap
+        eligible.sort((a, b) => a._start - b._start);
+        const groups = [];
+        let curGroup = [eligible[0]], curEnd = eligible[0]._end;
+        for (let i = 1; i < eligible.length; i++) {
+            const r = eligible[i];
+            if (r._start <= curEnd) { // <= so same-time entries merge
+                curGroup.push(r);
+                curEnd = Math.max(curEnd, r._end);
+            } else {
+                groups.push(curGroup);
+                curGroup = [r]; curEnd = r._end;
+            }
+        }
+        groups.push(curGroup);
+
+        let totalPaidMin = 0, totalRealMin = 0;
+        const groupResults = [];
+        groups.forEach(group => {
+            const realMin = group.reduce((sum, r) => sum + r.outsideMin, 0);
+            let paidMin = Math.max(realMin, 60); // 1hr minimum per engagement
+            paidMin = Math.ceil(paidMin / 15) * 15; // round up to 15-min
+            totalPaidMin += paidMin;
+            totalRealMin += realMin;
+            groupResults.push({
+                incidents: group.map(r => r.incidentName || 'Unnamed'),
+                ids: group.map(r => r.id),
+                realMin, paidMin, entries: group
+            });
+        });
+
+        const rate = getOvertimeRate();
+        return { paidMinutes: totalPaidMin, realMinutes: totalRealMin, pay: (totalPaidMin / 60) * rate, groups: groupResults };
+    }
+
+    // Find which pay group a response belongs to
+    function getPayGroupForResponse(responseId, ds) {
+        const dayResponses = data.responses.filter(r => r.date === ds);
+        const result = calculateDayResponsePay(dayResponses, ds);
+        return result.groups.find(g => g.ids.includes(responseId));
+    }
+
+    // ── Week Data ──
+    function getWeekDates(monday) {
+        const dates = [];
+        for (let i = 0; i < 7; i++) dates.push(dateStr(addDays(monday, i)));
+        return dates;
+    }
+    function getWeekData(monday) {
+        const dates = getWeekDates(monday);
+        let totalStipend = 0, totalPTO = 0, totalPaidMin = 0, totalRealMin = 0, totalPay = 0;
+        let rotation = null;
+        const days = dates.map(ds => {
+            const rot = getRotationForDate(ds);
+            if (rot && !rotation) rotation = rot;
+            const role = rot ? rot.role : null;
+            const stipend = role ? getDailyStipend(ds, role) : 0;
+            const pto = role ? getDailyPTO(ds, role) : 0;
+            const dayResponses = data.responses.filter(r => r.date === ds);
+            const rp = calculateDayResponsePay(dayResponses, ds);
+            totalStipend += stipend; totalPTO += pto;
+            totalPaidMin += rp.paidMinutes; totalRealMin += rp.realMinutes; totalPay += rp.pay;
+            return { date: ds, dayType: getDayType(ds), role, stipend, pto, responses: dayResponses, responsePay: rp };
+        });
+        return { days, rotation, totalStipend, totalPTO, totalPaidMin, totalRealMin, totalPay };
+    }
+
+    // ── Rendering ──
+    function render() {
+        if (currentTab === 'calendar') renderCalendar();
+        else if (currentTab === 'log') renderLog();
+        else if (currentTab === 'summary') renderSummary();
+        else if (currentTab === 'yearly') renderYearly();
+        renderTimers();
+    }
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab').forEach((t, i) => {
+            t.classList.toggle('active', ['calendar', 'log', 'summary', 'yearly'][i] === tab);
+        });
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById('tab-' + tab).classList.add('active');
+        render();
+    }
+
+    // ── Calendar ──
+    function renderCalendar() {
+        const wd = getWeekData(calWeekStart);
+        const monday = calWeekStart, sunday = addDays(monday, 6);
+        const todayStr = dateStr(new Date());
+        let html = `<div class="cal-nav">
+            <button class="btn btn-sm" onclick="calNav(-7)">&laquo; Prev</button>
+            <div class="cal-nav-center">${fmtDateShort(dateStr(monday))} &ndash; ${fmtDateShort(dateStr(sunday))}, ${sunday.getFullYear()}</div>
+            <div style="display:flex;gap:4px;">
+                <button class="btn btn-sm" onclick="calNavToday()">Today</button>
+                <button class="btn btn-sm" onclick="calNav(7)">Next &raquo;</button>
+            </div>
+        </div>`;
+        const rot = wd.rotation;
+        html += `<div class="cal-summary">
+            <span>On-call: ${rot ? getRoleBadge(rot.role) : getRoleBadge(null)}</span>
+            <span>Stipend: <strong>${fmtEur(wd.totalStipend)}</strong></span>
+            <span>PTO: <strong>${wd.totalPTO}h</strong></span>`;
+        if (wd.totalPaidMin > 0) {
+            html += `<span>Real OT: <strong>${durStr(wd.totalRealMin)}</strong></span>`;
+            html += `<span>Paid OT: <strong>${durStr(wd.totalPaidMin)}</strong> (${fmtEur(wd.totalPay)})</span>`;
+        }
+        html += `</div>
+        <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="openAddRotation()">+ Add Rotation</button>
+            <button class="btn btn-sm" onclick="openAddResponse()">+ Log Incident</button>
+        </div>
+        <div class="cal-grid">`;
+        ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d => { html += `<div class="cal-header-cell">${d}</div>`; });
+        wd.days.forEach(day => {
+            const d = new Date(day.date + 'T12:00:00');
+            html += `<div class="cal-cell ${day.date === todayStr ? 'today' : ''}" onclick="openDayDetail('${day.date}')">
+                <div class="cal-day-num">${d.getDate()}</div>
+                ${getDayTypeBadge(day.date)} ${day.role ? getRoleBadge(day.role) : ''}
+                <div class="cal-day-info">
+                    ${day.stipend > 0 ? `<div class="money">${fmtEur(day.stipend)}</div>` : ''}
+                    ${day.pto > 0 ? `<div class="pto">+${day.pto}h PTO</div>` : ''}
+                </div>`;
+            day.responses.forEach(r => {
+                html += `<div class="cal-incident-bar">${r.startTime}-${r.endTime} ${r.incidentName || ''}</div>`;
+            });
+            html += `</div>`;
+        });
+        html += `</div>`;
+        document.getElementById('tab-calendar').innerHTML = html;
+    }
+    function calNav(days) { calWeekStart = addDays(calWeekStart, days); renderCalendar(); }
+    function calNavToday() { calWeekStart = getMonday(new Date()); renderCalendar(); }
+
+    // ── Day Detail ──
+    function openDayDetail(ds) {
+        const rot = getRotationForDate(ds), role = rot ? rot.role : null;
+        const dayType = getDayType(ds);
+        const dayResponses = data.responses.filter(r => r.date === ds);
+        const rp = calculateDayResponsePay(dayResponses, ds);
+        const stipend = role ? getDailyStipend(ds, role) : 0;
+        const pto = role ? getDailyPTO(ds, role) : 0;
+        let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h2 style="font-size:16px;">${fmtDate(ds)}</h2>
+            <button class="btn-icon" onclick="closeDayDetail()" style="font-size:22px;">&times;</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;">${getDayTypeBadge(ds)} ${role ? getRoleBadge(role) : getRoleBadge(null)}</div>`;
+        if (dayType === 'holiday') html += `<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">${getHolidayName(ds)}</div>`;
+        if (dayType === 'away_day') html += `<div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">${getAwayDayName(ds)}</div>`;
+        html += `<div class="stats-grid" style="margin-bottom:16px;">
+            <div class="stat-box"><div class="stat-label">Stipend</div><div class="stat-value money" style="font-size:18px;">${fmtEur(stipend)}</div></div>
+            <div class="stat-box"><div class="stat-label">PTO Accrual</div><div class="stat-value pto" style="font-size:18px;">${pto}h</div></div>
+        </div>
+        <h3 style="font-size:14px;margin-bottom:8px;">Incident Responses (${dayResponses.length})</h3>`;
+        if (dayResponses.length === 0) {
+            html += `<div style="color:var(--text-muted);font-size:13px;margin-bottom:12px;">No incidents logged</div>`;
+        } else {
+            // Render grouped by pay groups
+            const renderedIds = new Set();
+            rp.groups.forEach(g => {
+                if (g.entries.length > 1) {
+                    html += `<div class="log-group"><div class="log-group-header">Overlapping &mdash; Real: ${durStr(g.realMin)} &rarr; Paid: ${durStr(g.paidMin)}</div>`;
+                }
+                g.entries.forEach(r => {
+                    renderedIds.add(r.id);
+                    const dur = getResponseDuration(r);
+                    html += `<div class="log-entry" style="margin-bottom:6px;">
+                        <div class="log-entry-header"><div>
+                            <span class="log-entry-time">${r.startTime} - ${r.endTime} (${durStr(dur)})</span>
+                            <div class="log-entry-incident">${r.incidentName || '<em>No name</em>'}</div>
+                        </div><div class="log-entry-actions">
+                            <button class="btn btn-sm" onclick="editResponse('${r.id}')">Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteResponse('${r.id}')">Del</button>
+                        </div></div>
+                        ${r.notes ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${r.notes}</div>` : ''}
+                    </div>`;
+                });
+                if (g.entries.length > 1) html += `</div>`;
+                else {
+                    // Single entry - show pay detail inline
+                    html += `<div class="pay-detail">${g.realMin < 60 ? '1h minimum applied' : ''} ${g.paidMin > g.realMin && g.realMin >= 60 ? 'Rounded to 15min' : ''} Paid: ${durStr(g.paidMin)}</div>`;
+                }
+            });
+            // Any responses not in pay groups (during business hours)
+            dayResponses.filter(r => !renderedIds.has(r.id)).forEach(r => {
+                const dur = getResponseDuration(r);
+                html += `<div class="log-entry" style="margin-bottom:6px;opacity:0.6;">
+                    <div class="log-entry-header"><div>
+                        <span class="log-entry-time">${r.startTime} - ${r.endTime} (${durStr(dur)})</span>
+                        <div class="log-entry-incident">${r.incidentName || '<em>No name</em>'}</div>
+                    </div><div class="log-entry-actions">
+                        <button class="btn btn-sm" onclick="editResponse('${r.id}')">Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteResponse('${r.id}')">Del</button>
+                    </div></div>
+                    <div class="pay-detail" style="background:var(--border-light);">During business hours - no OT pay</div>
+                </div>`;
+            });
+            if (rp.paidMinutes > 0) {
+                html += `<div style="margin-top:8px;font-size:13px;border-top:1px solid var(--border);padding-top:8px;">
+                    <strong>Total:</strong> Real ${durStr(rp.realMinutes)} &rarr; Paid ${durStr(rp.paidMinutes)} = ${fmtEur(rp.pay)}
+                </div>`;
+            }
+        }
+        html += `<button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="openAddResponse('${ds}')">+ Log Incident</button>`;
+        document.getElementById('dayDetail').innerHTML = html;
+        document.getElementById('dayDetail').classList.add('active');
+        document.getElementById('dayBackdrop').classList.add('active');
+    }
+    function closeDayDetail() {
+        document.getElementById('dayDetail').classList.remove('active');
+        document.getElementById('dayBackdrop').classList.remove('active');
+    }
+
+    // ── Log Tab ──
+    function navigateToDate(ds) { calWeekStart = getMonday(new Date(ds + 'T12:00:00')); switchTab('calendar'); }
+
+    function renderLog() {
+        const sorted = [...data.responses].sort((a, b) => b.date.localeCompare(a.date) || b.startTime.localeCompare(a.startTime));
+        let html = `<div class="filter-bar">
+            <button class="btn btn-primary btn-sm" onclick="openAddResponse()">+ Manual Entry</button>
+        </div>`;
+        if (sorted.length === 0) {
+            html += `<div class="empty-state"><p>No incident responses logged yet.</p></div>`;
+        } else {
+            // Group by rotation week
+            const rotGroups = {}, unassigned = [];
+            sorted.forEach(r => {
+                const rot = getRotationForResponse(r);
+                if (rot) {
+                    if (!rotGroups[rot.id]) rotGroups[rot.id] = { rotation: rot, responses: [] };
+                    rotGroups[rot.id].responses.push(r);
+                } else { unassigned.push(r); }
+            });
+            const sortedGroups = Object.values(rotGroups).sort((a, b) => b.rotation.startDate.localeCompare(a.rotation.startDate));
+
+            sortedGroups.forEach(group => {
+                const rot = group.rotation;
+                html += `<div class="card"><div class="card-header">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        ${getRoleBadge(rot.role)}
+                        <span class="card-title">${fmtDateShort(rot.startDate)} &ndash; ${fmtDateShort(rot.endDate)}</span>
+                    </div>
+                    <button class="btn btn-sm" onclick="navigateToDate('${rot.startDate}')">Cal &rarr;</button>
+                </div>`;
+                // Sub-group by day to show pay calculation
+                const byDay = {};
+                group.responses.forEach(r => {
+                    if (!byDay[r.date]) byDay[r.date] = [];
+                    byDay[r.date].push(r);
+                });
+                const dayKeys = Object.keys(byDay).sort((a, b) => b.localeCompare(a));
+                dayKeys.forEach(ds => {
+                    const dayResps = byDay[ds];
+                    const rp = calculateDayResponsePay(dayResps, ds);
+                    // Render pay groups with visual grouping
+                    rp.groups.forEach(g => {
+                        const isGrouped = g.entries.length > 1;
+                        if (isGrouped) html += `<div class="log-group"><div class="log-group-header">Overlapping engagements &mdash; Real: ${durStr(g.realMin)} &rarr; Paid: ${durStr(g.paidMin)}</div>`;
+                        g.entries.forEach(r => {
+                            html += renderLogEntry(r, g);
+                        });
+                        if (isGrouped) html += `</div>`;
+                    });
+                    // Entries not in any pay group (during business hours)
+                    const payIds = new Set(rp.groups.flatMap(g => g.ids));
+                    dayResps.filter(r => !payIds.has(r.id)).forEach(r => { html += renderLogEntry(r, null); });
+                });
+                html += `</div>`;
+            });
+            if (unassigned.length > 0) {
+                html += `<div class="card"><div class="card-header">
+                    <span class="card-title" style="color:var(--text-muted);">Not in a rotation</span>
+                </div>`;
+                unassigned.forEach(r => { html += renderLogEntry(r, null); });
+                html += `</div>`;
+            }
+        }
+        document.getElementById('tab-log').innerHTML = html;
+    }
+
+    function renderLogEntry(r, payGroup) {
+        const dur = getResponseDuration(r);
+        const outsideMin = getOutsideBusinessMinutes(r.date, r.startTime, r.endTime);
+        let payInfo = '';
+        if (payGroup) {
+            const isSingle = payGroup.entries.length === 1;
+            if (isSingle) {
+                const parts = [];
+                if (payGroup.realMin < 60) parts.push('1h minimum');
+                else if (payGroup.paidMin > payGroup.realMin) parts.push('rounded to 15min');
+                parts.push(`Paid: ${durStr(payGroup.paidMin)}`);
+                if (getOvertimeRate() > 0) parts.push(fmtEur((payGroup.paidMin / 60) * getOvertimeRate()));
+                payInfo = `<div class="pay-detail">${parts.join(' | ')}</div>`;
+            }
+        } else if (outsideMin <= 0) {
+            payInfo = `<div class="pay-detail" style="background:var(--border-light);">During business hours</div>`;
+        }
+        return `<div class="log-entry" style="cursor:pointer;" onclick="navigateToDate('${r.date}')">
+            <div class="log-entry-header"><div>
+                <span class="log-entry-date">${fmtDate(r.date)}</span>
+                <span class="log-entry-time" style="margin-left:8px;">${r.startTime} - ${r.endTime} (${durStr(dur)})</span>
+                <div class="log-entry-incident">${r.incidentName || '<em>Unnamed</em>'}</div>
+                ${r.notes ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${r.notes}</div>` : ''}
+            </div><div class="log-entry-actions" onclick="event.stopPropagation()">
+                <button class="btn btn-sm" onclick="editResponse('${r.id}')">Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteResponse('${r.id}')">Del</button>
+            </div></div>
+            <div class="log-entry-pay">
+                <span>Outside hrs: ${durStr(outsideMin)}</span>
+            </div>
+            ${payInfo}
+        </div>`;
+    }
+
+    // ── Monthly Summary ──
+    function renderSummary() {
+        const year = summaryYear, month = summaryMonth;
+        const lastDay = new Date(year, month + 1, 0);
+        const monthName = new Date(year, month, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+        let html = `<div class="form-row" style="margin-bottom:16px;">
+            <button class="btn btn-sm" onclick="summaryNav(-1)">&laquo;</button>
+            <strong style="min-width:140px;text-align:center;">${monthName}</strong>
+            <button class="btn btn-sm" onclick="summaryNav(1)">&raquo;</button>
+        </div>`;
+        let totStipend = 0, totPTO = 0, totPaidMin = 0, totRealMin = 0, totPay = 0;
+        let workdays = 0, specialDays = 0, incidents = 0;
+        const dayBreakdowns = [];
+        for (let d = 1; d <= lastDay.getDate(); d++) {
+            const ds = dateStr(new Date(year, month, d));
+            const rot = getRotationForDate(ds), role = rot ? rot.role : null;
+            if (role) {
+                totStipend += getDailyStipend(ds, role);
+                totPTO += getDailyPTO(ds, role);
+                if (getDayType(ds) === 'workday') workdays++; else specialDays++;
+            }
+            const dayR = data.responses.filter(r => r.date === ds);
+            if (dayR.length > 0) {
+                incidents += dayR.length;
+                const rp = calculateDayResponsePay(dayR, ds);
+                totPaidMin += rp.paidMinutes; totRealMin += rp.realMinutes; totPay += rp.pay;
+                if (rp.paidMinutes > 0) dayBreakdowns.push({ date: ds, ...rp });
+            }
+        }
+        html += `<div class="stats-grid">
+            <div class="stat-box"><div class="stat-label">Stipends</div><div class="stat-value money">${fmtEur(totStipend)}</div>
+                <div class="stat-sub">${workdays} workdays + ${specialDays} special days</div></div>
+            <div class="stat-box"><div class="stat-label">PTO Accrued</div><div class="stat-value pto">${totPTO}h</div></div>
+            <div class="stat-box"><div class="stat-label">Real OT</div><div class="stat-value hours">${durStr(totRealMin)}</div>
+                <div class="stat-sub">Actual outside-hours work</div></div>
+            <div class="stat-box"><div class="stat-label">Paid OT</div><div class="stat-value hours">${durStr(totPaidMin)}</div>
+                <div class="stat-sub">After minimums &amp; rounding</div></div>
+            <div class="stat-box"><div class="stat-label">Response Pay</div><div class="stat-value money">${fmtEur(totPay)}</div>
+                <div class="stat-sub">at ${fmtEur(getOvertimeRate())}/hr</div></div>
+        </div>
+        <div class="card"><div class="card-title">Monthly Total</div>
+            <div style="font-size:28px;font-weight:700;color:var(--green);margin-top:8px;">${fmtEur(totStipend + totPay)}</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">${fmtEur(totStipend)} stipends + ${fmtEur(totPay)} response pay + ${totPTO}h PTO</div>
+        </div>`;
+        if (dayBreakdowns.length > 0) {
+            html += `<div class="card"><div class="card-title">Response Pay Breakdown</div>
+                <table class="breakdown-table"><tr><th>Date</th><th>Incidents</th><th>Real</th><th>Paid</th><th>Pay</th></tr>`;
+            dayBreakdowns.forEach(db => {
+                db.groups.forEach(g => {
+                    html += `<tr><td>${fmtDateShort(db.date)}</td><td>${g.incidents.join(', ')}</td>
+                        <td>${durStr(g.realMin)}</td><td>${durStr(g.paidMin)}</td>
+                        <td>${fmtEur((g.paidMin / 60) * getOvertimeRate())}</td></tr>`;
+                });
+            });
+            html += `</table></div>`;
+        }
+        document.getElementById('tab-summary').innerHTML = html;
+    }
+    function summaryNav(dir) {
+        summaryMonth += dir;
+        if (summaryMonth > 11) { summaryMonth = 0; summaryYear++; }
+        if (summaryMonth < 0) { summaryMonth = 11; summaryYear--; }
+        renderSummary();
+    }
+
+    // ── Yearly Overview ──
+    function renderYearly() {
+        const year = yearlyYear;
+        let html = `<div class="form-row" style="margin-bottom:16px;">
+            <button class="btn btn-sm" onclick="yearlyNav(-1)">&laquo;</button>
+            <strong style="min-width:60px;text-align:center;">${year}</strong>
+            <button class="btn btn-sm" onclick="yearlyNav(1)">&raquo;</button>
+        </div>`;
+        let totStipend = 0, totPTO = 0, totPaidMin = 0, totRealMin = 0, totPay = 0;
+        const monthlyData = [];
+        for (let m = 0; m < 12; m++) {
+            const lastDay = new Date(year, m + 1, 0);
+            let ms = 0, mp = 0, mPaidMin = 0, mRealMin = 0, mPay = 0;
+            for (let d = 1; d <= lastDay.getDate(); d++) {
+                const ds = dateStr(new Date(year, m, d));
+                const rot = getRotationForDate(ds), role = rot ? rot.role : null;
+                if (role) { ms += getDailyStipend(ds, role); mp += getDailyPTO(ds, role); }
+                const dayR = data.responses.filter(r => r.date === ds);
+                if (dayR.length > 0) {
+                    const rp = calculateDayResponsePay(dayR, ds);
+                    mPaidMin += rp.paidMinutes; mRealMin += rp.realMinutes; mPay += rp.pay;
+                }
+            }
+            totStipend += ms; totPTO += mp; totPaidMin += mPaidMin; totRealMin += mRealMin; totPay += mPay;
+            if (ms > 0 || mPaidMin > 0) monthlyData.push({ month: m, stipend: ms, pto: mp, paidMin: mPaidMin, realMin: mRealMin, pay: mPay });
+        }
+        const paidHrs = totPaidMin / 60, realHrs = totRealMin / 60;
+        const paidPct = Math.min(100, (paidHrs / 80) * 100);
+        const realPct = Math.min(100, (realHrs / 80) * 100);
+        const paidColor = paidPct < 60 ? 'green' : paidPct < 85 ? 'yellow' : 'red';
+        const realColor = realPct < 60 ? 'green' : realPct < 85 ? 'yellow' : 'red';
+
+        html += `<div class="stats-grid">
+            <div class="stat-box"><div class="stat-label">Real OT (80h cap)</div>
+                <div class="stat-value hours">${realHrs.toFixed(1)}h / 80h</div>
+                <div class="progress-bar"><div class="progress-fill ${realColor}" style="width:${realPct}%"></div></div>
+                <div class="stat-sub">${(80 - realHrs).toFixed(1)}h remaining</div></div>
+            <div class="stat-box"><div class="stat-label">Paid OT (80h cap)</div>
+                <div class="stat-value hours">${paidHrs.toFixed(1)}h / 80h</div>
+                <div class="progress-bar"><div class="progress-fill ${paidColor}" style="width:${paidPct}%"></div></div>
+                <div class="stat-sub">${(80 - paidHrs).toFixed(1)}h remaining</div></div>
+            <div class="stat-box"><div class="stat-label">PTO Bank (${year})</div><div class="stat-value pto">${totPTO}h</div></div>
+            <div class="stat-box"><div class="stat-label">Total Stipends</div><div class="stat-value money">${fmtEur(totStipend)}</div></div>
+        </div>
+        <div class="card"><div class="card-title">Total Compensation (${year})</div>
+            <div style="font-size:28px;font-weight:700;color:var(--green);margin-top:8px;">${fmtEur(totStipend + totPay)}</div></div>`;
+        if (monthlyData.length > 0) {
+            html += `<div class="card"><div class="card-title">Monthly Breakdown</div>
+                <table class="breakdown-table"><tr><th>Month</th><th>Stipends</th><th>PTO</th><th>Real OT</th><th>Paid OT</th><th>Pay</th><th>Total</th></tr>`;
+            monthlyData.forEach(md => {
+                const mName = new Date(year, md.month, 1).toLocaleDateString('en-GB', { month: 'short' });
+                html += `<tr><td>${mName}</td><td>${fmtEur(md.stipend)}</td><td>${md.pto}h</td>
+                    <td>${durStr(md.realMin)}</td><td>${durStr(md.paidMin)}</td>
+                    <td>${fmtEur(md.pay)}</td><td><strong>${fmtEur(md.stipend + md.pay)}</strong></td></tr>`;
+            });
+            html += `</table></div>`;
+        }
+        const yearRots = data.rotations.filter(r => r.startDate.startsWith(String(year)) || r.endDate.startsWith(String(year)));
+        if (yearRots.length > 0) {
+            html += `<div class="card"><div class="card-title">Rotation History</div><div class="rotation-history">`;
+            yearRots.sort((a, b) => a.startDate.localeCompare(b.startDate)).forEach(r => {
+                html += `<div class="rotation-chip">${getRoleBadge(r.role)} ${fmtDateShort(r.startDate)} - ${fmtDateShort(r.endDate)}</div>`;
+            });
+            html += `</div></div>`;
+        }
+        document.getElementById('tab-yearly').innerHTML = html;
+    }
+    function yearlyNav(dir) { yearlyYear += dir; renderYearly(); }
+
+    // ── Rotation CRUD ──
+    function openAddRotation(editId) {
+        const existing = editId ? data.rotations.find(r => r.id === editId) : null;
+        const mon = getMonday(new Date()), sun = addDays(mon, 6);
+        const dStart = existing ? existing.startDate : dateStr(mon);
+        const dEnd = existing ? existing.endDate : dateStr(sun);
+        const dRole = existing ? existing.role : 'L1';
+        let html = `<h2>${existing ? 'Edit' : 'Add'} Rotation</h2>
+            <div class="form-group" style="margin-bottom:12px;"><label>Start Date</label><input type="date" id="rotStart" value="${dStart}"></div>
+            <div class="form-group" style="margin-bottom:12px;"><label>End Date</label><input type="date" id="rotEnd" value="${dEnd}"></div>
+            <div class="form-group" style="margin-bottom:16px;"><label>Role</label>
+                <select id="rotRole"><option value="L1" ${dRole==='L1'?'selected':''}>L1 (Primary)</option><option value="L2" ${dRole==='L2'?'selected':''}>L2 (Backup)</option></select></div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">L1 receives stipends + PTO. L2 can only log response hours.</div>
+            <div class="form-row" style="justify-content:flex-end;gap:8px;">
+                ${existing ? `<button class="btn btn-danger btn-sm" onclick="deleteRotation('${editId}')">Delete</button>` : ''}
+                <button class="btn" onclick="closeAddRotation()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveRotation('${editId || ''}')">${existing ? 'Save' : 'Add'}</button>
+            </div>`;
+        if (data.rotations.length > 0) {
+            html += `<div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;"><h3 style="font-size:14px;margin-bottom:8px;">Existing Rotations</h3>`;
+            data.rotations.sort((a, b) => b.startDate.localeCompare(a.startDate)).forEach(r => {
+                html += `<div class="rotation-item"><span>${getRoleBadge(r.role)} ${fmtDateShort(r.startDate)} - ${fmtDateShort(r.endDate)}</span>
+                    <div style="display:flex;gap:4px;"><button class="btn btn-sm" onclick="openAddRotation('${r.id}')">Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteRotation('${r.id}')">Del</button></div></div>`;
+            });
+            html += `</div>`;
+        }
+        document.getElementById('addRotationPanel').innerHTML = html;
+        document.getElementById('addRotationOverlay').classList.add('active');
+    }
+    function closeAddRotation() { document.getElementById('addRotationOverlay').classList.remove('active'); }
+    function saveRotation(editId) {
+        const s = document.getElementById('rotStart').value, e = document.getElementById('rotEnd').value, role = document.getElementById('rotRole').value;
+        if (!s || !e) { toast('Fill in both dates'); return; }
+        if (e < s) { toast('End must be after start'); return; }
+        if (data.rotations.find(r => r.id !== editId && s <= r.endDate && e >= r.startDate)) { toast('Overlaps existing rotation'); return; }
+        if (editId) { const r = data.rotations.find(r => r.id === editId); r.startDate = s; r.endDate = e; r.role = role; }
+        else data.rotations.push({ id: uid(), startDate: s, endDate: e, role });
+        save(); closeAddRotation(); render(); toast(editId ? 'Updated' : 'Added');
+    }
+    function deleteRotation(id) { data.rotations = data.rotations.filter(r => r.id !== id); save(); closeAddRotation(); render(); toast('Deleted'); }
+
+    // ── Response CRUD ──
+    function openAddResponse(defaultDate) {
+        const today = dateStr(new Date());
+        document.getElementById('editResponsePanel').innerHTML = `<h2>Log Incident Response</h2>
+            <div class="form-group" style="margin-bottom:12px;"><label>Date</label><input type="date" id="respDate" value="${defaultDate || today}"></div>
+            <div class="form-row"><div class="form-group" style="flex:1;"><label>Start Time</label><input type="time" id="respStart"></div>
+                <div class="form-group" style="flex:1;"><label>End Time</label><input type="time" id="respEnd"></div></div>
+            <div class="form-group" style="margin-bottom:12px;"><label>Incident Name</label><input type="text" id="respName" placeholder="e.g. PD-12345"></div>
+            <div class="form-group" style="margin-bottom:16px;"><label>Notes</label><textarea id="respNotes" rows="2"></textarea></div>
+            <div class="form-row" style="justify-content:flex-end;">
+                <button class="btn" onclick="closeEditResponse()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveNewResponse()">Save</button>
+            </div>`;
+        document.getElementById('editResponseOverlay').classList.add('active');
+    }
+    function editResponse(id) {
+        const r = data.responses.find(x => x.id === id); if (!r) return;
+        document.getElementById('editResponsePanel').innerHTML = `<h2>Edit Response</h2>
+            <div class="form-group" style="margin-bottom:12px;"><label>Date</label><input type="date" id="respDate" value="${r.date}"></div>
+            <div class="form-row"><div class="form-group" style="flex:1;"><label>Start Time</label><input type="time" id="respStart" value="${r.startTime}"></div>
+                <div class="form-group" style="flex:1;"><label>End Time</label><input type="time" id="respEnd" value="${r.endTime}"></div></div>
+            <div class="form-group" style="margin-bottom:12px;"><label>Incident Name</label><input type="text" id="respName" value="${r.incidentName || ''}"></div>
+            <div class="form-group" style="margin-bottom:16px;"><label>Notes</label><textarea id="respNotes" rows="2">${r.notes || ''}</textarea></div>
+            <div class="form-row" style="justify-content:flex-end;">
+                <button class="btn btn-danger" onclick="deleteResponse('${r.id}')" style="margin-right:auto;">Delete</button>
+                <button class="btn" onclick="closeEditResponse()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveEditResponse('${r.id}')">Save</button>
+            </div>`;
+        document.getElementById('editResponseOverlay').classList.add('active');
+    }
+    function closeEditResponse() { document.getElementById('editResponseOverlay').classList.remove('active'); }
+    function saveNewResponse() {
+        const d = document.getElementById('respDate').value, s = document.getElementById('respStart').value, e = document.getElementById('respEnd').value;
+        if (!d || !s || !e) { toast('Fill in date and times'); return; }
+        data.responses.push({ id: uid(), date: d, startTime: s, endTime: e, incidentName: document.getElementById('respName').value.trim(), notes: document.getElementById('respNotes').value.trim() });
+        save(); closeEditResponse(); closeDayDetail(); render(); toast('Response logged');
+    }
+    function saveEditResponse(id) {
+        const r = data.responses.find(x => x.id === id); if (!r) return;
+        r.date = document.getElementById('respDate').value; r.startTime = document.getElementById('respStart').value;
+        r.endTime = document.getElementById('respEnd').value; r.incidentName = document.getElementById('respName').value.trim();
+        r.notes = document.getElementById('respNotes').value.trim();
+        save(); closeEditResponse(); closeDayDetail(); render(); toast('Updated');
+    }
+    function deleteResponse(id) { data.responses = data.responses.filter(r => r.id !== id); save(); closeEditResponse(); closeDayDetail(); render(); toast('Deleted'); }
+
+    // ── Multiple Concurrent Timers ──
+    function openTimerStart() {
+        document.getElementById('timerIncidentName').value = '';
+        document.getElementById('timerNotes').value = '';
+        document.getElementById('timerStartOverlay').classList.add('active');
+        setTimeout(() => document.getElementById('timerIncidentName').focus(), 100);
+    }
+    function closeTimerStart() { document.getElementById('timerStartOverlay').classList.remove('active'); }
+    function startTimer() {
+        data.activeTimers.push({
+            id: uid(),
+            startedAt: new Date().toISOString(),
+            incidentName: document.getElementById('timerIncidentName').value.trim(),
+            notes: document.getElementById('timerNotes').value.trim()
+        });
+        save(); closeTimerStart(); startTimerTick(); renderTimers(); toast('Timer started');
+    }
+    function stopTimer(timerId) {
+        const timer = data.activeTimers.find(t => t.id === timerId);
+        if (!timer) return;
+        const start = new Date(timer.startedAt), end = new Date();
+        data.responses.push({
+            id: uid(), date: dateStr(start),
+            startTime: String(start.getHours()).padStart(2, '0') + ':' + String(start.getMinutes()).padStart(2, '0'),
+            endTime: String(end.getHours()).padStart(2, '0') + ':' + String(end.getMinutes()).padStart(2, '0'),
+            incidentName: timer.incidentName, notes: timer.notes
+        });
+        data.activeTimers = data.activeTimers.filter(t => t.id !== timerId);
+        save(); renderTimers(); render(); toast('Timer stopped, response logged');
+        if (data.activeTimers.length === 0 && timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    }
+    function renderTimers() {
+        const area = document.getElementById('timerArea');
+        if (data.activeTimers.length === 0) { area.innerHTML = ''; return; }
+        let html = '';
+        data.activeTimers.forEach(t => {
+            const elapsed = Math.floor((Date.now() - new Date(t.startedAt).getTime()) / 1000);
+            const h = Math.floor(elapsed / 3600), m = Math.floor((elapsed % 3600) / 60), s = elapsed % 60;
+            const timeStr = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+            html += `<div class="timer-widget">
+                <div class="timer-dot"></div>
+                <span class="timer-elapsed">${timeStr}</span>
+                <span class="timer-name" title="${t.incidentName || ''}">${t.incidentName || 'Timer'}</span>
+                <button class="btn btn-sm btn-danger" onclick="stopTimer('${t.id}')" style="padding:2px 6px;font-size:11px;">Stop</button>
+            </div>`;
+        });
+        area.innerHTML = html;
+    }
+    function startTimerTick() {
+        if (timerInterval) return;
+        timerInterval = setInterval(renderTimers, 1000);
+    }
+
+    // ── Settings ──
+    function openSettings() {
+        const s = data.settings;
+        let html = `<h2>Settings</h2>
+            <div class="panel-section"><h3>Compensation</h3>
+                <div class="form-group" style="margin-bottom:8px;"><label>Annual Base Salary (EUR)</label>
+                    <input type="number" id="setSalary" value="${s.annualSalary || ''}" placeholder="e.g. 60000" oninput="updateRatePreview()"></div>
+                <div class="rate-display" id="ratePreview">${s.annualSalary > 0 ? `Base hourly: <strong>${fmtEur(getHourlyRate())}</strong> | 2x rate: <strong>${fmtEur(getOvertimeRate())}</strong>/hr` : 'Enter salary to see rates'}</div>
+            </div>
+            <div class="panel-section"><h3>Business Hours</h3>
+                <div class="form-row"><div class="form-group" style="flex:1;"><label>Start</label><input type="time" id="setBusStart" value="${s.businessHoursStart}"></div>
+                    <div class="form-group" style="flex:1;"><label>End</label><input type="time" id="setBusEnd" value="${s.businessHoursEnd}"></div></div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Work outside these hours on workdays = 2x pay.</div>
+            </div>
+            <div class="panel-section"><h3>Spanish National Holidays</h3><ul class="date-list">`;
+        [2025, 2026].forEach(y => { (SPANISH_HOLIDAYS[y] || []).forEach(h => {
+            html += `<li><span>${fmtDate(h.date)}</span><span style="color:var(--text-muted)">${h.name}</span></li>`; }); });
+        html += `</ul></div>
+            <div class="panel-section"><h3>Custom Holidays</h3><ul class="date-list">`;
+        s.customHolidays.forEach((h, i) => {
+            html += `<li><span>${fmtDate(h.date)} - ${h.name}</span><button class="btn btn-sm btn-danger" onclick="removeCustomHoliday(${i})">Del</button></li>`;
+        });
+        html += `</ul><div class="form-row" style="margin-top:8px;"><input type="date" id="newHolidayDate" style="flex:1;"><input type="text" id="newHolidayName" placeholder="Name" style="flex:1;">
+            <button class="btn btn-sm btn-primary" onclick="addCustomHoliday()">Add</button></div></div>
+            <div class="panel-section"><h3>Away Days</h3><ul class="date-list">`;
+        s.awayDays.forEach((a, i) => {
+            html += `<li><span>${fmtDate(a.date)}${a.name ? ' - ' + a.name : ''}</span><button class="btn btn-sm btn-danger" onclick="removeAwayDay(${i})">Del</button></li>`;
+        });
+        html += `</ul><div class="form-row" style="margin-top:8px;"><input type="date" id="newAwayDate" style="flex:1;"><input type="text" id="newAwayName" placeholder="Name" style="flex:1;">
+            <button class="btn btn-sm btn-primary" onclick="addAwayDay()">Add</button></div></div>
+            <div class="panel-section"><h3>Data</h3><div class="form-row">
+                <button class="btn btn-sm" onclick="exportData()">Export JSON</button>
+                <label class="btn btn-sm" style="cursor:pointer;">Import<input type="file" accept=".json" onchange="importDataFile(event)" style="display:none;"></label>
+                <button class="btn btn-sm btn-danger" onclick="clearAllData()">Clear All</button>
+            </div></div>
+            <div class="panel-section"><h3>Appearance</h3>
+                <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+                    <input type="checkbox" id="setDarkMode" ${s.darkMode ? 'checked' : ''} onchange="toggleDarkMode()"> Dark mode
+                </label>
+            </div>
+            <div class="form-row" style="justify-content:flex-end;margin-top:16px;"><button class="btn btn-primary" onclick="saveSettings()">Done</button></div>`;
+        document.getElementById('settingsPanel').innerHTML = html;
+        document.getElementById('settingsOverlay').classList.add('active');
+    }
+    function closeSettings() { document.getElementById('settingsOverlay').classList.remove('active'); }
+    function updateRatePreview() {
+        const sal = parseFloat(document.getElementById('setSalary').value) || 0;
+        document.getElementById('ratePreview').innerHTML = sal > 0
+            ? `Base hourly: <strong>${fmtEur(sal / 2080.08)}</strong> | 2x rate: <strong>${fmtEur((sal / 2080.08) * 2)}</strong>/hr`
+            : 'Enter salary to see rates';
+    }
+    function saveSettings() {
+        data.settings.annualSalary = parseFloat(document.getElementById('setSalary').value) || 0;
+        data.settings.businessHoursStart = document.getElementById('setBusStart').value || '09:00';
+        data.settings.businessHoursEnd = document.getElementById('setBusEnd').value || '18:00';
+        save(); closeSettings(); render(); toast('Settings saved');
+    }
+    function addCustomHoliday() {
+        const d = document.getElementById('newHolidayDate').value, n = document.getElementById('newHolidayName').value.trim();
+        if (!d || !n) { toast('Fill in date and name'); return; }
+        data.settings.customHolidays.push({ date: d, name: n }); save(); openSettings(); toast('Added');
+    }
+    function removeCustomHoliday(i) { data.settings.customHolidays.splice(i, 1); save(); openSettings(); }
+    function addAwayDay() {
+        const d = document.getElementById('newAwayDate').value, n = document.getElementById('newAwayName').value.trim();
+        if (!d) { toast('Select a date'); return; }
+        data.settings.awayDays.push({ date: d, name: n || 'Away Day' }); save(); openSettings(); toast('Added');
+    }
+    function removeAwayDay(i) { data.settings.awayDays.splice(i, 1); save(); openSettings(); }
+    function toggleDarkMode() {
+        data.settings.darkMode = document.getElementById('setDarkMode').checked;
+        document.documentElement.setAttribute('data-theme', data.settings.darkMode ? 'dark' : 'light'); save();
+    }
+    function exportData() {
+        const blob = new Blob([JSON.stringify(StorageVersionManager.exportData(schema), null, 2)], { type: 'application/json' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = 'oncall-tracker-backup.json'; a.click(); toast('Exported');
+    }
+    function importDataFile(event) {
+        const file = event.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                StorageVersionManager.importData(schema, JSON.parse(e.target.result));
+                data = StorageVersionManager.load(schema);
+                if (data.settings.darkMode) document.documentElement.setAttribute('data-theme', 'dark');
+                render(); closeSettings(); toast('Imported');
+            } catch (err) { toast('Import failed: ' + err.message); }
+        };
+        reader.readAsText(file);
+    }
+    function clearAllData() {
+        if (!confirm('Delete all data? This cannot be undone.')) return;
+        StorageVersionManager.remove(schema); data = StorageVersionManager.load(schema);
+        save(); closeSettings(); render(); toast('Cleared');
+    }
+
+    // ── Close overlays ──
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { closeSettings(); closeEditResponse(); closeAddRotation(); closeTimerStart(); closeDayDetail(); }
+    });
+    ['settingsOverlay', 'editResponseOverlay', 'addRotationOverlay', 'timerStartOverlay'].forEach(id => {
+        document.getElementById(id).addEventListener('click', e => {
+            if (e.target.id === id) {
+                if (id === 'settingsOverlay') closeSettings();
+                else if (id === 'editResponseOverlay') closeEditResponse();
+                else if (id === 'addRotationOverlay') closeAddRotation();
+                else if (id === 'timerStartOverlay') closeTimerStart();
+            }
+        });
+    });
+
+    // ── Init ──
+    function init() {
+        if (data.settings.darkMode) document.documentElement.setAttribute('data-theme', 'dark');
+        if (data.activeTimers.length > 0) startTimerTick();
+        render();
+    }
+    init();
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').then(reg => {
+            reg.update();
+            navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
+        }).catch(() => {});
+    }
+    let _deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); _deferredInstallPrompt = e; });
+    </script>
+</body>
+</html>
