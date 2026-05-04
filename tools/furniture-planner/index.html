@@ -28,12 +28,12 @@
   /* Plan manager - collapsible */
   #plan-section { margin-bottom: 6px; border-bottom: 1px solid #0f3460; padding-bottom: 6px; }
   .section-toggle {
-    display: flex; align-items: center; justify-content: space-between;
+    display: flex; align-items: center; gap: 6px;
     cursor: pointer; user-select: none; padding: 4px 0;
   }
   .section-toggle h3 { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 1px; margin: 0; }
   .section-toggle:hover h3 { color: #e94560; }
-  .section-toggle .chev { font-size: 8px; color: #666; transition: transform 0.15s; }
+  .section-toggle .chev { font-size: 8px; color: #666; transition: transform 0.15s; display: inline-block; width: 10px; }
   .section-toggle.open .chev { transform: rotate(90deg); }
   .section-body { display: none; padding-top: 6px; }
   .section-body.open { display: block; }
@@ -250,7 +250,9 @@
   #zoom-ctl button {
     width: 28px; height: 28px; background: #0f3460; border: 1px solid #1a4a8a;
     color: #eee; border-radius: 5px; cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center; padding: 0;
   }
+  #z-fit { font-size: 11px; font-weight: 600; }
   #zoom-ctl button:hover { background: #1a4a8a; }
   .snap-row { display: flex; align-items: center; gap: 5px; margin-bottom: 6px; font-size: 11px; }
   .snap-row input { accent-color: #e94560; }
@@ -373,8 +375,8 @@
   <!-- Plan Manager (collapsible) -->
   <div id="plan-section">
     <div class="section-toggle open" id="plan-toggle">
-      <h3>Floor Plans</h3>
       <span class="chev">&#x25B6;</span>
+      <h3>Floor Plans</h3>
     </div>
     <div class="section-body open" id="plan-body">
       <img id="plan-thumb" class="plan-thumb" alt="Floor plan preview">
@@ -505,7 +507,7 @@
   <span id="s-cursor"></span>
   <span id="s-count">0 items</span>
   <span id="s-plan" style="color:#e94560;"></span>
-  <span style="margin-left:auto; color:#666;">Ctrl+scroll to zoom</span>
+  <span id="s-zoom-hint" style="margin-left:auto; color:#666;">Ctrl+scroll to zoom</span>
 </div>
 <div id="zoom-ctl">
   <button id="z-in" aria-label="Zoom in">+</button>
@@ -684,10 +686,12 @@ $('plan-toggle').addEventListener('click', () => {
   $('plan-toggle').classList.toggle('open');
   $('plan-body').classList.toggle('open');
 });
-// Collapse plan section by default on mobile — go straight to furniture
+// Mobile tweaks — collapse plans, swap zoom hint
 if (window.innerWidth <= 768) {
   $('plan-toggle').classList.remove('open');
   $('plan-body').classList.remove('open');
+  const zh = $('s-zoom-hint');
+  if (zh) zh.textContent = 'Use +/- buttons to zoom';
 }
 
 // ═══════════════════════════════════════════════════════
