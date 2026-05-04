@@ -1,0 +1,50 @@
+[
+    {
+        "merged": "/Users/james.gan/.gradle/daemon/8.2/tech.bellevue.movetospain.app-merged_res-21:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "/Users/james.gan/.gradle/daemon/8.2/tech.bellevue.movetospain.app-main-22:/mipmap-xhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "/Users/james.gan/.gradle/daemon/8.2/tech.bellevue.movetospain.app-merged_res-21:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "/Users/james.gan/.gradle/daemon/8.2/tech.bellevue.movetospain.app-main-22:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "/Users/james.gan/.gradle/daemon/8.2/tech.bellevue.movetospain.app-merged_res-21:/layout_activity_main.xml.flat",
+        "source": "/Users/james.gan/.gradle/daemon/8.2/tech.bellevue.movetospain.app-main-22:/layout/activity_main.xml"
+    },
+    {
+        "merged": "tech.bellevue.movetospain.app-merged_res-21:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "tech.bellevue.movetospain.app-main-22:/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "/Users/james.gan/.gradle/daemon/8.2/tech.bellevue.movetospain.app-merged_res-21:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "/Users/james.gan/.gradle/daemon/8.2/tech.bellevue.movetospain.app-main-22:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "tech.bellevue.movetospain.app-merged_res-21:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "tech.bellevue.movetospain.app-main-22:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "tech.bellevue.movetospain.app-merged_res-21:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "tech.bellevue.movetospain.app-main-22:/mipmap-xhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "tech.bellevue.movetospain.app-merged_res-21:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "tech.bellevue.movetospain.app-main-22:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "/Users/james.gan/.gradle/daemon/8.2/tech.bellevue.movetospain.app-merged_res-21:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "/Users/james.gan/.gradle/daemon/8.2/tech.bellevue.movetospain.app-main-22:/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "tech.bellevue.movetospain.app-merged_res-21:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "tech.bellevue.movetospain.app-main-22:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "/Users/james.gan/.gradle/daemon/8.2/tech.bellevue.movetospain.app-merged_res-21:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "/Users/james.gan/.gradle/daemon/8.2/tech.bellevue.movetospain.app-main-22:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "/Users/james.gan/.gradle/daemon/8.2/tech.bellevue.movetospain.app-merged_res-21:/xml_file_paths.xml.flat",
+        "source": "/Users/james.gan/.gradle/daemon/8.2/tech.bellevue.movetospain.app-main-22:/xml/file_paths.xml"
+    }
+]

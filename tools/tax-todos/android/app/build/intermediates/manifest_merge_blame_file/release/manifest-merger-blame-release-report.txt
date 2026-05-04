@@ -1,0 +1,141 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="tech.bellevue.taxtodos"
+4    android:versionCode="1"
+5    android:versionName="1.0.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="24"
+9        android:targetSdkVersion="34" />
+10
+11    <uses-permission android:name="android.permission.INTERNET" />
+11-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:4:5-67
+11-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:4:22-64
+12
+13    <permission
+13-->[androidx.core:core:1.9.0] /Users/james.gan/.gradle/caches/transforms-3/baef89d70f13c7cf2c807b99df8a18bc/transformed/core-1.9.0/AndroidManifest.xml:22:5-24:47
+14        android:name="tech.bellevue.taxtodos.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+14-->[androidx.core:core:1.9.0] /Users/james.gan/.gradle/caches/transforms-3/baef89d70f13c7cf2c807b99df8a18bc/transformed/core-1.9.0/AndroidManifest.xml:23:9-81
+15        android:protectionLevel="signature" />
+15-->[androidx.core:core:1.9.0] /Users/james.gan/.gradle/caches/transforms-3/baef89d70f13c7cf2c807b99df8a18bc/transformed/core-1.9.0/AndroidManifest.xml:24:9-44
+16
+17    <uses-permission android:name="tech.bellevue.taxtodos.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+17-->[androidx.core:core:1.9.0] /Users/james.gan/.gradle/caches/transforms-3/baef89d70f13c7cf2c807b99df8a18bc/transformed/core-1.9.0/AndroidManifest.xml:26:5-97
+17-->[androidx.core:core:1.9.0] /Users/james.gan/.gradle/caches/transforms-3/baef89d70f13c7cf2c807b99df8a18bc/transformed/core-1.9.0/AndroidManifest.xml:26:22-94
+18
+19    <application
+19-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:6:5-51:19
+20        android:allowBackup="true"
+20-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:7:9-35
+21        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+21-->[androidx.core:core:1.9.0] /Users/james.gan/.gradle/caches/transforms-3/baef89d70f13c7cf2c807b99df8a18bc/transformed/core-1.9.0/AndroidManifest.xml:28:18-86
+22        android:extractNativeLibs="false"
+23        android:icon="@mipmap/ic_launcher"
+23-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:8:9-43
+24        android:label="@string/app_name"
+24-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:9:9-41
+25        android:theme="@style/Theme.App"
+25-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:10:9-41
+26        android:usesCleartextTraffic="false" >
+26-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:11:9-45
+27        <activity
+27-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:13:9-39:20
+28            android:name="tech.bellevue.taxtodos.MainActivity"
+28-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:14:13-41
+29            android:configChanges="orientation|screenSize|keyboardHidden"
+29-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:17:13-74
+30            android:exported="true"
+30-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:15:13-36
+31            android:launchMode="singleTask" >
+31-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:16:13-44
+32            <intent-filter>
+32-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:19:13-22:29
+33                <action android:name="android.intent.action.MAIN" />
+33-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:20:17-69
+33-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:20:25-66
+34
+35                <category android:name="android.intent.category.LAUNCHER" />
+35-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:21:17-77
+35-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:21:27-74
+36            </intent-filter>
+37
+38            <!-- Open JSON files via content:// -->
+39            <intent-filter>
+39-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:25:13-30:29
+40                <action android:name="android.intent.action.VIEW" />
+40-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:26:17-69
+40-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:26:25-66
+41
+42                <category android:name="android.intent.category.DEFAULT" />
+42-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:27:17-76
+42-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:27:27-73
+43                <category android:name="android.intent.category.BROWSABLE" />
+43-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:28:17-78
+43-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:28:27-75
+44
+45                <data
+45-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:29:17-86
+46                    android:mimeType="application/json"
+46-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:29:48-83
+47                    android:scheme="content" />
+47-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:29:23-47
+48            </intent-filter>
+49
+50            <!-- Share sheet -->
+51            <intent-filter>
+51-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:33:13-37:29
+52                <action android:name="android.intent.action.SEND" />
+52-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:34:17-69
+52-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:34:25-66
+53
+54                <category android:name="android.intent.category.DEFAULT" />
+54-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:27:17-76
+54-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:27:27-73
+55
+56                <data android:mimeType="application/json" />
+56-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:29:17-86
+56-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:29:48-83
+57            </intent-filter>
+58        </activity>
+59
+60        <provider
+60-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:41:9-49:20
+61            android:name="androidx.core.content.FileProvider"
+61-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:42:13-62
+62            android:authorities="tech.bellevue.taxtodos.fileprovider"
+62-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:43:13-70
+63            android:exported="false"
+63-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:44:13-37
+64            android:grantUriPermissions="true" >
+64-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:45:13-47
+65            <meta-data
+65-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:46:13-48:54
+66                android:name="android.support.FILE_PROVIDER_PATHS"
+66-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:47:17-67
+67                android:resource="@xml/file_paths" />
+67-->/Users/james.gan/repos/own-site/tools/tax-todos/android/app/src/main/AndroidManifest.xml:48:17-51
+68        </provider>
+69        <provider
+69-->[androidx.emoji2:emoji2:1.2.0] /Users/james.gan/.gradle/caches/transforms-3/99969768f38fe311e96a7c891dad8d87/transformed/emoji2-1.2.0/AndroidManifest.xml:24:9-32:20
+70            android:name="androidx.startup.InitializationProvider"
+70-->[androidx.emoji2:emoji2:1.2.0] /Users/james.gan/.gradle/caches/transforms-3/99969768f38fe311e96a7c891dad8d87/transformed/emoji2-1.2.0/AndroidManifest.xml:25:13-67
+71            android:authorities="tech.bellevue.taxtodos.androidx-startup"
+71-->[androidx.emoji2:emoji2:1.2.0] /Users/james.gan/.gradle/caches/transforms-3/99969768f38fe311e96a7c891dad8d87/transformed/emoji2-1.2.0/AndroidManifest.xml:26:13-68
+72            android:exported="false" >
+72-->[androidx.emoji2:emoji2:1.2.0] /Users/james.gan/.gradle/caches/transforms-3/99969768f38fe311e96a7c891dad8d87/transformed/emoji2-1.2.0/AndroidManifest.xml:27:13-37
+73            <meta-data
+73-->[androidx.emoji2:emoji2:1.2.0] /Users/james.gan/.gradle/caches/transforms-3/99969768f38fe311e96a7c891dad8d87/transformed/emoji2-1.2.0/AndroidManifest.xml:29:13-31:52
+74                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+74-->[androidx.emoji2:emoji2:1.2.0] /Users/james.gan/.gradle/caches/transforms-3/99969768f38fe311e96a7c891dad8d87/transformed/emoji2-1.2.0/AndroidManifest.xml:30:17-75
+75                android:value="androidx.startup" />
+75-->[androidx.emoji2:emoji2:1.2.0] /Users/james.gan/.gradle/caches/transforms-3/99969768f38fe311e96a7c891dad8d87/transformed/emoji2-1.2.0/AndroidManifest.xml:31:17-49
+76            <meta-data
+76-->[androidx.lifecycle:lifecycle-process:2.4.1] /Users/james.gan/.gradle/caches/transforms-3/07482a087bb2a2f2f7391b347111a040/transformed/lifecycle-process-2.4.1/AndroidManifest.xml:31:13-33:52
+77                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+77-->[androidx.lifecycle:lifecycle-process:2.4.1] /Users/james.gan/.gradle/caches/transforms-3/07482a087bb2a2f2f7391b347111a040/transformed/lifecycle-process-2.4.1/AndroidManifest.xml:32:17-78
+78                android:value="androidx.startup" />
+78-->[androidx.lifecycle:lifecycle-process:2.4.1] /Users/james.gan/.gradle/caches/transforms-3/07482a087bb2a2f2f7391b347111a040/transformed/lifecycle-process-2.4.1/AndroidManifest.xml:33:17-49
+79        </provider>
+80    </application>
+81
+82</manifest>

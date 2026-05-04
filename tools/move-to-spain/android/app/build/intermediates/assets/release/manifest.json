@@ -1,0 +1,10 @@
+{
+  "name": "Move to Spain Guide",
+  "short_name": "Move Spain",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f8f9fa",
+  "theme_color": "#2563eb"
+}

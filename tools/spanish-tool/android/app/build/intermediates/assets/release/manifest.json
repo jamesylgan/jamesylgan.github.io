@@ -1,0 +1,10 @@
+{
+  "name": "Conversational Spanish",
+  "short_name": "Spanish",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb"
+}
