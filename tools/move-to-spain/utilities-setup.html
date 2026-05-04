@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <title>Setting Up Utilities in Madrid</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #f8f9fa; --bg-card: #ffffff; --bg-surface: #f0f2f5;
+            --text: #1a1a2e; --text-muted: #555; --text-dim: #888;
+            --border: #ddd; --border-light: #e8e8e8;
+            --accent: #2563eb; --accent-hover: #1d4ed8;
+            --red: #dc2626; --green: #16a34a; --yellow: #d97706; --orange: #ea580c;
+            --flag-red: #c60b1e; --flag-yellow: #ffc400;
+        }
+        .dark {
+            --bg: #111827; --bg-card: #1f2937; --bg-surface: #1a2235;
+            --text: #f3f4f6; --text-muted: #9ca3af; --text-dim: #6b7280;
+            --border: #374151; --border-light: #2d3748;
+            --accent: #3b82f6; --accent-hover: #2563eb;
+            --red: #f87171; --green: #34d399; --yellow: #fbbf24; --orange: #fb923c;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg); color: var(--text);
+            min-height: 100vh; line-height: 1.6;
+        }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 20px; border-bottom: 1px solid var(--border);
+            background: var(--bg-surface); flex-wrap: wrap; gap: 8px;
+        }
+        .header h1 { font-size: 1.1rem; font-weight: 600; }
+        .header .flag { font-size: 1.3rem; }
+        .back-link { color: var(--text-muted); font-size: 13px; }
+        .dark-toggle { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 14px; }
+        .container { max-width: 800px; margin: 0 auto; padding: 24px 20px; }
+        h2 { font-size: 1.3rem; margin: 32px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--flag-red); }
+        h2:first-of-type { margin-top: 16px; }
+        h3 { font-size: 1.05rem; margin: 20px 0 8px; color: var(--accent); }
+        h4 { font-size: 0.92rem; margin: 14px 0 6px; }
+        p, li { font-size: 0.9rem; color: var(--text-muted); }
+        p { margin-bottom: 12px; }
+        ul, ol { margin: 8px 0 16px 24px; }
+        li { margin-bottom: 6px; }
+        strong { color: var(--text); }
+        .callout {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-left: 4px solid var(--accent); border-radius: 8px;
+            padding: 14px 16px; margin: 16px 0;
+        }
+        .callout.warn { border-left-color: var(--orange); }
+        .callout.success { border-left-color: var(--green); }
+        .callout.danger { border-left-color: var(--red); }
+        .step-flow { display: flex; flex-direction: column; gap: 0; margin: 16px 0; }
+        .step { display: flex; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border-light); }
+        .step:last-child { border-bottom: none; }
+        .step-num {
+            min-width: 32px; height: 32px; border-radius: 50%;
+            background: var(--accent); color: #fff; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem; flex-shrink: 0;
+        }
+        .step-content { flex: 1; }
+        .step-content strong { display: block; margin-bottom: 2px; }
+        .step-content p { margin-bottom: 4px; }
+        code { background: var(--bg-surface); padding: 2px 6px; border-radius: 4px; font-size: 0.82rem; color: var(--text); }
+        table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 0.85rem; }
+        th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border-light); }
+        th { background: var(--bg-surface); color: var(--text); font-weight: 600; }
+        td { color: var(--text-muted); }
+        .badge { display: inline-block; font-size: 0.7rem; padding: 2px 7px; border-radius: 3px; font-weight: 600; text-transform: uppercase; vertical-align: middle; margin-left: 4px; }
+        .badge-best { background: var(--green); color: #fff; }
+        .badge-good { background: var(--accent); color: #fff; }
+        .badge-warn { background: var(--yellow); color: #fff; }
+        .cost-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 16px 0; }
+        .cost-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 14px; text-align: center; }
+        .cost-card .amount { font-size: 1.4rem; font-weight: 700; color: var(--text); }
+        .cost-card .label { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+        .updated { font-size: 0.75rem; color: var(--text-dim); margin-top: 32px; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div>
+        <h1><span class="flag">&#127466;&#127480;</span> Setting Up Utilities in Madrid</h1>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+        <a href="index.html" class="back-link">&larr; Main Guide</a>
+        <button class="dark-toggle" onclick="document.body.classList.toggle('dark');localStorage.setItem('theme',document.body.classList.contains('dark')?'dark':'light')">&#9681;</button>
+    </div>
+</div>
+
+<div class="container">
+
+<p>A practical guide for foreign residents (with NIE) setting up electricity, gas, water, and internet in a Madrid apartment. Written from experience.</p>
+
+<div class="callout warn">
+    <strong>Prerequisites:</strong> You need a valid NIE and a Spanish bank account (IBAN) before setting up any utility contract. Most providers won't accept a passport alone for ongoing contracts.
+</div>
+
+<!-- MONTHLY COST SUMMARY -->
+<h2>Monthly Cost Summary (3-Person Apartment)</h2>
+<div class="cost-grid">
+    <div class="cost-card"><div class="amount">~80</div><div class="label">Electricity</div></div>
+    <div class="cost-card"><div class="amount">~45</div><div class="label">Gas</div></div>
+    <div class="cost-card"><div class="amount">~20</div><div class="label">Water</div></div>
+    <div class="cost-card"><div class="amount">~15</div><div class="label">Internet</div></div>
+    <div class="cost-card" style="border-color:var(--accent)"><div class="amount" style="color:var(--accent)">~160</div><div class="label">Total / month</div></div>
+</div>
+<p>Ranges: electricity 70-140 (seasonal), gas 15-80 (seasonal), water 18-22, internet 10-30. Budget ~150-200/month total.</p>
+
+<!-- ORDER OF OPERATIONS -->
+<h2>Order of Operations</h2>
+<div class="step-flow">
+    <div class="step"><div class="step-num">1</div><div class="step-content"><strong>Before move-in: Book internet installation</strong><p>Longest lead time (7-15 days). Check Digi coverage first, then book O2/Movistar as fallback.</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-content"><strong>Before move-in: Start water titularity change</strong><p>Canal de Isabel II online. Can be done entirely remotely before you arrive.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-content"><strong>Before move-in: Start electricity cambio de titularidad</strong><p>Online with your chosen provider. Takes 3-5 business days. Get the CUPS code from your landlord first.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-content"><strong>Move-in day: Photo all meters with timestamps</strong><p>Electricity, gas, water. Send to landlord. This is your proof of where your liability starts.</p></div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-content"><strong>First week: Gas titularity + verify internet installation</strong><p>Gas may need a technician inspection if the meter was off. Internet tech comes to install router.</p></div></div>
+</div>
+
+<!-- ELECTRICITY -->
+<h2>Electricity (Luz)</h2>
+
+<h3>What is CUPS?</h3>
+<p>Your electricity connection point has a permanent 20-22 character code starting with <code>ES</code>. It never changes when you switch providers. <strong>You need this to sign up.</strong></p>
+<p>Where to find it: any previous bill for the apartment (ask landlord), or your provider can look it up from the address.</p>
+
+<h3>PVPC vs Free Market</h3>
+<table>
+    <tr><th></th><th>PVPC (Regulated)</th><th>Mercado Libre (Free Market)</th></tr>
+    <tr><td><strong>Price</strong></td><td>Varies hour-by-hour with wholesale market</td><td>Fixed rate, predictable bills</td></tr>
+    <tr><td><strong>Cheap hours</strong></td><td>Midnight-8am, Sundays, holidays</td><td>Same price always</td></tr>
+    <tr><td><strong>Best for</strong></td><td>People who can shift laundry/dishwasher to off-peak</td><td>People who want simplicity</td></tr>
+    <tr><td><strong>Providers</strong></td><td>Only "comercializadoras de referencia" (Endesa, Iberdrola, Naturgy, Repsol, EDP)</td><td>Any provider</td></tr>
+    <tr><td><strong>Savings</strong></td><td>Can save 30-80/month vs flat rate if disciplined</td><td>No effort, predictable budget</td></tr>
+</table>
+
+<div class="callout success">
+    <strong>Price difference for a 3-person household (~300 kWh/month):</strong>
+    <table style="margin:8px 0">
+        <tr><th></th><th>PVPC (disciplined off-peak use)</th><th>Flat Rate (Octopus Relax)</th></tr>
+        <tr><td><strong>Avg kWh price</strong></td><td>~0.10 (off-peak weighted)</td><td>~0.125 (fixed)</td></tr>
+        <tr><td><strong>Monthly energy cost</strong></td><td>~30 + 7 fixed = ~37</td><td>~37.50 + 7 fixed = ~44.50</td></tr>
+        <tr><td><strong>+ taxes (21% IVA etc)</strong></td><td>~65-85/month</td><td>~75-100/month</td></tr>
+        <tr><td><strong>Annual diff</strong></td><td colspan="2" style="text-align:center"><strong>~120-180/year savings with PVPC</strong> (if disciplined)</td></tr>
+    </table>
+    <p style="margin:8px 0 0"><strong>Our recommendation: Flat rate.</strong> The 10-15/month premium buys you zero mental load — no checking hourly prices, no scheduling laundry for 2am. Octopus Relax (~0.125/kWh, no lock-in) is the best fixed option in 2026. Switch to PVPC later if you want to optimize.</p>
+</div>
+
+<h3>Potencia Contratada (Contracted Power)</h3>
+<p>This is the maximum power you can draw at once. If you exceed it, the breaker trips.</p>
+<table>
+    <tr><th>kW</th><th>Good for</th><th>Monthly fixed cost</th></tr>
+    <tr><td>3.45 kW</td><td>Small flat, careful with simultaneous appliances</td><td>~5/month</td></tr>
+    <tr><td><strong>4.6 kW</strong> <span class="badge badge-best">Recommended</span></td><td>Standard 65-90m flat with normal appliances</td><td>~7/month</td></tr>
+    <tr><td>5.75 kW</td><td>Larger flat, electric water heater, or heavy simultaneous use</td><td>~9/month</td></tr>
+</table>
+<p>Start at 4.6 kW. You can change once per year. The 2/month difference isn't worth living with tripped breakers.</p>
+
+<h3>Sign Up Process</h3>
+<ol>
+    <li>Get the <strong>CUPS code</strong> from your landlord or a previous bill</li>
+    <li>Choose your provider and tariff</li>
+    <li>Submit online or by phone: NIE, Spanish IBAN, CUPS code, lease contract</li>
+    <li>Provider handles the switch with the grid distributor (you don't choose the distributor)</li>
+    <li>Wait <strong>3-5 business days</strong> for cambio de titularidad</li>
+</ol>
+
+<div class="callout warn">
+    <strong>If the supply was cut off:</strong> Reconnection takes 1-5 business days and may require a technician visit. Call the provider immediately on move-in day if there's no power.
+</div>
+
+<!-- GAS -->
+<h2>Gas</h2>
+
+<h3>Do You Even Have Gas?</h3>
+<p>Check your kitchen: gas hob? Look for a white/grey boiler (caldera) on a wall. Many older Madrid buildings have gas for hot water + heating. Newer buildings are increasingly all-electric.</p>
+
+<div class="callout">
+    <strong>Communal heating (calefaccion central):</strong> If your building has communal central heating, you do NOT sign up for individual gas heating. It's included in the community fees. Ask your landlord or portero.
+</div>
+
+<h3>Providers</h3>
+<p><strong>Naturgy</strong> is the dominant gas retailer. Endesa, Iberdrola, and Repsol also offer gas, often bundled with electricity. The distribution network (the actual pipes) is managed by <strong>Nedgia</strong> (Naturgy group) — you don't choose this.</p>
+
+<h3>Sign Up</h3>
+<p>Same process as electricity: gas CUPS code + NIE + IBAN + lease. Activation takes <strong>5-7 business days</strong>. If gas was cut off, a Nedgia technician must inspect the installation before restoring service (can take 5-10 days).</p>
+
+<h3>Typical Costs</h3>
+<table>
+    <tr><th>Usage</th><th>Monthly Cost</th></tr>
+    <tr><td>Cooking only</td><td>15-25</td></tr>
+    <tr><td>Hot water + cooking</td><td>30-50</td></tr>
+    <tr><td>Hot water + cooking + heating (winter)</td><td>60-80</td></tr>
+    <tr><td>Summer (no heating)</td><td>15-25</td></tr>
+</table>
+
+<!-- WATER -->
+<h2>Water (Agua)</h2>
+
+<h3>Provider: Canal de Isabel II (Only Option)</h3>
+<p>There is no competition for water in Madrid. <a href="https://oficinavirtual.canaldeisabelsegunda.es">Canal de Isabel II</a> is the sole provider.</p>
+
+<h3>Sign Up (Cambio de Titularidad)</h3>
+<div class="step-flow">
+    <div class="step"><div class="step-num">1</div><div class="step-content"><strong>Go to the Oficina Virtual</strong><p><a href="https://oficinavirtual.canaldeisabelsegunda.es">oficinavirtual.canaldeisabelsegunda.es</a></p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-content"><strong>Submit cambio de titularidad form</strong><p>You need: NIE, previous holder's name, contract/meter number, number of bathrooms, IBAN, lease contract.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-content"><strong>Pay ~60 admin fee</strong><p>One-time transfer fee.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-content"><strong>Done in a few days</strong><p>No technician visit needed for a simple name change.</p></div></div>
+</div>
+
+<p><strong>Billing:</strong> Every two months (bimonthly). Typical bill: 37-45 per two months (~18-22/month) for moderate use.</p>
+
+<!-- INTERNET -->
+<h2>Internet / Fiber (Fibra)</h2>
+
+<p>Fiber coverage in central Madrid is effectively 100%. You will get FTTH (fiber to the home) at gigabit speeds from any major provider.</p>
+
+<h3>Provider Comparison — Fiber Only (May 2026)</h3>
+<table>
+    <tr><th>Provider</th><th>Speed</th><th>Price/mo</th><th>Lock-in</th><th>Network</th><th>WiFi</th><th></th></tr>
+    <tr><td><strong>Digi Smart</strong></td><td>500 Mbps</td><td>10</td><td>None</td><td>Own</td><td>6</td><td><span class="badge badge-best">Best Value</span></td></tr>
+    <tr><td><strong>Digi Smart</strong></td><td>1 Gbps</td><td>20</td><td>None</td><td>Own</td><td>6</td><td></td></tr>
+    <tr><td><strong>Digi Smart</strong></td><td>10 Gbps</td><td>25</td><td>None</td><td>Own</td><td>7</td><td></td></tr>
+    <tr><td>Digi (no Smart)</td><td>300 Mbps</td><td>25</td><td>3 mo</td><td>Movistar</td><td>6</td><td></td></tr>
+    <tr><td><strong>Simyo</strong></td><td>300 Mbps</td><td>21</td><td>9 mo</td><td>Orange</td><td>5/6</td><td></td></tr>
+    <tr><td><strong>O2</strong></td><td>300 Mbps</td><td>23</td><td>None</td><td>Movistar</td><td>5</td><td><span class="badge badge-good">Zero Risk</span></td></tr>
+    <tr><td><strong>O2</strong></td><td>600 Mbps</td><td>27</td><td>None</td><td>Movistar</td><td>5</td><td></td></tr>
+    <tr><td><strong>O2</strong></td><td>1 Gbps</td><td>31</td><td>None</td><td>Movistar</td><td>5</td><td></td></tr>
+    <tr><td><strong>Pepephone</strong></td><td>300 Mbps</td><td>23</td><td>None</td><td>Orange</td><td>5</td><td><span class="badge badge-good">Best Service</span></td></tr>
+    <tr><td><strong>Lowi</strong></td><td>1 Gbps</td><td>25</td><td>3 mo</td><td>Vodafone</td><td>6</td><td><span class="badge badge-good">Good Deal</span></td></tr>
+    <tr><td><strong>Lowi</strong></td><td>600 Mbps</td><td>27</td><td>3 mo</td><td>Vodafone</td><td>6</td><td></td></tr>
+    <tr><td>Finetwork</td><td>600 Mbps</td><td>20</td><td>12 mo</td><td>Voda/Movi</td><td>?</td><td><span class="badge badge-warn">Legal Crisis</span></td></tr>
+    <tr><td>Simyo</td><td>1 Gbps</td><td>31</td><td>9 mo</td><td>Orange</td><td>5/6</td><td></td></tr>
+    <tr><td>Movistar</td><td>300 Mbps</td><td>20 yr1, 30 yr2+</td><td>None</td><td>Own</td><td>5</td><td><span class="badge badge-warn">Promo Trap</span></td></tr>
+    <tr><td>Movistar</td><td>1 Gbps</td><td>30 yr1, 45 yr2+</td><td>None</td><td>Own</td><td>5</td><td></td></tr>
+    <tr><td>Yoigo/MasMovil</td><td>500 Mbps</td><td>20 yr1, 32 yr2+</td><td>12 mo</td><td>Own</td><td>5</td><td><span class="badge badge-warn">Promo Trap</span></td></tr>
+</table>
+
+<h3>Best Bundles: Fiber + 1 Mobile SIM</h3>
+<table>
+    <tr><th>Provider</th><th>Fiber</th><th>Mobile</th><th>Price/mo</th><th>Lock-in</th><th></th></tr>
+    <tr><td><strong>Digi Smart</strong></td><td>500 Mbps</td><td>50 GB + unlimited calls</td><td>15</td><td>3 mo</td><td><span class="badge badge-best">Best Bundle</span></td></tr>
+    <tr><td><strong>Digi Smart</strong></td><td>750 Mbps</td><td>50 GB + unlimited calls</td><td>20</td><td>3 mo</td><td></td></tr>
+    <tr><td><strong>Lowi</strong></td><td>300 Mbps</td><td>50 GB</td><td>30</td><td>3 mo</td><td></td></tr>
+    <tr><td><strong>O2</strong></td><td>600 Mbps</td><td>60 GB 5G</td><td>35</td><td>None</td><td></td></tr>
+    <tr><td><strong>Pepephone</strong></td><td>600 Mbps</td><td>60 GB</td><td>35</td><td>None</td><td></td></tr>
+</table>
+
+<div class="callout success">
+    <strong>Recommendation:</strong><br>
+    <strong>First choice: Digi Fibra Smart</strong> — check coverage at <a href="https://www.digimobil.es/cobertura">digimobil.es/cobertura</a> first. If they cover your building, the value is unbeatable: 500 Mbps for 10/mo (fiber only) or 500 Mbps + mobile for 15/mo. WiFi 6 router included. No price increases in 2026 (confirmed). 3-month lock-in max.<br><br>
+    <strong>If Digi Smart unavailable: O2 or Lowi</strong><br>
+    O2: Movistar network, zero lock-in, WiFi 5 router. 600 Mbps for 27/mo.<br>
+    Lowi: Vodafone network, WiFi 6 router, 3-month lock-in. 1 Gbps for 25/mo (yes, cheaper than their 600 Mbps — current promo anomaly).<br><br>
+    <strong>Avoid:</strong> Movistar/Yoigo direct (promo traps — price jumps 50%+ after year 1). Finetwork (ongoing legal crisis, losing 500k lines). SIMple Telco (overpriced).
+</div>
+
+<div class="callout">
+    <strong>What about 5G home internet?</strong> Vodafone offers a 5G plug-and-play router for 21/mo — decent backup if you need internet on day 1 before fiber is installed. But in central Madrid, fiber is faster, cheaper, and more stable long-term. 5G is a temporary bridge, not a replacement.
+</div>
+
+<h3>Sign Up</h3>
+<p>All you need: <strong>NIE + Spanish IBAN + installation address</strong>. Sign up online or by phone. A technician comes to install the router and ONT (fiber terminal). You need to be home for the installation.</p>
+
+<div class="callout warn">
+    <strong>Book early:</strong> Installation appointments can take 7-15 days. Book before you move in, scheduling for your first week in the apartment.
+</div>
+
+<!-- GOTCHAS -->
+<h2>Common Gotchas</h2>
+
+<div class="callout danger">
+    <strong>Previous tenant didn't cancel their contracts?</strong> Not a problem. You don't need them to cancel. Contact any supplier with your NIE, lease contract, and CUPS code and request a cambio de titularidad. Debts before your move-in date are the previous holder's responsibility, not yours. <strong>Take meter photos on day one as proof.</strong>
+</div>
+
+<ul>
+    <li><strong>Gas meter off for a while?</strong> Nedgia needs a safety inspection before reconnecting. Budget 5-10 days. Start this early.</li>
+    <li><strong>Potencia too low?</strong> If the previous tenant had 2.3 kW and you need 4.6 kW, it costs a small fee and takes a few days. Do it during signup.</li>
+    <li><strong>Communal heating:</strong> If your building has calefaccion central, do NOT separately contract individual gas for heating. It's in your community fees.</li>
+    <li><strong>No Spanish bank account yet?</strong> Open an N26, Revolut (Spanish IBAN), or Openbank account — takes 10 minutes online. Most utility providers require a Spanish IBAN for direct debit.</li>
+    <li><strong>Movistar promotional prices:</strong> They jump significantly after year 1 (from ~20 to ~40/month). Consider switching to O2 or Digi after the promo ends — O2 is literally Movistar's network at a flat price.</li>
+</ul>
+
+<!-- DOCUMENTS CHECKLIST -->
+<h2>Documents Checklist</h2>
+<table>
+    <tr><th>Document</th><th>Electricity</th><th>Gas</th><th>Water</th><th>Internet</th></tr>
+    <tr><td>NIE</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>Spanish IBAN</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>CUPS code</td><td>Yes</td><td>Yes (separate)</td><td>Contract #</td><td>N/A</td></tr>
+    <tr><td>Lease contract</td><td>Helpful</td><td>Helpful</td><td>Required</td><td>No</td></tr>
+    <tr><td>Previous holder name</td><td>Helpful</td><td>Helpful</td><td>Required</td><td>N/A</td></tr>
+    <tr><td>Physical presence</td><td>No</td><td>Maybe (if reconnect)</td><td>No</td><td>Yes (install)</td></tr>
+</table>
+
+<!-- EMAIL TEMPLATE -->
+<h2>Email Template: Request Utility Info from Landlord</h2>
+<p>Send this before move-in to get everything you need to set up utilities. Replace the bracketed fields.</p>
+
+<div class="callout" style="position:relative">
+    <button onclick="navigator.clipboard.writeText(document.getElementById('email-es').innerText);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1500)" style="position:absolute;top:10px;right:10px;padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:var(--bg-surface);color:var(--text-muted);cursor:pointer;font-size:12px">Copy</button>
+    <div id="email-es">
+<strong>Asunto: Información para dar de alta los suministros — [DIRECCIÓN]</strong>
+
+Estimado/a [NOMBRE],
+
+De cara a nuestra entrada en la vivienda el [FECHA], necesitaríamos la siguiente información para dar de alta los suministros a nuestro nombre:
+
+<strong>Electricidad:</strong>
+- Código CUPS (código de 20-22 caracteres que empieza por "ES")
+- Potencia contratada actual (kW)
+- Nombre de la compañía actual y del titular
+
+<strong>Gas</strong> (si aplica):
+- Código CUPS del gas
+- Nombre de la compañía actual y del titular
+- ¿El edificio tiene calefacción central comunitaria o caldera individual?
+
+<strong>Agua:</strong>
+- Número de contrato o número de contador con Canal de Isabel II
+- Nombre del titular actual
+
+<strong>General:</strong>
+- ¿Podría facilitarnos una copia de la última factura de cada suministro? Esto nos ayudaría a agilizar el cambio de titularidad.
+
+Muchas gracias por su ayuda.
+
+Un cordial saludo,
+[TU NOMBRE]
+    </div>
+</div>
+
+<h3>English Translation</h3>
+<div class="callout" style="background:var(--bg-surface)">
+<strong>Subject: Information to set up utilities — [ADDRESS]</strong>
+
+Dear [NAME],
+
+Ahead of our move-in on [DATE], we would need the following information to set up the utilities in our name:
+
+<strong>Electricity:</strong>
+- CUPS code (20-22 character code starting with "ES")
+- Current contracted power (kW)
+- Current provider and account holder name
+
+<strong>Gas</strong> (if applicable):
+- Gas CUPS code
+- Current provider and account holder name
+- Does the building have communal central heating or an individual boiler?
+
+<strong>Water:</strong>
+- Contract number or meter number with Canal de Isabel II
+- Current account holder name
+
+<strong>General:</strong>
+- Could you provide us with a copy of the most recent bill for each utility? This would help us speed up the titularity transfer.
+
+Thank you for your help.
+
+Kind regards,
+[YOUR NAME]
+</div>
+
+<p class="updated">Last updated: May 2026</p>
+
+</div>
+
+<script>
+if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark');
+</script>
+</body>
+</html>
