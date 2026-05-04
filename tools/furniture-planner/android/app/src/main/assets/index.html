@@ -113,6 +113,12 @@
   .cat-items { display: none; }
   .cat-items.open { display: block; }
 
+  /* Recent furniture */
+  #recent-section { margin-bottom: 6px; }
+  #recent-section.hidden { display: none; }
+  .recent-header { font-size: 11px; color: #e94560; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  #recent-items { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+
   .fur-btn {
     display: flex; align-items: center; gap: 8px;
     width: 100%; padding: 5px 8px; margin-bottom: 2px;
@@ -167,7 +173,7 @@
   .btn-sm.danger:hover { background: #c0392b; color: #fff; }
 
   /* ─── Canvas ─── */
-  #canvas-area { flex: 1; height: 100vh; height: 100dvh; overflow: auto; position: relative; cursor: default; }
+  #canvas-area { flex: 1; height: 100vh; height: 100dvh; overflow: auto; position: relative; cursor: default; touch-action: none; }
   #canvas-container { position: relative; display: inline-block; transform-origin: top left; }
   #floor-plan { display: block; user-select: none; -webkit-user-drag: none; max-width: none; width: auto; height: auto; }
 
@@ -240,7 +246,7 @@
     font-size: 10px; color: #999; z-index: 100; gap: 14px;
   }
   .sbadge { color: #e94560; font-weight: 600; }
-  #zoom-ctl { position: fixed; bottom: 34px; right: 228px; z-index: 100; display: flex; gap: 3px; }
+  #zoom-ctl { position: fixed; bottom: 34px; right: 228px; z-index: 100; display: flex; gap: 3px; background: rgba(22, 33, 62, 0.85); border-radius: 8px; padding: 4px; backdrop-filter: blur(4px); }
   #zoom-ctl button {
     width: 28px; height: 28px; background: #0f3460; border: 1px solid #1a4a8a;
     color: #eee; border-radius: 5px; cursor: pointer; font-size: 14px;
@@ -259,9 +265,127 @@
     color: #555; font-size: 13px; text-align: center; pointer-events: none; z-index: 4;
   }
   #canvas-hint.hidden { display: none; }
+
+  /* ─── Sidebar toggle (mobile only) ─── */
+  .sidebar-toggle {
+    position: fixed; top: 10px; left: 10px; z-index: 200;
+    display: none; width: 44px; height: 44px;
+    background: #16213e; color: #e94560; border-radius: 8px;
+    border: 1px solid #0f3460; font-size: 20px; cursor: pointer;
+    align-items: center; justify-content: center;
+  }
+
+  .sidebar-toggle-open {
+    left: auto !important;
+    right: 10px;
+    background: rgba(22, 33, 62, 0.9);
+  }
+
+  /* ─── FAB (mobile add furniture) ─── */
+  .fab-add {
+    display: none;
+    position: fixed;
+    bottom: 70px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #e94560;
+    color: white;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    z-index: 150;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ─── Mobile props bar (hidden on desktop) ─── */
+  #mobile-props { display: none !important; }
+
+  /* ─── Mobile responsive ─── */
+  @media (max-width: 768px) {
+    body { flex-direction: column; }
+
+    .sidebar-toggle { display: flex; }
+    .fab-add { display: flex; }
+
+    #sidebar {
+      display: none;
+      width: 100%; min-width: unset; height: auto;
+      max-height: 40vh; overflow-y: auto;
+      border-right: none; border-bottom: 1px solid #0f3460;
+    }
+    #sidebar.sidebar-open { display: block; }
+
+    #canvas-area { flex: 1; width: 100%; }
+
+    #props-panel { display: none; }
+
+    #status { left: 0; right: 0; }
+
+    #zoom-ctl { right: 10px; bottom: 34px; }
+
+    .plan-btn, #zoom-ctl button {
+      min-height: 44px; padding: 10px;
+    }
+
+    .cat-items.open {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .fur-btn {
+      flex-direction: column;
+      text-align: center;
+      padding: 10px 4px;
+      font-size: 11px;
+      min-height: 64px;
+      justify-content: center;
+      gap: 2px;
+    }
+    .fur-btn .ico { font-size: 24px; display: block; margin-bottom: 2px; }
+    .fur-btn .dims { display: none; }
+
+    #recent-items {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .cat-toggle-btn {
+      min-height: 44px;
+      padding: 10px 12px;
+      font-size: 13px;
+    }
+
+    .fur-item { padding: 8px; }
+
+    #mobile-props {
+      display: none !important;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #16213e;
+      border-top: 1px solid #0f3460;
+      padding: 10px 12px;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+      z-index: 150;
+      font-size: 12px;
+      color: #ddd;
+    }
+    #mobile-props.visible { display: flex !important; gap: 8px; align-items: center; flex-wrap: wrap; }
+    #mobile-props .mp-name { font-weight: 600; color: #e94560; flex: 1; min-width: 80px; }
+    #mobile-props input { width: 60px; padding: 6px; background: #0f3460; border: 1px solid #1a4a8a; color: #eee; border-radius: 4px; font-size: 12px; }
+    #mobile-props .mp-btn { padding: 8px 12px; background: #0f3460; border: 1px solid #1a4a8a; color: #eee; border-radius: 4px; cursor: pointer; font-size: 12px; min-height: 36px; }
+    #mobile-props .mp-btn.danger { border-color: #c0392b; color: #c0392b; }
+  }
 </style>
 </head>
 <body>
+<button class="sidebar-toggle" id="sidebarToggle" onclick="document.getElementById('sidebar').classList.toggle('sidebar-open'); const open = document.getElementById('sidebar').classList.contains('sidebar-open'); this.textContent = open ? '✕' : '☰'; this.classList.toggle('sidebar-toggle-open', open)">☰</button>
+<button class="fab-add" onclick="document.getElementById('sidebar').classList.add('sidebar-open'); document.getElementById('sidebarToggle').textContent='✕'; document.getElementById('sidebarToggle').classList.add('sidebar-toggle-open')">+</button>
 
 <!-- ═══ LEFT SIDEBAR ═══ -->
 <div id="sidebar">
@@ -309,6 +433,10 @@
   <div class="cat-toggle-row">
     <button class="cat-toggle-btn" id="expand-all">Expand All</button>
     <button class="cat-toggle-btn" id="collapse-all">Collapse All</button>
+  </div>
+  <div id="recent-section" class="hidden">
+    <div class="recent-header">Recent</div>
+    <div id="recent-items"></div>
   </div>
   <div id="catalog"></div>
 
@@ -501,6 +629,7 @@ const CATALOG = [
 let plans = [], activePlanId = null, db = null;
 let scale = null, zoom = 1, items = [], selected = null, history = [], nextId = 1;
 let switching = false; // guard against rapid plan switching
+let recentFurniture = JSON.parse(localStorage.getItem('fp_recent') || '[]').slice(0, 5);
 
 const COLORS = ['#3498db','#2980b9','#8e44ad','#9b59b6','#e67e22','#d35400','#c0392b',
   '#f39c12','#27ae60','#2ecc71','#16a085','#1abc9c','#f1c40f','#7f8c8d','#95a5a6',
@@ -532,6 +661,15 @@ CATALOG.forEach(cat => {
     btn.className = 'fur-btn'; btn.draggable = true;
     btn.dataset.type = it.type; btn.dataset.w = it.w; btn.dataset.h = it.h; btn.dataset.color = it.color;
     btn.innerHTML = `<span class="ico">${it.ico}</span><div>${it.type}<br><span class="dims">${(it.w*100).toFixed(0)}\u00d7${(it.h*100).toFixed(0)}</span></div>`;
+    btn.addEventListener('click', () => {
+      if (window.innerWidth <= 768 && scale) {
+        const cx = imgEl.naturalWidth / 2, cy = imgEl.naturalHeight / 2;
+        addItem({ type: it.type, w: it.w, h: it.h, color: it.color, x: cx, y: cy, rot: 0 });
+        document.getElementById('sidebar').classList.remove('sidebar-open');
+        const toggle = document.getElementById('sidebarToggle');
+        if (toggle) { toggle.textContent = '\u2630'; toggle.classList.remove('sidebar-toggle-open'); }
+      }
+    });
     body.appendChild(btn);
   });
   hdr.addEventListener('click', () => { hdr.classList.toggle('open'); body.classList.toggle('open'); });
@@ -721,7 +859,7 @@ planAddress.addEventListener('change',()=>{const p=plans.find(p=>p.id===activePl
 planLink.addEventListener('change',()=>{const p=plans.find(p=>p.id===activePlanId);if(p){p.link=planLink.value.trim();savePlans();updateLinkButton();}});
 planLink.addEventListener('input',updateLinkButton);
 
-function handleFileUpload(file){if(file&&file.type.startsWith('image/'))addNewPlan(file);}
+function handleFileUpload(file){if(file&&(file.type.startsWith('image/')||/\.(heic|heif|avif|webp|svg|bmp|gif|tiff?|jpe?g|png|ico)$/i.test(file.name)))addNewPlan(file);}
 planDropZone.addEventListener('click',()=>planFileInput.click());
 planFileInput.addEventListener('change',e=>{if(e.target.files[0])handleFileUpload(e.target.files[0]);e.target.value='';});
 planDropZone.addEventListener('dragover',e=>{e.preventDefault();planDropZone.classList.add('drag-over');});
@@ -735,7 +873,7 @@ welcomeDrop.addEventListener('drop',e=>{e.preventDefault();welcomeDrop.classList
 
 // Prevent browser navigating away on accidental file drop
 area.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('Files'))e.preventDefault();});
-area.addEventListener('drop',e=>{if(e.dataTransfer.files&&e.dataTransfer.files[0]&&e.dataTransfer.files[0].type.startsWith('image/')){e.preventDefault();handleFileUpload(e.dataTransfer.files[0]);}});
+area.addEventListener('drop',e=>{const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f&&(f.type.startsWith('image/')||/\.(heic|heif|avif|webp|svg|bmp|gif|tiff?|jpe?g|png|ico)$/i.test(f.name))){e.preventDefault();handleFileUpload(f);}});
 
 // Custom item
 $('custom-add').addEventListener('click',()=>{
@@ -808,6 +946,11 @@ area.addEventListener('drop',e=>{
   const r=box.getBoundingClientRect();
   addItem({type:pending.type,w:pending.w,h:pending.h,color:pending.color,x:(e.clientX-r.left)/zoom,y:(e.clientY-r.top)/zoom,rot:0});
   pending=null;
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebar').classList.remove('sidebar-open');
+    const toggle = document.getElementById('sidebarToggle');
+    if (toggle) { toggle.textContent = '\u2630'; toggle.classList.remove('sidebar-toggle-open'); }
+  }
 });
 
 // ═══════════════════════════════════════════════════════
@@ -815,7 +958,7 @@ area.addEventListener('drop',e=>{
 // ═══════════════════════════════════════════════════════
 function addItem(cfg){
   const it={id:nextId++,type:cfg.type,w:cfg.w,h:cfg.h,color:cfg.color,x:cfg.x,y:cfg.y,rot:cfg.rot||0};
-  items.push(it);buildEl(it);sel(it);updCount();pushHistory();savePlans();updateCanvasHint();return it;
+  items.push(it);buildEl(it);sel(it);updCount();pushHistory();savePlans();updateCanvasHint();addToRecent(cfg.type);return it;
 }
 
 function buildEl(it){
@@ -823,23 +966,23 @@ function buildEl(it){
   el.innerHTML='<div class="rot-handle">\u21BB</div><div class="fur-label"></div>';
   box.appendChild(el);it.el=el;renderItem(it);
 
-  el.addEventListener('mousedown',e=>{
+  el.addEventListener('pointerdown',e=>{
     if(e.target.classList.contains('rot-handle'))return;
     e.preventDefault();sel(it);
     let drag=true;const r=box.getBoundingClientRect();
     const ox=(e.clientX-r.left)/zoom-it.x,oy=(e.clientY-r.top)/zoom-it.y;
     const onMove=ev=>{if(!drag)return;const r2=box.getBoundingClientRect();let nx=(ev.clientX-r2.left)/zoom-ox,ny=(ev.clientY-r2.top)/zoom-oy;if(snapCb.checked&&scale){const s=0.10*scale;nx=Math.round(nx/s)*s;ny=Math.round(ny/s)*s;}it.x=nx;it.y=ny;renderItem(it);updateProps();};
-    const onUp=()=>{drag=false;document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);pushHistory();savePlans();};
-    document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+    const onUp=()=>{drag=false;document.removeEventListener('pointermove',onMove);document.removeEventListener('pointerup',onUp);pushHistory();savePlans();};
+    document.addEventListener('pointermove',onMove);document.addEventListener('pointerup',onUp);
   });
 
-  el.querySelector('.rot-handle').addEventListener('mousedown',e=>{
+  el.querySelector('.rot-handle').addEventListener('pointerdown',e=>{
     e.preventDefault();e.stopPropagation();
     const r=box.getBoundingClientRect();
     const startA=Math.atan2((e.clientY-r.top)/zoom-it.y,(e.clientX-r.left)/zoom-it.x)*180/Math.PI-it.rot;
     const onM=ev=>{const r2=box.getBoundingClientRect();let a=Math.atan2((ev.clientY-r2.top)/zoom-it.y,(ev.clientX-r2.left)/zoom-it.x)*180/Math.PI-startA;if(snapCb.checked)a=Math.round(a/15)*15;it.rot=a;renderItem(it);updateProps();};
-    const onU=()=>{document.removeEventListener('mousemove',onM);document.removeEventListener('mouseup',onU);pushHistory();savePlans();};
-    document.addEventListener('mousemove',onM);document.addEventListener('mouseup',onU);
+    const onU=()=>{document.removeEventListener('pointermove',onM);document.removeEventListener('pointerup',onU);pushHistory();savePlans();};
+    document.addEventListener('pointermove',onM);document.addEventListener('pointerup',onU);
   });
 }
 
@@ -874,8 +1017,8 @@ COLORS.forEach(c=>{
 function sel(it){
   if(selected&&selected.el)selected.el.classList.remove('selected');selected=it;
   if(it&&it.el)it.el.classList.add('selected');
-  if(it){propsEmpty.style.display='none';propsContent.style.display='block';$('props-panel').classList.remove('empty');updateProps();}
-  else{propsEmpty.style.display='block';propsContent.style.display='none';$('props-panel').classList.add('empty');}
+  if(it){propsEmpty.style.display='none';propsContent.style.display='block';$('props-panel').classList.remove('empty');updateProps();showMobileProps(it);}
+  else{propsEmpty.style.display='block';propsContent.style.display='none';$('props-panel').classList.add('empty');hideMobileProps();}
 }
 
 function updateProps(){
@@ -898,7 +1041,7 @@ $('btn-dup').addEventListener('click',()=>{if(selected)dupItem(selected);});
 $('btn-rot90').addEventListener('click',()=>{if(!selected)return;selected.rot=(selected.rot+90)%360;renderItem(selected);updateProps();pushHistory();savePlans();});
 $('btn-flip').addEventListener('click',()=>{if(!selected)return;[selected.w,selected.h]=[selected.h,selected.w];renderItem(selected);updateProps();pushHistory();savePlans();});
 
-area.addEventListener('mousedown',e=>{if(e.target===imgEl||e.target===box||e.target===area)sel(null);});
+area.addEventListener('pointerdown',e=>{if(e.target===imgEl||e.target===box||e.target===area)sel(null);});
 
 // Escape blurs inputs
 document.querySelectorAll('#props-content input').forEach(inp=>{
@@ -926,7 +1069,7 @@ document.addEventListener('keydown',e=>{
 // ═══════════════════════════════════════════════════════
 //  CURSOR / COUNT
 // ═══════════════════════════════════════════════════════
-document.addEventListener('mousemove',e=>{
+document.addEventListener('pointermove',e=>{
   if(!scale)return;const r=box.getBoundingClientRect();
   sCursor.textContent=((e.clientX-r.left)/zoom/scale).toFixed(2)+'m, '+((e.clientY-r.top)/zoom/scale).toFixed(2)+'m';
 });
@@ -987,6 +1130,82 @@ importFileInput.addEventListener('change',async e=>{
 });
 
 // ═══════════════════════════════════════════════════════
+//  RECENTLY USED FURNITURE
+// ═══════════════════════════════════════════════════════
+function addToRecent(type) {
+  // Find the catalog entry for this type
+  let entry = null;
+  for (const cat of CATALOG) { entry = cat.items.find(i => i.type === type); if (entry) break; }
+  if (!entry) return; // custom items don't go in recent
+  recentFurniture = [entry, ...recentFurniture.filter(r => r.type !== type)].slice(0, 5);
+  localStorage.setItem('fp_recent', JSON.stringify(recentFurniture));
+  renderRecent();
+}
+function renderRecent() {
+  const section = $('recent-section');
+  const container = $('recent-items');
+  if (!recentFurniture.length) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+  container.innerHTML = '';
+  recentFurniture.forEach(it => {
+    const btn = document.createElement('div');
+    btn.className = 'fur-btn'; btn.draggable = true;
+    btn.dataset.type = it.type; btn.dataset.w = it.w; btn.dataset.h = it.h; btn.dataset.color = it.color;
+    btn.innerHTML = `<span class="ico">${it.ico}</span><div>${it.type}<br><span class="dims">${(it.w*100).toFixed(0)}\u00d7${(it.h*100).toFixed(0)}</span></div>`;
+    btn.addEventListener('dragstart', e => {
+      pending = { type: it.type, w: it.w, h: it.h, color: it.color };
+      e.dataTransfer.setData('text/plain', 'f'); e.dataTransfer.effectAllowed = 'copy';
+    });
+    // Tap-to-add on mobile
+    btn.addEventListener('click', () => {
+      if (window.innerWidth <= 768 && scale) {
+        const cx = imgEl.naturalWidth / 2, cy = imgEl.naturalHeight / 2;
+        addItem({ type: it.type, w: it.w, h: it.h, color: it.color, x: cx, y: cy, rot: 0 });
+      }
+    });
+    container.appendChild(btn);
+  });
+}
+renderRecent();
+
+// ═══════════════════════════════════════════════════════
+//  MOBILE PROPERTIES BAR
+// ═══════════════════════════════════════════════════════
+function showMobileProps(item) {
+  if (window.innerWidth > 768) return;
+  const el = document.getElementById('mobile-props');
+  if (!el) return;
+  document.getElementById('mp-name').textContent = item.type;
+  document.getElementById('mp-w').value = Math.round(item.w * 100);
+  document.getElementById('mp-d').value = Math.round(item.h * 100);
+  el.classList.add('visible');
+}
+function hideMobileProps() {
+  const el = document.getElementById('mobile-props');
+  if (el) el.classList.remove('visible');
+}
+function mpResize() {
+  if (!selected) return;
+  const w = parseInt(document.getElementById('mp-w').value) || 10;
+  const d = parseInt(document.getElementById('mp-d').value) || 10;
+  selected.w = w / 100;
+  selected.h = d / 100;
+  renderItem(selected);
+  pushHistory(); savePlans();
+}
+function mpRotate() {
+  if (!selected) return;
+  selected.rot = (selected.rot || 0) + 15;
+  renderItem(selected);
+  pushHistory(); savePlans();
+}
+function mpDelete() {
+  if (!selected) return;
+  delItem(selected);
+  hideMobileProps();
+}
+
+// ═══════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════
 async function init(){
@@ -1005,5 +1224,12 @@ if ('serviceWorker' in navigator) {
 let _deferredInstallPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); _deferredInstallPrompt = e; });
 </script>
+<div id="mobile-props">
+    <span class="mp-name" id="mp-name"></span>
+    <label>W<input type="number" id="mp-w" min="10" step="5" onchange="mpResize()">cm</label>
+    <label>D<input type="number" id="mp-d" min="10" step="5" onchange="mpResize()">cm</label>
+    <button class="mp-btn" onclick="mpRotate()">&#x21BB;</button>
+    <button class="mp-btn danger" onclick="mpDelete()">&#x2715;</button>
+</div>
 </body>
 </html>

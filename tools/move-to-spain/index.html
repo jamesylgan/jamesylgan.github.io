@@ -321,6 +321,46 @@
             .content { padding: 12px; }
             .resource-grid { grid-template-columns: 1fr; }
             .move-date-display { flex-direction: column; text-align: center; }
+
+            /* Header */
+            .header { padding: 10px 12px; gap: 6px; }
+            .header h1 { font-size: 0.95rem; }
+            .header-right { gap: 6px; }
+
+            /* Tabs - scrollable on mobile */
+            .tabs { padding: 6px 12px; -webkit-overflow-scrolling: touch; }
+            .tab { padding: 8px 12px; font-size: 12px; min-height: 44px; display: flex; align-items: center; }
+
+            /* Pathway chips */
+            .pathway-bar { padding: 8px 12px; }
+            .pathway-chip { padding: 8px 12px; min-height: 40px; display: flex; align-items: center; }
+
+            /* Touch targets */
+            .btn { min-height: 44px; padding: 10px 16px; display: inline-flex; align-items: center; }
+            .btn-sm { min-height: 40px; padding: 8px 12px; }
+            .checklist input[type="checkbox"] { width: 24px; height: 24px; }
+
+            /* Modal */
+            .modal { padding: 16px; width: calc(100vw - 24px); }
+
+            /* Tooltip constrained to viewport */
+            .tooltip .tip-text { width: calc(100vw - 40px); max-width: 280px; }
+
+            /* Tutorial popover */
+            .tutorial-popover { max-width: calc(100vw - 32px); }
+
+            /* Forms */
+            select, input[type="number"], input[type="date"], input[type="text"] { min-height: 44px; padding: 8px 12px; }
+
+            /* Prevent overflow */
+            body { overflow-x: hidden; }
+        }
+
+        @media (max-width: 400px) {
+            .header h1 { font-size: 0.85rem; }
+            .content { padding: 8px; }
+            .card { padding: 12px; }
+            .tab { padding: 6px 10px; font-size: 11px; }
         }
 
         /* Hide completed items */
