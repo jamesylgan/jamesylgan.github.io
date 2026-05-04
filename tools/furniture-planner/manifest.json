@@ -1,0 +1,10 @@
+{
+  "name": "Floor Plan Furniture Planner",
+  "short_name": "Furniture",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1a1a2e",
+  "theme_color": "#e94560"
+}

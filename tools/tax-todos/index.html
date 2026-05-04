@@ -2,9 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
     <title>Tax Obligations Tracker</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#3b82f6">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
@@ -478,6 +482,14 @@
             <div class="setting-hint">Years you have worked in each country. Helps track obligations and residency context.</div>
             <div id="work-history-entries"></div>
             <button class="add-work-btn" onclick="addWorkEntry()">+ Add country</button>
+        </div>
+        <div class="setting-row">
+            <label>Data</label>
+            <div class="setting-hint">Export or import all settings, tasks, notes, and account data.</div>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+                <button class="add-work-btn" onclick="exportAllData()">Export JSON</button>
+                <label class="add-work-btn" style="cursor:pointer;text-align:center;">Import<input type="file" accept=".json" onchange="importAllData(event)" style="display:none;"></label>
+            </div>
         </div>
         <div class="setting-row" style="border-bottom:none">
             <label style="color:var(--red)">Clear All Data</label>
@@ -1048,6 +1060,39 @@ function showClearConfirm() {
     document.getElementById('clear-confirm-input').focus();
 }
 
+function exportAllData() {
+    const data = { _tool: 'tax-todos', _exported: new Date().toISOString() };
+    for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('tax-todos')) {
+            try { data[k] = JSON.parse(localStorage.getItem(k)); } catch { data[k] = localStorage.getItem(k); }
+        }
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `tax-todos-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    toast('Exported');
+}
+function importAllData(event) {
+    const file = event.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            const d = JSON.parse(e.target.result);
+            Object.keys(d).forEach(k => {
+                if (k.startsWith('tax-todos')) {
+                    localStorage.setItem(k, typeof d[k] === 'string' ? d[k] : JSON.stringify(d[k]));
+                }
+            });
+            closeSettings();
+            toast('Imported');
+            location.reload();
+        } catch (err) { toast('Import failed: ' + err.message); }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
 function executeClear() {
     if (document.getElementById('clear-confirm-input').value !== 'DELETE') {
         toast('Type DELETE to confirm');
@@ -2164,6 +2209,14 @@ function toast(msg) {
 }
 
 init();
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+        reg.update();
+        navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
+    }).catch(() => {});
+}
+let _deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); _deferredInstallPrompt = e; });
 </script>
 </body>
 </html>
