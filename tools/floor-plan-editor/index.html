@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<title>Floor Plan Editor</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f0eb;display:flex;height:100vh;overflow:hidden}
+#canvas-wrap{flex:1;position:relative;overflow:hidden;background:#e8e8e3}
+canvas{display:block}
+
+/* Panel */
+#panel{width:280px;background:#fff;border-left:1px solid #ddd;display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+.section{padding:10px 14px;border-bottom:1px solid #f0f0f0}
+.section h3{font-size:.76em;color:#888;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.field{display:flex;align-items:center;gap:5px;margin-bottom:5px}
+.field label{font-size:.8em;color:#666;width:46px;flex-shrink:0}
+.field input[type=text],.field input[type=number]{flex:1;border:1px solid #ddd;border-radius:4px;padding:3px 5px;font-size:.83em;font-family:inherit}
+.field input[type=color]{width:28px;height:24px;border:1px solid #ddd;border-radius:4px;padding:1px;cursor:pointer}
+.field .u{font-size:.75em;color:#999;width:14px;flex-shrink:0}
+.tabs{display:flex;border-bottom:1px solid #ddd}
+.tab{flex:1;padding:8px 4px;text-align:center;font-size:.8em;cursor:pointer;border-bottom:2px solid transparent;color:#888;user-select:none}
+.tab.active{color:#1565c0;border-bottom-color:#1565c0;font-weight:600}
+button{display:block;width:100%;padding:6px 8px;border:1px solid #ddd;border-radius:4px;background:#fafafa;font-size:.82em;cursor:pointer;font-family:inherit;margin-bottom:4px}
+button:hover{background:#f0f0f0}
+button.danger{color:#c62828;border-color:#e0a0a0}button.danger:hover{background:#fde8e8}
+button.primary{background:#e8f5e9;border-color:#a5d6a7;color:#2e7d32}button.primary:hover{background:#c8e6c9}
+button.blue{background:#e3f2fd;border-color:#90caf9;color:#1565c0}button.blue:hover{background:#bbdefb}
+.muted{color:#aaa;font-size:.8em;text-align:center;padding:12px 14px}
+#header{padding:10px 14px;background:#f9f9f6;border-bottom:1px solid #eee}
+#header input{width:100%;border:none;font-size:1.05em;font-weight:600;background:transparent;font-family:inherit;outline:none;color:#333}
+#header input::placeholder{color:#bbb}
+
+/* Vertex list */
+.vlist{max-height:200px;overflow-y:auto;font-size:.76em;border:1px solid #eee;border-radius:4px;margin-bottom:6px}
+.vi{display:flex;align-items:center;gap:3px;padding:3px 5px;border-bottom:1px solid #f5f5f5}
+.vi:hover{background:#f8f8f8}
+.vi.sel{background:#e3f2fd}
+.vi input{width:48px;border:1px solid #ddd;border-radius:3px;padding:2px 3px;font-size:.9em;text-align:right}
+.vi .vd{cursor:pointer;color:#c62828;font-size:1.1em;padding:0 2px;line-height:1}
+
+/* Overlays */
+#zoom-controls{position:absolute;bottom:12px;right:12px;display:flex;gap:3px;z-index:10}
+#zoom-controls button{width:30px;height:30px;border-radius:5px;font-size:1em;padding:0;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid #ccc;box-shadow:0 1px 3px rgba(0,0,0,.1);margin:0}
+#bottom-bar{position:absolute;bottom:12px;left:12px;z-index:10;display:flex;gap:6px;align-items:center}
+#bottom-bar label{font-size:.76em;color:#666;cursor:pointer;background:#fff;padding:3px 7px;border-radius:4px;border:1px solid #ccc;box-shadow:0 1px 3px rgba(0,0,0,.1);user-select:none}
+#mode-ind{position:absolute;top:12px;left:12px;z-index:10;background:#fff;padding:4px 10px;border-radius:4px;border:1px solid #ccc;font-size:.78em;color:#666;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+/* Snap guides */
+.snap-line{position:absolute;background:#1565c0;opacity:.4;z-index:5;pointer-events:none}
+</style>
+</head>
+<body>
+
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+  <div id="mode-ind">Mode: <b id="mode-lbl">Rooms</b></div>
+  <div id="zoom-controls">
+    <button onclick="zoomIn()">+</button>
+    <button onclick="zoomOut()">&minus;</button>
+    <button onclick="zoomFit()" title="Fit to view">&#8982;</button>
+  </div>
+  <div id="bottom-bar">
+    <label><input type="checkbox" id="snap-grid" checked onchange="draw()"> Grid 0.25m</label>
+    <label><input type="checkbox" id="show-dims" checked onchange="draw()"> Dims</label>
+    <label><input type="checkbox" id="snap-rooms" checked> Snap rooms</label>
+  </div>
+</div>
+
+<div id="panel">
+  <div id="header">
+    <input type="text" id="plan-name" placeholder="Floor Plan Name" value="New Floor Plan" oninput="state.name=this.value;saveState()">
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-m="rooms" onclick="setMode('rooms')">Rooms</div>
+    <div class="tab" data-m="outline" onclick="setMode('outline')">Outline</div>
+    <div class="tab" data-m="image" onclick="setMode('image')">Image</div>
+  </div>
+
+  <!-- ROOMS -->
+  <div id="tab-rooms">
+    <div id="no-sel" class="muted">Click a room to edit, drag to move.</div>
+    <div id="props" style="display:none">
+      <div class="section">
+        <h3>Selected Room</h3>
+        <div class="field"><label>Name</label><input type="text" id="p-name"></div>
+        <div class="field"><label>Width</label><input type="number" id="p-w" step="0.1" min="0.3"><span class="u">m</span></div>
+        <div class="field"><label>Depth</label><input type="number" id="p-h" step="0.1" min="0.3"><span class="u">m</span></div>
+        <div class="field"><label>Color</label><input type="color" id="p-color"></div>
+        <button class="danger" onclick="deleteRoom()">Delete Room</button>
+      </div>
+    </div>
+    <div class="section">
+      <button class="primary" onclick="addRoom()">+ Add Room</button>
+    </div>
+  </div>
+
+  <!-- OUTLINE -->
+  <div id="tab-outline" style="display:none">
+    <div class="section">
+      <h3>Outline Vertices</h3>
+      <p style="font-size:.76em;color:#888;margin-bottom:6px">Drag red handles on canvas to reshape. Edit X/Y below (meters).</p>
+      <div id="vlist" class="vlist"></div>
+      <button onclick="addVertex()">+ Add Vertex</button>
+      <button onclick="resetOutline()">Reset Outline</button>
+    </div>
+  </div>
+
+  <!-- IMAGE -->
+  <div id="tab-image" style="display:none">
+    <div class="section">
+      <h3>Background Image</h3>
+      <p style="font-size:.76em;color:#888;margin-bottom:6px">Import an image as a reference layer. Adjust position, scale, and opacity.</p>
+      <div style="display:flex;gap:3px;margin-bottom:6px">
+        <button class="primary" onclick="importImage()" style="flex:1">Import</button>
+        <button class="danger" onclick="removeImage()" style="flex:1">Remove</button>
+      </div>
+      <div class="field"><label>Opacity</label><input type="range" id="img-op" min="0" max="100" value="40" style="flex:1" oninput="state.bgOp=this.value/100;draw();saveState()"></div>
+      <div class="field"><label>Scale</label><input type="number" id="img-sc" step="0.01" min="0.01" value="1" style="flex:1" oninput="state.bgSc=+this.value||1;draw();saveState()"><span class="u">x</span></div>
+      <div class="field"><label>X off</label><input type="number" id="img-x" step="0.25" value="0" style="flex:1" oninput="state.bgX=+this.value||0;draw();saveState()"><span class="u">m</span></div>
+      <div class="field"><label>Y off</label><input type="number" id="img-y" step="0.25" value="0" style="flex:1" oninput="state.bgY=+this.value||0;draw();saveState()"><span class="u">m</span></div>
+      <p id="img-st" style="font-size:.76em;color:#888;margin-top:4px">No image loaded.</p>
+    </div>
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="section" style="margin-top:auto">
+    <h3>Save / Export</h3>
+    <button onclick="exportJSON()">Export JSON</button>
+    <button onclick="importJSON()">Import JSON</button>
+    <button class="blue" onclick="exportForFP()">Export for Furniture Planner</button>
+    <button onclick="resetAll()">Reset Everything</button>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// STATE
+// ================================================================
+const SCALE_DEF=42;
+const OUTLINE_DEF=[[0,0],[10,0],[10,15],[0,15]]; // default rectangle
+
+let state={
+  name:'New Floor Plan',
+  scale:SCALE_DEF,offsetX:40,offsetY:60,
+  outline:JSON.parse(JSON.stringify(OUTLINE_DEF)),
+  rooms:[],nextId:1,selectedId:null,
+  mode:'rooms',selVtx:-1,
+  bgImage:null,bgOp:.4,bgSc:1,bgX:0,bgY:0,
+};
+
+let bgImg=null;
+
+// ================================================================
+// CANVAS
+// ================================================================
+const C=document.getElementById('c'),X=C.getContext('2d'),W=document.getElementById('canvas-wrap');
+function resize(){C.width=W.clientWidth;C.height=W.clientHeight;draw()}
+window.addEventListener('resize',resize);
+
+function m2px(m){return m*state.scale}
+function mx(m){return state.offsetX+m*state.scale}
+function my(m){return state.offsetY+m*state.scale}
+function wx(p){return(p-state.offsetX)/state.scale}
+function wy(p){return(p-state.offsetY)/state.scale}
+function snap(v){return document.getElementById('snap-grid').checked?Math.round(v*4)/4:v}
+
+// ================================================================
+// SNAP ROOMS TOGETHER
+// ================================================================
+const SNAP_THRESH=0.15; // meters
+
+function snapRoom(room){
+  if(!document.getElementById('snap-rooms').checked)return;
+  const edges={l:room.x,r:room.x+room.w,t:room.y,b:room.y+room.h};
+  let bestDx=Infinity,bestDy=Infinity,dx=0,dy=0;
+
+  // Collect target edges from other rooms AND outline segments
+  const targets={ls:[],rs:[],ts:[],bs:[]};
+
+  state.rooms.forEach(r=>{
+    if(r.id===room.id)return;
+    targets.ls.push(r.x);targets.rs.push(r.x+r.w);
+    targets.ts.push(r.y);targets.bs.push(r.y+r.h);
+  });
+
+  // Outline edges (axis-aligned segments)
+  for(let i=0;i<state.outline.length;i++){
+    const a=state.outline[i],b=state.outline[(i+1)%state.outline.length];
+    if(a[0]===b[0]){targets.ls.push(a[0]);targets.rs.push(a[0])} // vertical
+    if(a[1]===b[1]){targets.ts.push(a[1]);targets.bs.push(a[1])} // horizontal
+  }
+
+  // X snapping: room's left/right edges to targets' left/right edges
+  const xEdges=[
+    {src:edges.l,offset:0},{src:edges.r,offset:0}
+  ];
+  const xTargets=[...targets.ls,...targets.rs];
+  for(const se of xEdges){
+    for(const te of xTargets){
+      const d=Math.abs(se.src-te);
+      if(d<SNAP_THRESH&&d<bestDx){bestDx=d;dx=te-se.src}
+    }
+  }
+
+  // Y snapping
+  const yEdges=[{src:edges.t},{src:edges.b}];
+  const yTargets=[...targets.ts,...targets.bs];
+  for(const se of yEdges){
+    for(const te of yTargets){
+      const d=Math.abs(se.src-te);
+      if(d<SNAP_THRESH&&d<bestDy){bestDy=d;dy=te-se.src}
+    }
+  }
+
+  if(bestDx<SNAP_THRESH)room.x+=dx;
+  if(bestDy<SNAP_THRESH)room.y+=dy;
+}
+
+// ================================================================
+// DRAWING
+// ================================================================
+let snapLines=[]; // [{axis:'x'|'y',val:meters}]
+
+function draw(){
+  X.clearRect(0,0,C.width,C.height);
+  drawGrid();drawBg();drawOutline();
+  state.rooms.forEach(r=>drawRoom(r));
+  if(state.mode==='outline')drawVtxHandles();
+  drawSnapLines();drawScale();
+}
+
+function drawGrid(){
+  if(!document.getElementById('snap-grid').checked)return;
+  X.strokeStyle='#e0e0d8';X.lineWidth=.5;
+  const s=Math.floor(wx(0)),e=Math.ceil(wx(C.width)),t=Math.floor(wy(0)),b=Math.ceil(wy(C.height));
+  for(let x=s;x<=e;x++){X.beginPath();X.moveTo(mx(x),0);X.lineTo(mx(x),C.height);X.stroke()}
+  for(let y=t;y<=b;y++){X.beginPath();X.moveTo(0,my(y));X.lineTo(C.width,my(y));X.stroke()}
+}
+
+function drawBg(){
+  if(!bgImg||!bgImg.complete)return;
+  X.save();X.globalAlpha=state.bgOp;
+  const w=bgImg.naturalWidth*state.bgSc,h=bgImg.naturalHeight*state.bgSc;
+  X.drawImage(bgImg,mx(state.bgX),my(state.bgY),w,h);
+  X.restore();
+}
+
+function drawOutline(){
+  const p=state.outline;if(p.length<3)return;
+  X.beginPath();p.forEach((v,i)=>{i?X.lineTo(mx(v[0]),my(v[1])):X.moveTo(mx(v[0]),my(v[1]))});
+  X.closePath();X.fillStyle='rgba(255,253,230,.25)';X.fill();
+  X.strokeStyle='#333';X.lineWidth=2.5;X.stroke();
+}
+
+function drawVtxHandles(){
+  state.outline.forEach((p,i)=>{
+    const x=mx(p[0]),y=my(p[1]);
+    X.beginPath();X.arc(x,y,7,0,Math.PI*2);
+    X.fillStyle=i===state.selVtx?'#1565c0':'#e53935';X.fill();
+    X.strokeStyle='#fff';X.lineWidth=2;X.stroke();
+    X.fillStyle='#fff';X.font='bold 8px sans-serif';X.textAlign='center';X.textBaseline='middle';
+    X.fillText(''+(i+1),x,y);
+  });
+}
+
+function drawRoom(r){
+  const x=mx(r.x),y=my(r.y),w=m2px(r.w),h=m2px(r.h);
+  const sel=r.id===state.selectedId&&state.mode==='rooms';
+  X.fillStyle=r.color;X.fillRect(x,y,w,h);
+  X.strokeStyle=sel?'#1565c0':'#555';X.lineWidth=sel?2.5:1;
+  if(sel)X.setLineDash([6,3]);
+  X.strokeRect(x,y,w,h);X.setLineDash([]);
+  const dims=document.getElementById('show-dims').checked;
+  const fs=Math.min(12,Math.max(7,m2px(Math.min(r.w,r.h))*.22));
+  const cx=x+w/2,cy=y+h/2;
+  X.fillStyle='#333';X.textAlign='center';X.textBaseline='middle';
+  if(r.h>r.w*2.5){
+    X.save();X.translate(cx,cy);X.rotate(-Math.PI/2);
+    X.font=`600 ${fs}px sans-serif`;X.fillText(r.name,0,0);
+    if(dims){X.font=`${Math.max(6,fs-2)}px sans-serif`;X.fillStyle='#888';X.fillText(`${r.w.toFixed(1)}×${r.h.toFixed(1)}m`,0,fs+2)}
+    X.restore();
+  } else {
+    X.font=`600 ${fs}px sans-serif`;X.fillText(r.name,cx,cy-(dims?fs*.35:0));
+    if(dims){X.font=`${Math.max(6,fs-2)}px sans-serif`;X.fillStyle='#888';X.fillText(`${r.w.toFixed(1)}×${r.h.toFixed(1)}m`,cx,cy+fs*.7)}
+  }
+  if(sel){X.fillStyle='#1565c0';const s=5;[[x,y],[x+w,y],[x,y+h],[x+w,y+h]].forEach(([a,b])=>X.fillRect(a-s/2,b-s/2,s,s))}
+}
+
+function drawSnapLines(){
+  snapLines.forEach(sl=>{
+    X.strokeStyle='rgba(21,101,192,0.35)';X.lineWidth=1;X.setLineDash([4,4]);
+    X.beginPath();
+    if(sl.axis==='x'){X.moveTo(mx(sl.val),0);X.lineTo(mx(sl.val),C.height)}
+    else{X.moveTo(0,my(sl.val));X.lineTo(C.width,my(sl.val))}
+    X.stroke();X.setLineDash([]);
+  });
+}
+
+function drawScale(){
+  const bm=2,bp=m2px(bm),x=20,y=C.height-22;
+  X.strokeStyle='#333';X.lineWidth=2;
+  X.beginPath();X.moveTo(x,y);X.lineTo(x+bp,y);X.moveTo(x,y-4);X.lineTo(x,y+4);X.moveTo(x+bp,y-4);X.lineTo(x+bp,y+4);X.stroke();
+  X.fillStyle='#666';X.font='9px sans-serif';X.textAlign='center';X.fillText(`${bm}m`,x+bp/2,y+13);
+}
+
+// ================================================================
+// INTERACTION
+// ================================================================
+let dragging=null,dragOX=0,dragOY=0;
+let panning=false,panSX=0,panSY=0,panOX=0,panOY=0;
+let dragVtx=-1;
+
+C.addEventListener('mousedown',e=>{
+  const r=C.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;
+  if(state.mode==='outline'){
+    for(let i=0;i<state.outline.length;i++){
+      if(Math.hypot(px-mx(state.outline[i][0]),py-my(state.outline[i][1]))<12){dragVtx=i;state.selVtx=i;renderVL();draw();return}
+    }
+    state.selVtx=-1;renderVL();startPan(e);return;
+  }
+  const room=roomAt(px,py);
+  if(room){selectRoom(room.id);dragging=room;dragOX=wx(px)-room.x;dragOY=wy(py)-room.y;C.style.cursor='grabbing'}
+  else{selectRoom(null);startPan(e)}
+});
+
+C.addEventListener('mousemove',e=>{
+  const r=C.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;
+  if(dragVtx>=0){state.outline[dragVtx]=[snap(wx(px)),snap(wy(py))];renderVL();draw();return}
+  if(dragging){
+    dragging.x=snap(wx(px)-dragOX);dragging.y=snap(wy(py)-dragOY);
+    snapRoom(dragging);
+    // Build snap lines for visual feedback
+    snapLines=[];
+    const edges={l:dragging.x,r:dragging.x+dragging.w,t:dragging.y,b:dragging.y+dragging.h};
+    state.rooms.forEach(o=>{
+      if(o.id===dragging.id)return;
+      const oe={l:o.x,r:o.x+o.w,t:o.y,b:o.y+o.h};
+      if(Math.abs(edges.l-oe.l)<.01||Math.abs(edges.l-oe.r)<.01||Math.abs(edges.r-oe.l)<.01||Math.abs(edges.r-oe.r)<.01)
+        snapLines.push({axis:'x',val:Math.abs(edges.l-oe.l)<.01||Math.abs(edges.l-oe.r)<.01?edges.l:edges.r});
+      if(Math.abs(edges.t-oe.t)<.01||Math.abs(edges.t-oe.b)<.01||Math.abs(edges.b-oe.t)<.01||Math.abs(edges.b-oe.b)<.01)
+        snapLines.push({axis:'y',val:Math.abs(edges.t-oe.t)<.01||Math.abs(edges.t-oe.b)<.01?edges.t:edges.b});
+    });
+    // Snap to outline
+    for(let i=0;i<state.outline.length;i++){
+      const a=state.outline[i],b=state.outline[(i+1)%state.outline.length];
+      if(a[0]===b[0]){
+        if(Math.abs(edges.l-a[0])<.01)snapLines.push({axis:'x',val:a[0]});
+        if(Math.abs(edges.r-a[0])<.01)snapLines.push({axis:'x',val:a[0]});
+      }
+      if(a[1]===b[1]){
+        if(Math.abs(edges.t-a[1])<.01)snapLines.push({axis:'y',val:a[1]});
+        if(Math.abs(edges.b-a[1])<.01)snapLines.push({axis:'y',val:a[1]});
+      }
+    }
+    draw();return;
+  }
+  if(panning){state.offsetX=panOX+(e.clientX-panSX);state.offsetY=panOY+(e.clientY-panSY);draw();return}
+  if(state.mode==='outline'){
+    let hit=false;for(let i=0;i<state.outline.length;i++)if(Math.hypot(px-mx(state.outline[i][0]),py-my(state.outline[i][1]))<12){hit=true;break}
+    C.style.cursor=hit?'grab':'default';
+  }else{C.style.cursor=roomAt(px,py)?'grab':'default'}
+});
+
+C.addEventListener('mouseup',()=>{
+  if(dragVtx>=0){dragVtx=-1;saveState()}
+  if(dragging){dragging=null;snapLines=[];C.style.cursor='default';saveState();draw()}
+  if(panning){panning=false;C.style.cursor='default'}
+});
+C.addEventListener('mouseleave',()=>{dragging=null;panning=false;dragVtx=-1;snapLines=[]});
+C.addEventListener('wheel',e=>{
+  e.preventDefault();const r=C.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;
+  const wmx=wx(px),wmy=wy(py);
+  state.scale=Math.max(10,Math.min(150,state.scale*(e.deltaY<0?1.1:.9)));
+  state.offsetX=px-wmx*state.scale;state.offsetY=py-wmy*state.scale;draw();
+},{passive:false});
+
+function startPan(e){panning=true;panSX=e.clientX;panSY=e.clientY;panOX=state.offsetX;panOY=state.offsetY;C.style.cursor='grab'}
+function roomAt(px,py){const wmx=wx(px),wmy=wy(py);for(let i=state.rooms.length-1;i>=0;i--){const r=state.rooms[i];if(wmx>=r.x&&wmx<=r.x+r.w&&wmy>=r.y&&wmy<=r.y+r.h)return r}return null}
+
+// ================================================================
+// MODE
+// ================================================================
+function setMode(m){
+  state.mode=m;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.m===m));
+  document.getElementById('tab-rooms').style.display=m==='rooms'?'':'none';
+  document.getElementById('tab-outline').style.display=m==='outline'?'':'none';
+  document.getElementById('tab-image').style.display=m==='image'?'':'none';
+  document.getElementById('mode-lbl').textContent=m[0].toUpperCase()+m.slice(1);
+  if(m==='outline')renderVL();
+  state.selVtx=-1;draw();
+}
+
+// ================================================================
+// ROOM PROPS
+// ================================================================
+const $p=document.getElementById('props'),$ns=document.getElementById('no-sel');
+const $pn=document.getElementById('p-name'),$pw=document.getElementById('p-w'),$ph=document.getElementById('p-h'),$pc=document.getElementById('p-color');
+
+function selectRoom(id){
+  state.selectedId=id;
+  if(id==null){$p.style.display='none';$ns.style.display='block'}
+  else{$p.style.display='block';$ns.style.display='none';const r=state.rooms.find(o=>o.id===id);if(r){$pn.value=r.name;$pw.value=r.w;$ph.value=r.h;$pc.value=r.color}}
+  draw();
+}
+$pn.addEventListener('input',()=>{const r=state.rooms.find(o=>o.id===state.selectedId);if(r){r.name=$pn.value;draw();saveState()}});
+$pw.addEventListener('input',()=>{const r=state.rooms.find(o=>o.id===state.selectedId);const v=+$pw.value;if(r&&v>0){r.w=v;draw();saveState()}});
+$ph.addEventListener('input',()=>{const r=state.rooms.find(o=>o.id===state.selectedId);const v=+$ph.value;if(r&&v>0){r.h=v;draw();saveState()}});
+$pc.addEventListener('input',()=>{const r=state.rooms.find(o=>o.id===state.selectedId);if(r){r.color=$pc.value;draw();saveState()}});
+
+function addRoom(){
+  const r={id:state.nextId++,name:'New Room',x:snap(wx(C.width/2)-1),y:snap(wy(C.height/2)-1.5),w:3,h:3,color:'#e0e0e0'};
+  state.rooms.push(r);selectRoom(r.id);saveState();
+}
+function deleteRoom(){if(!state.selectedId)return;state.rooms=state.rooms.filter(r=>r.id!==state.selectedId);selectRoom(null);saveState()}
+
+// ================================================================
+// OUTLINE
+// ================================================================
+function renderVL(){
+  document.getElementById('vlist').innerHTML=state.outline.map((p,i)=>`
+    <div class="vi${i===state.selVtx?' sel':''}">
+      <span style="width:16px;font-size:.75em;color:#888">${i+1}</span>
+      <input type="number" step="0.25" value="${p[0]}" onchange="updVtx(${i},0,this.value)">
+      <input type="number" step="0.25" value="${p[1]}" onchange="updVtx(${i},1,this.value)">
+      <span class="vd" onclick="rmVtx(${i})" title="Remove">&times;</span>
+    </div>`).join('');
+}
+function updVtx(i,a,v){state.outline[i][a]=+v||0;draw();saveState()}
+function rmVtx(i){if(state.outline.length<=3)return;state.outline.splice(i,1);state.selVtx=-1;renderVL();draw();saveState()}
+function addVertex(){const l=state.outline[state.outline.length-1];state.outline.push([l[0],l[1]+1]);renderVL();draw();saveState()}
+function resetOutline(){if(!confirm('Reset outline?'))return;state.outline=JSON.parse(JSON.stringify(OUTLINE_DEF));state.selVtx=-1;renderVL();draw();saveState()}
+
+// ================================================================
+// IMAGE
+// ================================================================
+function importImage(){
+  const i=document.createElement('input');i.type='file';i.accept='image/*';
+  i.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+    r.onload=ev=>{state.bgImage=ev.target.result;loadBg();document.getElementById('img-st').textContent=`Loaded: ${f.name}`;saveState()};
+    r.readAsDataURL(f)};i.click();
+}
+function loadBg(){if(!state.bgImage)return;bgImg=new Image();bgImg.onload=()=>draw();bgImg.src=state.bgImage}
+function removeImage(){state.bgImage=null;bgImg=null;document.getElementById('img-st').textContent='No image loaded.';draw();saveState()}
+
+// ================================================================
+// EXPORT / IMPORT
+// ================================================================
+function exportJSON(){
+  dl({version:1,name:state.name,outline:state.outline,rooms:state.rooms,bgSc:state.bgSc,bgX:state.bgX,bgY:state.bgY,bgOp:state.bgOp},
+    (state.name||'floorplan').replace(/[^a-z0-9]/gi,'-').toLowerCase()+'.json');
+}
+function importJSON(){
+  const i=document.createElement('input');i.type='file';i.accept='.json';
+  i.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+    r.onload=ev=>{try{const d=JSON.parse(ev.target.result);
+      if(d.rooms)state.rooms=d.rooms;if(d.outline)state.outline=d.outline;
+      if(d.name){state.name=d.name;document.getElementById('plan-name').value=d.name}
+      if(d.bgSc!=null)state.bgSc=d.bgSc;if(d.bgX!=null)state.bgX=d.bgX;if(d.bgY!=null)state.bgY=d.bgY;
+      state.nextId=Math.max(0,...state.rooms.map(r=>r.id))+1;
+      selectRoom(null);draw();saveState();
+    }catch{alert('Invalid JSON')}};r.readAsText(f)};i.click();
+}
+
+function exportForFP(){
+  const xs=state.outline.map(p=>p[0]),ys=state.outline.map(p=>p[1]);
+  const mnx=Math.min(...xs),mny=Math.min(...ys),mxx=Math.max(...xs),mxy=Math.max(...ys);
+  const pad=.5,pw=mxx-mnx+pad*2,ph=mxy-mny+pad*2;
+  const sc=60,iw=Math.ceil(pw*sc),ih=Math.ceil(ph*sc);
+  const oc=document.createElement('canvas');oc.width=iw;oc.height=ih;const g=oc.getContext('2d');
+  g.fillStyle='#fff';g.fillRect(0,0,iw,ih);
+  const fp=m=>(m-mnx+pad)*sc,fq=m=>(m-mny+pad)*sc;
+  // Outline
+  g.beginPath();state.outline.forEach((p,i)=>{i?g.lineTo(fp(p[0]),fq(p[1])):g.moveTo(fp(p[0]),fq(p[1]))});
+  g.closePath();g.fillStyle='rgba(245,245,240,.5)';g.fill();g.strokeStyle='#333';g.lineWidth=3;g.stroke();
+  // Rooms
+  state.rooms.forEach(r=>{
+    const x=fp(r.x),y=fq(r.y),w=r.w*sc,h=r.h*sc;
+    g.fillStyle=r.color;g.fillRect(x,y,w,h);g.strokeStyle='#666';g.lineWidth=1;g.strokeRect(x,y,w,h);
+    const fs=Math.min(14,Math.max(8,Math.min(w,h)*.18));
+    g.fillStyle='#333';g.font=`600 ${fs}px sans-serif`;g.textAlign='center';g.textBaseline='middle';
+    if(r.h>r.w*2.5){g.save();g.translate(x+w/2,y+h/2);g.rotate(-Math.PI/2);g.fillText(r.name,0,0);g.restore()}
+    else{g.fillText(r.name,x+w/2,y+h/2-fs*.3);g.font=`${Math.max(7,fs-2)}px sans-serif`;g.fillStyle='#888';g.fillText(`${r.w.toFixed(1)}×${r.h.toFixed(1)}m`,x+w/2,y+h/2+fs*.6)}
+  });
+  const pid='plan_'+Date.now();
+  dl({version:2,exportedAt:new Date().toISOString(),activePlanId:pid,
+    plans:[{id:pid,name:state.name||'Floor Plan',address:'',link:'',scale:sc,nextId:1,items:[],imageData:oc.toDataURL('image/png')}]
+  },`furniture-plans-1plans-${new Date().toISOString().slice(0,10)}.json`);
+  alert("Exported for Furniture Planner!\nImport this file in the Furniture Planner using its Import button.");
+}
+
+function dl(data,fn){const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=fn;a.click()}
+
+function resetAll(){if(!confirm('Reset everything?'))return;localStorage.removeItem('fp_editor');location.reload()}
+
+// ================================================================
+// ZOOM
+// ================================================================
+function zoomIn(){state.scale=Math.min(150,state.scale*1.2);draw()}
+function zoomOut(){state.scale=Math.max(10,state.scale/1.2);draw()}
+function zoomFit(){
+  if(state.outline.length<2){state.scale=SCALE_DEF;state.offsetX=40;state.offsetY=60;draw();return}
+  const xs=state.outline.map(p=>p[0]),ys=state.outline.map(p=>p[1]);
+  const mnx=Math.min(...xs),mny=Math.min(...ys),mxx=Math.max(...xs),mxy=Math.max(...ys);
+  const pw=mxx-mnx,ph=mxy-mny;
+  const margin=60;
+  state.scale=Math.min((C.width-margin*2)/pw,(C.height-margin*2)/ph);
+  state.offsetX=(C.width-pw*state.scale)/2-mnx*state.scale;
+  state.offsetY=(C.height-ph*state.scale)/2-mny*state.scale;
+  draw();
+}
+
+// ================================================================
+// PERSISTENCE
+// ================================================================
+const SK='fp_editor';
+function saveState(){
+  const d={name:state.name,rooms:state.rooms,nextId:state.nextId,scale:state.scale,offsetX:state.offsetX,offsetY:state.offsetY,
+    outline:state.outline,bgImage:state.bgImage,bgOp:state.bgOp,bgSc:state.bgSc,bgX:state.bgX,bgY:state.bgY};
+  try{localStorage.setItem(SK,JSON.stringify(d))}catch{d.bgImage=null;try{localStorage.setItem(SK,JSON.stringify(d))}catch{}}
+}
+function loadState(){
+  const s=localStorage.getItem(SK);if(!s)return;
+  try{const d=JSON.parse(s);
+    if(d.name){state.name=d.name;document.getElementById('plan-name').value=d.name}
+    if(d.rooms)state.rooms=d.rooms;if(d.nextId)state.nextId=d.nextId;
+    if(d.scale)state.scale=d.scale;if(d.offsetX!=null)state.offsetX=d.offsetX;if(d.offsetY!=null)state.offsetY=d.offsetY;
+    if(d.outline)state.outline=d.outline;
+    if(d.bgImage){state.bgImage=d.bgImage;loadBg()}
+    if(d.bgOp!=null)state.bgOp=d.bgOp;if(d.bgSc!=null)state.bgSc=d.bgSc;
+    if(d.bgX!=null)state.bgX=d.bgX;if(d.bgY!=null)state.bgY=d.bgY;
+    document.getElementById('img-op').value=state.bgOp*100;
+    document.getElementById('img-sc').value=state.bgSc;
+    document.getElementById('img-x').value=state.bgX;
+    document.getElementById('img-y').value=state.bgY;
+    if(state.bgImage)document.getElementById('img-st').textContent='Image loaded from saved state.';
+  }catch{}}
+
+// ================================================================
+// INIT
+// ================================================================
+loadState();resize();
+</script>
+</body>
+</html>
