@@ -112,6 +112,7 @@
   .cat-count { font-size: 9px; color: #555; margin-left: auto; }
   .cat-items { display: none; }
   .cat-items.open { display: block; }
+  [draggable="true"] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 
   /* Recent furniture */
   #recent-section { margin-bottom: 6px; }
@@ -516,6 +517,103 @@
 </div>
 
 <script>
+// HTML5 drag-and-drop touch shim. Translates touch into dragstart/dragover/drop
+// events on elements with draggable="true". Long-press (250ms) activates drag.
+(function(){
+    if (typeof window === 'undefined') return;
+    if (!('ontouchstart' in window) && !navigator.maxTouchPoints) return;
+    const HOLD_MS = 250, MOVE_TOLERANCE = 8;
+    let dragSrc = null, lastEnter = null, lastDropOk = null;
+    let touchStart = null, dragActive = false, holdTimer = null, dt = null;
+    function findDraggable(t) {
+        while (t && t.nodeType === 1 && t !== document.body) {
+            if (t.getAttribute && t.getAttribute('draggable') === 'true') return t;
+            t = t.parentNode;
+        }
+        return null;
+    }
+    function makeDT() {
+        const data = {}, types = [];
+        return {
+            get types() { return types.slice(); },
+            effectAllowed: 'all', dropEffect: 'move', files: [],
+            setData(type, val) { data[type] = String(val); if (!types.includes(type)) types.push(type); },
+            getData(type) { return data[type] || ''; },
+            clearData(type) {
+                if (type === undefined) { Object.keys(data).forEach(k => delete data[k]); types.length = 0; return; }
+                delete data[type]; const i = types.indexOf(type); if (i >= 0) types.splice(i, 1);
+            },
+            setDragImage() {}
+        };
+    }
+    function fire(name, target, x, y) {
+        const ev = new Event(name, { bubbles: true, cancelable: true });
+        Object.defineProperties(ev, {
+            dataTransfer: { value: dt, configurable: true },
+            clientX: { value: x, configurable: true }, clientY: { value: y, configurable: true },
+            pageX: { value: x + window.scrollX, configurable: true }, pageY: { value: y + window.scrollY, configurable: true },
+            screenX: { value: x, configurable: true }, screenY: { value: y, configurable: true }
+        });
+        target.dispatchEvent(ev);
+        return ev;
+    }
+    function cleanup() {
+        if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+        dragSrc = null; lastEnter = null; lastDropOk = null;
+        touchStart = null; dragActive = false; dt = null;
+    }
+    document.addEventListener('touchstart', e => {
+        if (e.touches.length !== 1) { cleanup(); return; }
+        const el = findDraggable(e.target);
+        if (!el) return;
+        touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        dragSrc = el;
+        dragActive = false;
+        holdTimer = setTimeout(() => {
+            holdTimer = null;
+            if (!dragSrc || !touchStart) return;
+            dt = makeDT();
+            fire('dragstart', dragSrc, touchStart.x, touchStart.y);
+            dragActive = true;
+        }, HOLD_MS);
+    }, { passive: true });
+    document.addEventListener('touchmove', e => {
+        if (!dragSrc) return;
+        const t = e.touches[0];
+        if (!dragActive) {
+            const dx = t.clientX - touchStart.x, dy = t.clientY - touchStart.y;
+            if (Math.hypot(dx, dy) > MOVE_TOLERANCE) {
+                if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+                dragSrc = null; touchStart = null;
+            }
+            return;
+        }
+        e.preventDefault();
+        const tgt = document.elementFromPoint(t.clientX, t.clientY);
+        if (!tgt) return;
+        if (lastEnter && lastEnter !== tgt) fire('dragleave', lastEnter, t.clientX, t.clientY);
+        if (tgt !== lastEnter) fire('dragenter', tgt, t.clientX, t.clientY);
+        const ev = fire('dragover', tgt, t.clientX, t.clientY);
+        lastEnter = tgt;
+        lastDropOk = ev.defaultPrevented ? tgt : null;
+    }, { passive: false });
+    document.addEventListener('touchend', e => {
+        if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+        if (!dragSrc) return;
+        if (dragActive) {
+            const t = e.changedTouches[0];
+            const tgt = lastDropOk || document.elementFromPoint(t.clientX, t.clientY);
+            if (tgt) fire('drop', tgt, t.clientX, t.clientY);
+            fire('dragend', dragSrc, t.clientX, t.clientY);
+        }
+        cleanup();
+    });
+    document.addEventListener('touchcancel', () => {
+        if (dragSrc && dragActive) fire('dragend', dragSrc, 0, 0);
+        cleanup();
+    });
+})();
+
 // ═══════════════════════════════════════════════════════
 //  FURNITURE CATALOG DATA (room-based categories)
 // ═══════════════════════════════════════════════════════

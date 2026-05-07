@@ -1,4 +1,4 @@
-const CACHE_NAME = 'furniture-planner-v1';
+const CACHE_NAME = 'furniture-planner-v2';
 const PRECACHE_URLS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (e) => {
