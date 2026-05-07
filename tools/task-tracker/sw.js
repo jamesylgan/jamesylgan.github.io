@@ -1,4 +1,4 @@
-const CACHE_NAME = 'task-tracker-v1';
+const CACHE_NAME = 'task-tracker-v2';
 const PRECACHE_URLS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (e) => {
