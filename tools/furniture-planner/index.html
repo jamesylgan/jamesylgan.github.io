@@ -1007,11 +1007,46 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!calOvl.classList.c
 // ═══════════════════════════════════════════════════════
 //  ZOOM
 // ═══════════════════════════════════════════════════════
-function setZoom(z){zoom=Math.max(0.2,Math.min(4,z));box.style.transform=`scale(${zoom})`;box.style.transformOrigin='top left';}
+let panX=0,panY=0;
+function applyTransform(){box.style.transform=`translate(${panX}px,${panY}px) scale(${zoom})`;box.style.transformOrigin='top left';}
+function setZoom(z,tx,ty){zoom=Math.max(0.2,Math.min(4,z));if(tx!==undefined)panX=tx;if(ty!==undefined)panY=ty;applyTransform();}
 $('z-in').onclick=()=>setZoom(zoom*1.25);
 $('z-out').onclick=()=>setZoom(zoom/1.25);
-$('z-fit').onclick=()=>setZoom(1);
+$('z-fit').onclick=()=>{panX=0;panY=0;setZoom(1);};
 area.addEventListener('wheel',e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();setZoom(zoom*(1-e.deltaY*0.003));}},{passive:false});
+
+// Pinch-to-zoom (two-finger touch)
+const fpinch={pts:new Map(),startDist:0,startZoom:1,startPanX:0,startPanY:0,worldX:0,worldY:0};
+area.addEventListener('pointerdown',e=>{
+  if(e.pointerType!=='touch')return;
+  fpinch.pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(fpinch.pts.size===2){
+    const [a,b]=[...fpinch.pts.values()];
+    fpinch.startDist=Math.hypot(b.x-a.x,b.y-a.y)||1;
+    fpinch.startZoom=zoom;fpinch.startPanX=panX;fpinch.startPanY=panY;
+    const ar=area.getBoundingClientRect();
+    const mx=(a.x+b.x)/2-ar.left,my=(a.y+b.y)/2-ar.top;
+    // World coords of pinch midpoint (relative to box top-left, before any transform)
+    fpinch.worldX=(mx-panX)/zoom;fpinch.worldY=(my-panY)/zoom;
+  }
+},{passive:true});
+area.addEventListener('pointermove',e=>{
+  if(!fpinch.pts.has(e.pointerId))return;
+  fpinch.pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(fpinch.pts.size!==2)return;
+  e.preventDefault();
+  const [a,b]=[...fpinch.pts.values()];
+  const dist=Math.hypot(b.x-a.x,b.y-a.y)||1;
+  const nz=Math.max(0.2,Math.min(4,fpinch.startZoom*(dist/fpinch.startDist)));
+  const ar=area.getBoundingClientRect();
+  const mx=(a.x+b.x)/2-ar.left,my=(a.y+b.y)/2-ar.top;
+  // Anchor: keep fpinch.worldX/worldY at the current screen midpoint
+  panX=mx-fpinch.worldX*nz;panY=my-fpinch.worldY*nz;zoom=nz;
+  applyTransform();
+},{passive:false});
+function endPinch(e){fpinch.pts.delete(e.pointerId);}
+area.addEventListener('pointerup',endPinch);
+area.addEventListener('pointercancel',endPinch);
 
 // ═══════════════════════════════════════════════════════
 //  FURNITURE DROP FROM CATALOG
@@ -1049,7 +1084,7 @@ function buildEl(it){
     e.preventDefault();sel(it);
     let drag=true;const r=box.getBoundingClientRect();
     const ox=(e.clientX-r.left)/zoom-it.x,oy=(e.clientY-r.top)/zoom-it.y;
-    const onMove=ev=>{if(!drag)return;const r2=box.getBoundingClientRect();let nx=(ev.clientX-r2.left)/zoom-ox,ny=(ev.clientY-r2.top)/zoom-oy;if(snapCb.checked&&scale){const s=0.10*scale;nx=Math.round(nx/s)*s;ny=Math.round(ny/s)*s;}it.x=nx;it.y=ny;renderItem(it);updateProps();};
+    const onMove=ev=>{if(!drag||fpinch.pts.size>=2)return;const r2=box.getBoundingClientRect();let nx=(ev.clientX-r2.left)/zoom-ox,ny=(ev.clientY-r2.top)/zoom-oy;if(snapCb.checked&&scale){const s=0.10*scale;nx=Math.round(nx/s)*s;ny=Math.round(ny/s)*s;}it.x=nx;it.y=ny;renderItem(it);updateProps();};
     const onUp=()=>{drag=false;document.removeEventListener('pointermove',onMove);document.removeEventListener('pointerup',onUp);pushHistory();savePlans();};
     document.addEventListener('pointermove',onMove);document.addEventListener('pointerup',onUp);
   });
@@ -1058,7 +1093,7 @@ function buildEl(it){
     e.preventDefault();e.stopPropagation();
     const r=box.getBoundingClientRect();
     const startA=Math.atan2((e.clientY-r.top)/zoom-it.y,(e.clientX-r.left)/zoom-it.x)*180/Math.PI-it.rot;
-    const onM=ev=>{const r2=box.getBoundingClientRect();let a=Math.atan2((ev.clientY-r2.top)/zoom-it.y,(ev.clientX-r2.left)/zoom-it.x)*180/Math.PI-startA;if(snapCb.checked)a=Math.round(a/15)*15;it.rot=a;renderItem(it);updateProps();};
+    const onM=ev=>{if(fpinch.pts.size>=2)return;const r2=box.getBoundingClientRect();let a=Math.atan2((ev.clientY-r2.top)/zoom-it.y,(ev.clientX-r2.left)/zoom-it.x)*180/Math.PI-startA;if(snapCb.checked)a=Math.round(a/15)*15;it.rot=a;renderItem(it);updateProps();};
     const onU=()=>{document.removeEventListener('pointermove',onM);document.removeEventListener('pointerup',onU);pushHistory();savePlans();};
     document.addEventListener('pointermove',onM);document.addEventListener('pointerup',onU);
   });
