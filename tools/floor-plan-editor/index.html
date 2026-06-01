@@ -9,7 +9,7 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f0eb;display:flex;height:100vh;overflow:hidden}
 #canvas-wrap{flex:1;position:relative;overflow:hidden;background:#e8e8e3}
-canvas{display:block}
+canvas{display:block;touch-action:none}
 
 /* Panel */
 #panel{width:280px;background:#fff;border-left:1px solid #ddd;display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
@@ -312,12 +312,30 @@ function drawScale(){
 let dragging=null,dragOX=0,dragOY=0;
 let panning=false,panSX=0,panSY=0,panOX=0,panOY=0;
 let dragVtx=-1;
+let activePointerId=null;
+const pinch={pts:new Map(),startDist:0,startScale:0,worldX:0,worldY:0};
 
-C.addEventListener('mousedown',e=>{
+C.addEventListener('pointerdown',e=>{
+  pinch.pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pinch.pts.size===2){
+    // Cancel any single-pointer interaction in favor of pinch
+    dragging=null;dragVtx=-1;panning=false;snapLines=[];
+    const [a,b]=[...pinch.pts.values()];
+    pinch.startDist=Math.hypot(b.x-a.x,b.y-a.y)||1;
+    pinch.startScale=state.scale;
+    const r=C.getBoundingClientRect();
+    const cx=(a.x+b.x)/2-r.left,cy=(a.y+b.y)/2-r.top;
+    pinch.worldX=wx(cx);pinch.worldY=wy(cy);
+    activePointerId=null;
+    return;
+  }
+  if(pinch.pts.size>2)return;
+  activePointerId=e.pointerId;
+  C.setPointerCapture(e.pointerId);
   const r=C.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;
   if(state.mode==='outline'){
     for(let i=0;i<state.outline.length;i++){
-      if(Math.hypot(px-mx(state.outline[i][0]),py-my(state.outline[i][1]))<12){dragVtx=i;state.selVtx=i;renderVL();draw();return}
+      if(Math.hypot(px-mx(state.outline[i][0]),py-my(state.outline[i][1]))<14){dragVtx=i;state.selVtx=i;renderVL();draw();return}
     }
     state.selVtx=-1;renderVL();startPan(e);return;
   }
@@ -326,7 +344,22 @@ C.addEventListener('mousedown',e=>{
   else{selectRoom(null);startPan(e)}
 });
 
-C.addEventListener('mousemove',e=>{
+C.addEventListener('pointermove',e=>{
+  if(pinch.pts.has(e.pointerId))pinch.pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pinch.pts.size===2){
+    const [a,b]=[...pinch.pts.values()];
+    const dist=Math.hypot(b.x-a.x,b.y-a.y)||1;
+    const ns=Math.max(10,Math.min(150,pinch.startScale*(dist/pinch.startDist)));
+    const r=C.getBoundingClientRect();
+    const cx=(a.x+b.x)/2-r.left,cy=(a.y+b.y)/2-r.top;
+    // Keep the original world point under the current pinch midpoint as scale changes
+    state.scale=ns;
+    state.offsetX=cx-pinch.worldX*ns;
+    state.offsetY=cy-pinch.worldY*ns;
+    draw();
+    return;
+  }
+  if(e.pointerId!==activePointerId)return;
   const r=C.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;
   if(dragVtx>=0){state.outline[dragVtx]=[snap(wx(px)),snap(wy(py))];renderVL();draw();return}
   if(dragging){
@@ -364,12 +397,19 @@ C.addEventListener('mousemove',e=>{
   }else{C.style.cursor=roomAt(px,py)?'grab':'default'}
 });
 
-C.addEventListener('mouseup',()=>{
+function endPointer(e){
+  pinch.pts.delete(e.pointerId);
   if(dragVtx>=0){dragVtx=-1;saveState()}
   if(dragging){dragging=null;snapLines=[];C.style.cursor='default';saveState();draw()}
   if(panning){panning=false;C.style.cursor='default'}
-});
-C.addEventListener('mouseleave',()=>{dragging=null;panning=false;dragVtx=-1;snapLines=[]});
+  if(e.pointerId===activePointerId){
+    activePointerId=null;
+    try{C.releasePointerCapture(e.pointerId)}catch{}
+    saveState();
+  }
+}
+C.addEventListener('pointerup',endPointer);
+C.addEventListener('pointercancel',endPointer);
 C.addEventListener('wheel',e=>{
   e.preventDefault();const r=C.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top;
   const wmx=wx(px),wmy=wy(py);
