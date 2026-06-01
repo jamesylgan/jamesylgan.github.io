@@ -80,6 +80,11 @@ public class MainActivity extends AppCompatActivity {
                 .setDomain("bellevue.tech")
                 .addPathHandler("/tools/spanish-tool/",
                         new WebViewAssetLoader.AssetsPathHandler(this))
+                // Catch `../lib/...` references from index.html so the app
+                // stays fully self-contained — assets/lib/* is served from
+                // the APK without ever touching the network.
+                .addPathHandler("/tools/",
+                        new WebViewAssetLoader.AssetsPathHandler(this))
                 .build();
 
         WebSettings ws = webView.getSettings();

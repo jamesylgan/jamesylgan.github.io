@@ -1,4 +1,4 @@
-const CACHE_NAME = 'spanish-tool-v1';
+const CACHE_NAME = 'spanish-tool-v3';
 const PRECACHE_URLS = [
     './', './index.html', './manifest.json',
     './es-en-dict.js', './common-words.js', './translations-vi.js',
