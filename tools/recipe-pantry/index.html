@@ -1,0 +1,1632 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta name="ai-training" content="disallow">
+<meta name="CCBot" content="nofollow">
+<meta name="GPTBot" content="nofollow">
+<title>Recipe + Pantry Tracker</title>
+<style>
+:root {
+  --bg:#f0f2f5; --surface:#fff; --surface2:#fafbfc; --border:#e5e7eb;
+  --border-light:#f3f4f6; --text:#1a1a1a; --text-muted:#6b7280;
+  --accent:#2563eb; --accent-hover:#1d4ed8;
+  --green:#16a34a; --green-bg:#f0fdf4;
+  --yellow:#d97706; --yellow-bg:#fffbeb;
+  --orange:#ea580c; --orange-bg:#fff7ed;
+  --red:#dc2626; --red-bg:#fef2f2;
+  --blue:#2563eb; --blue-bg:#eff6ff; --purple:#7c3aed;
+}
+[data-theme="dark"] {
+  --bg:#0d1117; --surface:#161b22; --surface2:#1c2128; --border:#30363d;
+  --border-light:#21262d; --text:#c9d1d9; --text-muted:#8b949e;
+  --accent:#58a6ff; --accent-hover:#79b8ff;
+  --green:#3fb950; --green-bg:#0d2b17;
+  --yellow:#d29922; --yellow-bg:#2b1d00;
+  --orange:#db6d28; --orange-bg:#2b1500;
+  --red:#f85149; --red-bg:#2b0e0e;
+  --blue:#58a6ff; --blue-bg:#0d1f3c; --purple:#bc8cff;
+}
+* { box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); margin: 0; min-height: 100vh; }
+h1, h2, h3 { margin: 0; }
+.app { max-width: 960px; margin: 0 auto; padding: 16px; }
+.app-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.app-title { font-size: 1.4rem; font-weight: 700; }
+.header-actions { display: flex; gap: 8px; }
+.btn { cursor: pointer; border: none; border-radius: 6px; padding: 8px 14px; font-size: 0.85rem; font-weight: 500; transition: background 0.15s; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-sm { padding: 4px 10px; font-size: 0.8rem; }
+.btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--surface2); }
+.btn-danger { background: var(--red); color: #fff; }
+.tab-bar { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 20px; gap: 0; }
+.tab-btn { padding: 10px 20px; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-size: 0.95rem; color: var(--text-muted); margin-bottom: -2px; transition: all 0.15s; }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+.panel { background: var(--surface); border-radius: 10px; border: 1px solid var(--border); overflow: hidden; }
+.recipe-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.recipe-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; cursor: pointer; transition: all 0.15s; }
+.recipe-card:hover { border-color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.recipe-card.selected { border-color: var(--accent); background: var(--blue-bg); }
+.recipe-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.cuisine-badge { font-size: 0.72rem; padding: 2px 8px; border-radius: 12px; font-weight: 600; }
+.cuisine-SE-Asian { background: #fef9c3; color: #854d0e; }
+[data-theme="dark"] .cuisine-SE-Asian { background: #1f1700; color: #fbbf24; }
+.cuisine-Chinese { background: #fee2e2; color: #991b1b; }
+[data-theme="dark"] .cuisine-Chinese { background: #1f0a0a; color: #f87171; }
+.cuisine-Indian { background: #fef3c7; color: #92400e; }
+[data-theme="dark"] .cuisine-Indian { background: #1f1200; color: #fcd34d; }
+.cuisine-Italian { background: #ccfbf1; color: #0f766e; }
+[data-theme="dark"] .cuisine-Italian { background: #0a1f1d; color: #5eead4; }
+.cuisine-Western { background: #e0e7ff; color: #3730a3; }
+[data-theme="dark"] .cuisine-Western { background: #0f0f2b; color: #a5b4fc; }
+.recipe-detail { margin-top: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+.detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.detail-meta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; font-size: 0.85rem; color: var(--text-muted); }
+.ing-list { list-style: none; padding: 0; margin: 0; }
+.ing-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--border-light); font-size: 0.9rem; }
+.steps-list { padding-left: 20px; }
+.steps-list li { margin-bottom: 8px; line-height: 1.6; }
+.pantry-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.pantry-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.pantry-section-header { padding: 10px 14px; background: var(--surface2); border-bottom: 1px solid var(--border); font-weight: 600; font-size: 0.85rem; }
+.pantry-row { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-bottom: 1px solid var(--border-light); font-size: 0.88rem; }
+.pantry-row:last-child { border-bottom: none; }
+.pantry-name { flex: 1; }
+.status-btns { display: flex; gap: 3px; }
+.status-btn { padding: 2px 8px; font-size: 0.75rem; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; background: var(--surface2); color: var(--text-muted); transition: all 0.1s; }
+.status-btn.active-full { background: var(--green-bg); color: var(--green); border-color: var(--green); }
+.status-btn.active-half { background: var(--blue-bg); color: var(--blue); border-color: var(--blue); }
+.status-btn.active-low { background: var(--orange-bg); color: var(--orange); border-color: var(--orange); }
+.status-btn.active-out { background: var(--red-bg); color: var(--red); border-color: var(--red); }
+.cook-list { display: flex; flex-direction: column; gap: 8px; }
+.cook-entry { display: flex; flex-direction: column; }
+.cook-row { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: all 0.15s; }
+.cook-row:hover { border-color: var(--accent); }
+.cook-row.selected { border-color: var(--accent); background: var(--blue-bg); border-radius: 8px 8px 0 0; border-bottom: none; }
+.cook-badge { font-size: 0.78rem; padding: 3px 10px; border-radius: 12px; font-weight: 600; white-space: nowrap; }
+.trips-0 .cook-badge { background: var(--green-bg); color: var(--green); }
+.trips-1 .cook-badge { background: var(--yellow-bg); color: var(--yellow); }
+.trips-multi .cook-badge { background: var(--orange-bg); color: var(--orange); }
+.infeasible .cook-badge { background: var(--red-bg); color: var(--red); }
+.cook-detail { margin-top: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+.cook-expansion { background: var(--surface2); border: 1px solid var(--accent); border-top: none; border-radius: 0 0 8px 8px; padding: 12px 16px; }
+.shopping-section { margin-top: 16px; }
+.shopping-store { margin-bottom: 12px; }
+.shopping-store-header { font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.effort-badge { font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
+.rare-hint { background: var(--yellow-bg); border: 1px solid var(--yellow); border-radius: 6px; padding: 10px 14px; margin-top: 8px; font-size: 0.85rem; }
+.rare-hint-title { font-weight: 600; color: var(--yellow); margin-bottom: 4px; }
+.store-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.store-tab-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-size: 0.85rem; transition: all 0.15s; }
+.store-tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.store-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.store-form .full-width { grid-column: 1 / -1; }
+.avail-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.avail-table th, .avail-table td { padding: 6px 10px; border-bottom: 1px solid var(--border-light); text-align: left; }
+.avail-table th { background: var(--surface2); font-weight: 600; position: sticky; top: 0; }
+.avail-toggle { padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; font-size: 0.75rem; background: var(--surface2); color: var(--text-muted); }
+.avail-yes { background: var(--green-bg); color: var(--green); border-color: var(--green); }
+.avail-maybe { background: var(--yellow-bg); color: var(--yellow); border-color: var(--yellow); }
+.avail-no { background: var(--surface2); color: var(--text-muted); }
+.cat-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.cat-btn { padding: 4px 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface2); cursor: pointer; font-size: 0.8rem; transition: all 0.15s; }
+.cat-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.effort-1 { color: #16a34a; }
+.effort-2 { color: #d97706; }
+.effort-3 { color: #ea580c; }
+.effort-4 { color: #dc2626; }
+input, textarea, select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font-size: 0.9rem; }
+input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 4px; color: var(--text-muted); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.empty-state { text-align: center; padding: 40px; color: var(--text-muted); }
+.tag { display: inline-block; font-size: 0.75rem; padding: 2px 8px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--border); }
+.separator { height: 1px; background: var(--border); margin: 16px 0; }
+.hidden { display: none !important; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal { background: var(--surface); border-radius: 10px; padding: 24px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.ing-edit-table { width: 100%; font-size: 0.85rem; border-collapse: collapse; }
+.ing-edit-table td, .ing-edit-table th { padding: 4px 8px; border-bottom: 1px solid var(--border-light); }
+.ing-row-qty { width: 60px; }
+.ing-row-unit { width: 80px; }
+.note-area { width: 100%; min-height: 80px; resize: vertical; }
+.ing-avail-btn { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.ing-avail-btn:hover { color: var(--accent); }
+.ing-avail-open { color: var(--accent); font-weight: 600; }
+.ing-avail-panel { padding: 8px 14px 10px; background: var(--surface2); border-top: 1px solid var(--border-light); font-size: 0.82rem; }
+.ing-avail-stores { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 4px; }
+.ing-avail-chip { padding: 2px 8px; border-radius: 10px; border: 1px solid var(--border); font-size: 0.75rem; }
+.ing-avail-chip.avail-yes { background: var(--green-bg); color: var(--green); border-color: var(--green); }
+.ing-avail-chip.avail-maybe { background: var(--yellow-bg); color: var(--yellow); border-color: var(--yellow); }
+.ing-avail-chip.avail-no { background: var(--surface2); color: var(--text-muted); text-decoration: line-through; opacity: 0.5; }
+.avail-effort { font-size: 0.65rem; opacity: 0.7; }
+.ing-avail-hint { color: var(--yellow); margin-top: 4px; line-height: 1.4; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="app-header">
+    <div class="app-title">🍜 Recipe + Pantry</div>
+    <div class="header-actions">
+      <button class="btn btn-ghost btn-sm" id="theme-btn" onclick="toggleTheme()">☾ Dark</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportData()">Export</button>
+      <button class="btn btn-ghost btn-sm" onclick="importData()">Import</button>
+      <button class="btn btn-ghost btn-sm" onclick="resetToDefaults()" style="color:var(--red)">Reset</button>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn" data-tab="cook" onclick="switchTab('cook')">Shop</button>
+    <button class="tab-btn" data-tab="recipes" onclick="switchTab('recipes')">Recipes</button>
+    <button class="tab-btn" data-tab="pantry" onclick="switchTab('pantry')">Pantry</button>
+    <button class="tab-btn" data-tab="stores" onclick="switchTab('stores')">Stores</button>
+  </div>
+
+  <div id="tab-cook" class="tab-panel">
+    <div id="cook-content"></div>
+  </div>
+
+  <div id="tab-recipes" class="tab-panel">
+    <div id="recipes-content"></div>
+  </div>
+
+  <div id="tab-pantry" class="tab-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-size:0.85rem;color:var(--text-muted)">Track what you have at home</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm btn-ghost" onclick="setAllPantry('full')">All Full</button>
+        <button class="btn btn-sm btn-ghost" onclick="setAllPantry('out')">All Out</button>
+      </div>
+    </div>
+    <div id="pantry-content"></div>
+  </div>
+
+  <div id="tab-stores" class="tab-panel">
+    <div id="stores-content"></div>
+  </div>
+</div>
+
+<script>
+
+const STORES_DEFAULT = {
+  dia_small:   { id:'dia_small',   name:'Carrefour Express', effort:1, address:'Calle Mayor 46 (~3 min)',        note:'On the street. Open until midnight. Convenience range only.' },
+  dia_large:   { id:'dia_large',   name:'Dia (La Latina)',      effort:2, address:'Calle Toledo 67 (~8 min)',       note:'Best local Dia. 384m², fresh produce, open daily until 23:00.' },
+  carrefour:   { id:'carrefour',   name:'El Corte Inglés',   effort:2, address:'Calle Preciados 3 (~9 min)',     note:'Basement food hall. Best for DOP cheeses (Parmigiano, Pecorino), cured meats, fresh tamarind.' },
+  aldi:        { id:'aldi',        name:'Lidl',              effort:3, address:'Plaza Tirso de Molina (~13 min)', note:'Good produce and pantry basics. Weekly specials can include Asian items.' },
+  mercadona:   { id:'mercadona',   name:'Mercadona',         effort:3, address:'Calle Fuencarral 77 (~17 min)',  note:'Best for quality weekly shops. Coconut milk, sesame oil, oyster sauce, sambal oelek (Hacendado), guanciale.' },
+  alcampo:     { id:'alcampo',     name:'Hualian Market',    effort:2, address:'Calle Leganitos 33–35 (~11 min)',note:'Nearest Asian market. Frozen galangal, kaffir lime, lemongrass. Tofu, Korean/Chinese sauces, ramen.' },
+  asian_market:{ id:'asian_market',name:'Nanyea Market',     effort:2, address:'Calle Estudios 7 (~7 min)',      note:'Vietnamese-run organic farm shop. Fresh kaffir lime, lemongrass, sambal oelek, Asian veg. Daily 10–22h.' },
+  dia_imperial:    { id:'dia_imperial',    name:'Dia (Imperial)',    effort:1, address:'C. Imperial 1 (~2 min)',             note:'Very close small Dia. Basics, pantry staples.' },
+  carrefour_tirso: { id:'carrefour_tirso', name:'Carrefour 24/7',    effort:3, address:'Near Tirso de Molina (~13 min)',       note:'Open 24 hours. Better range than Express format.' },
+  wenzhou:     { id:'wenzhou',     name:'Wenzhou (Usera)',   effort:4, address:'Calle Marcelo Usera (metro ~25 min)', note:'Full SE Asian + Chinese range. 7,000+ SKUs. Laksa paste (call ahead), shaoxing, black vinegar, fish sauce, MSG.' }
+};
+
+const INGREDIENTS_DEFAULT = {
+  // --- Staples ---
+  pasta_long:    { name:'Pasta (long)',    cat:'Staples',    stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  pasta_short:   { name:'Pasta (short)',   cat:'Staples',    stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  rice_jasmine:  { name:'Jasmine Rice',    cat:'Staples',    stores:{ dia_small:'no',    dia_large:'no',    carrefour:'maybe', aldi:'no',    mercadona:'maybe', alcampo:'yes',   asian_market:'yes',   dia_imperial:'no',   carrefour_tirso:'maybe',   wenzhou:'yes'   } },
+  rice_basmati:  { name:'Basmati Rice',    cat:'Staples',    stores:{ dia_small:'maybe', dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'yes',   asian_market:'maybe', dia_imperial:'maybe',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  flour_plain:   { name:'Plain Flour',     cat:'Staples',    stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  lentils_red:   { name:'Red Lentils',     cat:'Staples',    stores:{ dia_small:'no',    dia_large:'maybe', carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  lentils_split: { name:'Split Lentils',   cat:'Staples',    stores:{ dia_small:'no',    dia_large:'no',    carrefour:'maybe', aldi:'maybe', mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'maybe',   wenzhou:'maybe' } },
+  noodles_rice:  { name:'Rice Noodles',    cat:'Staples',    stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'maybe', aldi:'no',    mercadona:'yes',   alcampo:'yes',   asian_market:'yes',   dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'yes'   } },
+  breadcrumbs:   { name:'Breadcrumbs',     cat:'Staples',    stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  walnuts:       { name:'Walnuts',         cat:'Staples',    stores:{ dia_small:'no',    dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  pine_nuts:     { name:'Pine Nuts',       cat:'Staples',    stores:{ dia_small:'no',    dia_large:'maybe', carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'maybe',   wenzhou:'maybe' } },
+
+  // --- Protein ---
+  eggs:          { name:'Eggs',            cat:'Protein',    stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'yes',   asian_market:'no',    dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  chicken_thigh: { name:'Chicken Thigh',   cat:'Protein',    stores:{ dia_small:'no',    dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  beef_chuck:    { name:'Beef Chuck',      cat:'Protein',    stores:{ dia_small:'no',    dia_large:'maybe', carrefour:'yes',   aldi:'no',    mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  prawns_frozen: { name:'Prawns (frozen)', cat:'Protein',    stores:{ dia_small:'no',    dia_large:'maybe', carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'yes',   asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  tofu_puffs:    { name:'Tofu Puffs',      cat:'Protein',    stores:{ dia_small:'no',    dia_large:'no',    carrefour:'no',    aldi:'no',    mercadona:'no',    alcampo:'yes',   asian_market:'maybe', dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'yes'   }, rareHint:'Hualian Market (Leganitos 33, ~11 min) and Wenzhou Usera. No mainstream supermarkets. Buy fresh tofu as fallback if unavailable.' },
+  guanciale:     { name:'Guanciale',       cat:'Protein',    stores:{ dia_small:'no',    dia_large:'no',    carrefour:'maybe', aldi:'no',    mercadona:'maybe', alcampo:'no',   asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'no'   } },
+  pancetta:      { name:'Pancetta',        cat:'Protein',    stores:{ dia_small:'no',    dia_large:'maybe', carrefour:'yes',   aldi:'maybe', mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'maybe',   wenzhou:'no'   } },
+  anchovies:     { name:'Anchovies',       cat:'Protein',    stores:{ dia_small:'maybe', dia_large:'yes',   carrefour:'yes',   aldi:'maybe', mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'maybe',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+
+  // --- Veg ---
+  garlic:        { name:'Garlic',          cat:'Veg',        stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'yes',   asian_market:'yes',   dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'yes'   } },
+  onion:         { name:'Onion',           cat:'Veg',        stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'yes',   asian_market:'yes',   dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'yes'   } },
+  shallots:      { name:'Shallots',        cat:'Veg',        stores:{ dia_small:'no',    dia_large:'maybe', carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'yes',   asian_market:'maybe', dia_imperial:'no',   carrefour_tirso:'yes',   wenzhou:'yes'   } },
+  ginger:        { name:'Ginger',          cat:'Veg',        stores:{ dia_small:'no',    dia_large:'maybe', carrefour:'yes',   aldi:'maybe', mercadona:'yes',   alcampo:'yes',   asian_market:'yes',   dia_imperial:'no',   carrefour_tirso:'yes',   wenzhou:'yes'   } },
+  lemongrass:    { name:'Lemongrass',      cat:'Veg',        stores:{ dia_small:'no',    dia_large:'no',    carrefour:'no',    aldi:'no',    mercadona:'no',    alcampo:'yes',   asian_market:'yes',   dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'yes'   }, rareHint:'Frozen at Hualian Market (Leganitos 33, ~11 min). Likely fresh at Nanyea Market (Estudios 7, ~7 min). No mainstream supermarkets in Madrid stock it.' },
+  galangal:      { name:'Galangal',        cat:'Veg',        stores:{ dia_small:'no',    dia_large:'no',    carrefour:'no',    aldi:'no',    mercadona:'no',    alcampo:'yes',   asian_market:'maybe', dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'yes'   }, rareHint:'Frozen at Hualian Market (Leganitos 33, ~11 min) and Nanyea Market (Estudios 7, ~7 min — call ahead: +34 913 652 883). Also Ta Tung Universal (Mozart 5, Príncipe Pío). Fresh is rare; frozen works fine for cooking. Sub: extra ginger (different flavour).' },
+  kaffir_lime:   { name:'Kaffir Lime Leaves', cat:'Veg',     stores:{ dia_small:'no',    dia_large:'no',    carrefour:'no',    aldi:'no',    mercadona:'no',    alcampo:'yes',   asian_market:'yes',   dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'yes'   }, rareHint:'Fresh at Nanyea Market (Estudios 7, ~7 min — call +34 913 652 883, often in stock). Frozen at Hualian (Leganitos 33, ~11 min). Dried online at orientalmarket.es. Buy extra and freeze — keeps for months.' },
+  cilantro:      { name:'Cilantro',        cat:'Veg',        stores:{ dia_small:'maybe', dia_large:'yes',   carrefour:'yes',   aldi:'maybe', mercadona:'yes',   alcampo:'yes',   asian_market:'yes',   dia_imperial:'maybe',   carrefour_tirso:'yes',   wenzhou:'yes'   } },
+  parsley:       { name:'Parsley',         cat:'Veg',        stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  scallion:      { name:'Scallion/Spring Onion', cat:'Veg',  stores:{ dia_small:'maybe', dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'yes',   asian_market:'yes',   dia_imperial:'maybe',   carrefour_tirso:'yes',   wenzhou:'yes'   } },
+  tomato:        { name:'Tomato',          cat:'Veg',        stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'yes',   asian_market:'maybe', dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  lemon:         { name:'Lemon',           cat:'Veg',        stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'maybe',   asian_market:'no',    dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  cauliflower:   { name:'Cauliflower',     cat:'Veg',        stores:{ dia_small:'maybe', dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'maybe',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  asparagus:     { name:'Asparagus',       cat:'Veg',        stores:{ dia_small:'no',    dia_large:'maybe', carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  broccolini:    { name:'Broccolini',      cat:'Veg',        stores:{ dia_small:'no',    dia_large:'no',    carrefour:'maybe', aldi:'maybe', mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'maybe',   wenzhou:'maybe' } },
+  bok_choy:      { name:'Bok Choy',        cat:'Veg',        stores:{ dia_small:'no',    dia_large:'no',    carrefour:'no',    aldi:'no',    mercadona:'no',    alcampo:'no',    asian_market:'yes',   dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'yes'   } },
+  chinese_brocc: { name:'Chinese Broccoli', cat:'Veg',       stores:{ dia_small:'no',    dia_large:'no',    carrefour:'no',    aldi:'no',    mercadona:'no',    alcampo:'no',    asian_market:'yes',   dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'yes'   } },
+  fresh_basil:   { name:'Fresh Basil',     cat:'Veg',        stores:{ dia_small:'no',    dia_large:'maybe', carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'maybe',   asian_market:'maybe', dia_imperial:'no',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+
+  // --- Spices ---
+  black_pepper:  { name:'Black Pepper',    cat:'Spices',     stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'yes',   asian_market:'no',    dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  pimenton:      { name:'Pimentón (smoked paprika)', cat:'Spices', stores:{ dia_small:'yes', dia_large:'yes', carrefour:'yes', aldi:'yes', mercadona:'yes', alcampo:'no', asian_market:'no', dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  chili_powder:  { name:'Chili Powder',    cat:'Spices',     stores:{ dia_small:'maybe', dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'yes',   asian_market:'maybe', dia_imperial:'maybe',   carrefour_tirso:'yes',   wenzhou:'yes'   } },
+  chili_flakes:  { name:'Chili Flakes',    cat:'Spices',     stores:{ dia_small:'maybe', dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'yes',   asian_market:'maybe', dia_imperial:'maybe',   carrefour_tirso:'yes',   wenzhou:'yes'   } },
+  cumin_ground:  { name:'Cumin (ground)',  cat:'Spices',     stores:{ dia_small:'maybe', dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'maybe',   asian_market:'no',    dia_imperial:'maybe',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  cumin_seed:    { name:'Cumin Seeds',     cat:'Spices',     stores:{ dia_small:'no',    dia_large:'no',    carrefour:'maybe', aldi:'no',    mercadona:'no',    alcampo:'yes',   asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'maybe',   wenzhou:'maybe' } },
+  turmeric:      { name:'Turmeric',        cat:'Spices',     stores:{ dia_small:'no',    dia_large:'maybe', carrefour:'yes',   aldi:'maybe', mercadona:'yes',   alcampo:'yes',   asian_market:'maybe', dia_imperial:'no',   carrefour_tirso:'yes',   wenzhou:'yes'   } },
+  garam_masala:  { name:'Garam Masala',    cat:'Spices',     stores:{ dia_small:'no',    dia_large:'no',    carrefour:'no',    aldi:'maybe', mercadona:'no',    alcampo:'yes',   asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'maybe',   wenzhou:'maybe' } },
+  coriander_seed:{ name:'Coriander Seed',  cat:'Spices',     stores:{ dia_large:'no',    carrefour:'maybe', aldi:'no',    mercadona:'no',    alcampo:'yes',   asian_market:'no',    wenzhou:'maybe' } },
+  white_pepper:  { name:'White Pepper',    cat:'Spices',     stores:{ dia_small:'no',    dia_large:'no',    carrefour:'maybe', aldi:'maybe', mercadona:'yes',   alcampo:'yes',   asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'maybe',   wenzhou:'yes'   } },
+  cardamom:      { name:'Cardamom',        cat:'Spices',     stores:{ dia_small:'no',    dia_large:'no',    carrefour:'no',    aldi:'no',    mercadona:'no',    alcampo:'yes',   asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'maybe' } },
+  cinnamon_stick:{ name:'Cinnamon Stick',  cat:'Spices',     stores:{ dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'maybe',   asian_market:'no',    wenzhou:'maybe' } },
+  star_anise:    { name:'Star Anise',      cat:'Spices',     stores:{ dia_small:'no',    dia_large:'no',    carrefour:'no',    aldi:'no',    mercadona:'no',    alcampo:'yes',   asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'yes'   } },
+
+  // --- Condiments ---
+  olive_oil:     { name:'Olive Oil',       cat:'Condiments', stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  tomato_paste:  { name:'Tomato Paste',    cat:'Condiments', stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  canned_tomatoes:{ name:'Canned Tomatoes', cat:'Condiments', stores:{ dia_large:'yes',  carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'no',   asian_market:'no',    wenzhou:'maybe' } },
+  soy_light:     { name:'Soy Sauce (light)', cat:'Condiments', stores:{ dia_small:'yes', dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'yes',   asian_market:'yes',   dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'yes'   } },
+  soy_dark:      { name:'Soy Sauce (dark)',  cat:'Condiments', stores:{ dia_small:'no',  dia_large:'no',    carrefour:'no',    aldi:'no',    mercadona:'no',    alcampo:'maybe', asian_market:'maybe', dia_imperial:'no',   carrefour_tirso:'maybe',   wenzhou:'yes'   } },
+  oyster_sauce:  { name:'Oyster Sauce',    cat:'Condiments', stores:{ dia_small:'no',    dia_large:'no',    carrefour:'no',    aldi:'no',    mercadona:'yes',   alcampo:'yes',   asian_market:'maybe', dia_imperial:'no',   carrefour_tirso:'maybe',   wenzhou:'yes'   } },
+  fish_sauce:    { name:'Fish Sauce',      cat:'Condiments', stores:{ dia_small:'no',    dia_large:'no',    carrefour:'no',    aldi:'no',    mercadona:'no',    alcampo:'yes',    asian_market:'yes',   dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'yes'   } },
+  sesame_oil:    { name:'Sesame Oil',      cat:'Condiments', stores:{ dia_small:'no',    dia_large:'no',    carrefour:'maybe', aldi:'yes',   mercadona:'yes',   alcampo:'yes',   asian_market:'yes',   dia_imperial:'no',   carrefour_tirso:'maybe',   wenzhou:'yes'   } },
+  sambal_oelek:  { name:'Sambal Oelek',    cat:'Condiments', stores:{ dia_small:'no',    dia_large:'no',    carrefour:'no',    aldi:'no',    mercadona:'yes',   alcampo:'maybe',    asian_market:'yes',   dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'yes'   }, rareHint:'Mercadona (Hacendado brand, permanent range). Also Nanyea Market (Lucullus brand, Estudios 7, ~7 min). Sub: chili paste + splash of rice vinegar.' },
+  laksa_paste:   { name:'Laksa Paste',     cat:'Condiments', stores:{ dia_small:'no',    dia_large:'no',    carrefour:'no',    aldi:'no',    mercadona:'no',    alcampo:'no',    asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'maybe' }, rareHint:'No reliable physical store in Madrid. Order online: amazingoriental.es (BH brand, 120g). Wenzhou Usera may occasionally have it — call ahead. This is the soul of the dish and hard to sub.' },
+  tamarind:      { name:'Tamarind',        cat:'Condiments', stores:{ dia_small:'no',    dia_large:'no',    carrefour:'yes',   aldi:'no',    mercadona:'no',    alcampo:'no',    asian_market:'yes',   dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'yes'   }, rareHint:'El Corte Inglés (Preciados 3, ~9 min) stocks fresh tamarind pods. Also Foodland (Calle Amparo 99, Lavapiés) for block/paste. Any Asian market will have it.' },
+  msg:           { name:'MSG',             cat:'Condiments', stores:{ dia_small:'no',    dia_large:'no',    carrefour:'no',    aldi:'no',    mercadona:'no',    alcampo:'yes',    asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'yes'   }, rareHint:'Wenzhou (Usera, metro ~25 min). No mainstream supermarket stocks it standalone. Sub: small extra pinch of salt + parmesan rind in the stock.' },
+  shaoxing:      { name:'Shaoxing Wine',   cat:'Condiments', stores:{ dia_small:'no',    dia_large:'no',    carrefour:'no',    aldi:'no',    mercadona:'no',    alcampo:'yes',    asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'yes'   }, rareHint:'Wenzhou (Usera, metro ~25 min) is the reliable source. No mainstream supermarkets carry it. Sub: dry sherry (fino or manzanilla), widely available at any supermarket.' },
+  chili_oil:     { name:'Chili Oil',       cat:'Condiments', stores:{ dia_small:'no',    dia_large:'no',    carrefour:'no',    aldi:'no',    mercadona:'no',    alcampo:'yes',    asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'yes'   }, rareHint:'Hualian Market (Leganitos 33, ~11 min) and Wenzhou Usera. Laoganma brand is excellent. Very easy to make: pour 180°C oil over chili flakes + garlic + salt.' },
+  black_vinegar: { name:'Black Vinegar',   cat:'Condiments', stores:{ dia_small:'no',    dia_large:'no',    carrefour:'no',    aldi:'no',    mercadona:'no',    alcampo:'yes',    asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'yes'   }, rareHint:'Wenzhou (Usera, metro ~25 min) reliably stocks Hengshun Chinkiang vinegar. No mainstream supermarket carries it. Sub: balsamic vinegar (different but usable).' },
+  coconut_milk:  { name:'Coconut Milk',    cat:'Condiments', stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'yes',   asian_market:'yes',   dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'yes'   } },
+
+  // --- Dairy ---
+  butter:        { name:'Butter',          cat:'Dairy',      stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  ghee:          { name:'Ghee',            cat:'Dairy',      stores:{ dia_small:'no',    dia_large:'no',    carrefour:'no',    aldi:'no',    mercadona:'yes',   alcampo:'maybe', asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'maybe' } },
+  yogurt_plain:  { name:'Plain Yogurt',    cat:'Dairy',      stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  cream_heavy:   { name:'Heavy Cream',     cat:'Dairy',      stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  milk:          { name:'Milk',            cat:'Dairy',      stores:{ dia_small:'yes',   dia_large:'yes',   carrefour:'yes',   aldi:'yes',   mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'yes',   carrefour_tirso:'yes',   wenzhou:'maybe' } },
+  parmigiano:    { name:'Parmigiano',      cat:'Dairy',      stores:{ dia_small:'no',    dia_large:'no',    carrefour:'yes',   aldi:'no',    mercadona:'yes',   alcampo:'no',   asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'maybe',   wenzhou:'maybe' } },
+  pecorino:      { name:'Pecorino Romano', cat:'Dairy',      stores:{ dia_small:'no',    dia_large:'no',    carrefour:'yes',   aldi:'no',    mercadona:'maybe', alcampo:'no',   asian_market:'no',    dia_imperial:'no',   carrefour_tirso:'no',   wenzhou:'maybe' } },
+};
+
+const RECIPES_DEFAULT = [
+  {
+    id: 'laksa',
+    name: 'Laksa',
+    cuisine: 'SE Asian',
+    serves: 2,
+    prepTime: 30,
+    cookTime: 20,
+    description: 'Rich coconut curry noodle soup. Prawn and tofu puff version.',
+    ingredients: [
+      { id:'noodles_rice',  qty:200,  unit:'g' },
+      { id:'prawns_frozen', qty:200,  unit:'g' },
+      { id:'tofu_puffs',    qty:100,  unit:'g' },
+      { id:'coconut_milk',  qty:400,  unit:'ml' },
+      { id:'laksa_paste',   qty:4,    unit:'tbsp' },
+      { id:'lemongrass',    qty:2,    unit:'stalks' },
+      { id:'kaffir_lime',   qty:4,    unit:'leaves' },
+      { id:'fish_sauce',    qty:2,    unit:'tbsp' },
+      { id:'sambal_oelek',  qty:1,    unit:'tbsp' },
+      { id:'scallion',      qty:2,    unit:'' },
+      { id:'garlic',        qty:3,    unit:'cloves' },
+      { id:'shallots',      qty:3,    unit:'' },
+      { id:'ginger',        qty:1,    unit:'inch' },
+      { id:'sesame_oil',    qty:1,    unit:'tsp' },
+      { id:'msg',           qty:1,    unit:'pinch optional' }
+    ],
+    steps: [
+      'Soak rice noodles in boiling water 5 min, drain, set aside.',
+      'Blend laksa paste with shallots, lemongrass (white part), ginger, garlic into a paste.',
+      'Fry paste in oil 3-4 min until fragrant and darkened.',
+      'Add coconut milk + 400ml water, kaffir lime leaves, fish sauce, msg if using. Simmer 10 min.',
+      'Add prawns, cook 3 min. Add tofu puffs, simmer 2 min.',
+      'Serve over noodles. Top with sambal, scallion, sesame oil.'
+    ]
+  },
+  {
+    id: 'rendang',
+    name: 'Rendang',
+    cuisine: 'SE Asian',
+    serves: 4,
+    prepTime: 30,
+    cookTime: 90,
+    description: 'Dry Malaysian beef curry. Low and slow until the beef is tender and the paste is almost caramelised.',
+    ingredients: [
+      { id:'beef_chuck',     qty:600, unit:'g' },
+      { id:'coconut_milk',   qty:400, unit:'ml' },
+      { id:'lemongrass',     qty:3,   unit:'stalks' },
+      { id:'galangal',       qty:2,   unit:'inch' },
+      { id:'kaffir_lime',    qty:6,   unit:'leaves' },
+      { id:'shallots',       qty:6,   unit:'' },
+      { id:'garlic',         qty:5,   unit:'cloves' },
+      { id:'ginger',         qty:2,   unit:'inch' },
+      { id:'chili_powder',   qty:2,   unit:'tbsp' },
+      { id:'turmeric',       qty:1,   unit:'tsp' },
+      { id:'coriander_seed', qty:1,   unit:'tbsp' },
+      { id:'cumin_seed',     qty:1,   unit:'tbsp' },
+      { id:'star_anise',     qty:2,   unit:'' },
+      { id:'cinnamon_stick', qty:1,   unit:'' },
+      { id:'tamarind',       qty:1,   unit:'tbsp' }
+    ],
+    steps: [
+      'Blend shallots, garlic, ginger, galangal, lemongrass (white part), chili powder, turmeric, coriander, cumin into a fine paste.',
+      'Brown beef chunks in oil, set aside.',
+      'Fry paste in pot 5 min until very fragrant.',
+      'Add beef, coconut milk, kaffir lime leaves, star anise, cinnamon, tamarind.',
+      'Simmer uncovered on low 60-80 min, stirring occasionally, until almost all liquid is absorbed and oil separates.',
+      'The rendang is done when beef is very tender and paste coats it darkly.'
+    ]
+  },
+  {
+    id: 'fried_rice',
+    name: 'Fried Rice',
+    cuisine: 'Chinese',
+    serves: 2,
+    prepTime: 10,
+    cookTime: 15,
+    description: 'Classic egg fried rice. Day-old rice works best — it\'s drier and fries better.',
+    ingredients: [
+      { id:'rice_jasmine',  qty:300, unit:'g cooked' },
+      { id:'eggs',          qty:3,   unit:'' },
+      { id:'garlic',        qty:3,   unit:'cloves' },
+      { id:'scallion',      qty:3,   unit:'' },
+      { id:'soy_light',     qty:2,   unit:'tbsp' },
+      { id:'soy_dark',      qty:1,   unit:'tbsp' },
+      { id:'oyster_sauce',  qty:1,   unit:'tbsp' },
+      { id:'sesame_oil',    qty:1,   unit:'tsp' },
+      { id:'white_pepper',  qty:1,   unit:'pinch' },
+      { id:'msg',           qty:1,   unit:'pinch optional' }
+    ],
+    steps: [
+      'Beat eggs with a pinch of salt.',
+      'Heat wok until smoking. Add oil, scramble eggs loosely, remove while still slightly wet.',
+      'Add more oil, fry garlic 30 sec.',
+      'Add cold rice, stir-fry on high heat 3-4 min breaking up clumps.',
+      'Add soy sauces, oyster sauce, white pepper, msg. Toss well.',
+      'Return eggs, add scallion, sesame oil. Toss and serve immediately.'
+    ]
+  },
+  {
+    id: 'stir_fry',
+    name: 'Stir-Fried Greens',
+    cuisine: 'Chinese',
+    serves: 2,
+    prepTime: 10,
+    cookTime: 10,
+    description: 'Versatile stir-fried greens. Works with bok choy, Chinese broccoli, or broccolini.',
+    ingredients: [
+      { id:'bok_choy',     qty:300, unit:'g' },
+      { id:'garlic',       qty:4,   unit:'cloves' },
+      { id:'ginger',       qty:1,   unit:'inch' },
+      { id:'oyster_sauce', qty:2,   unit:'tbsp' },
+      { id:'soy_light',    qty:1,   unit:'tbsp' },
+      { id:'sesame_oil',   qty:1,   unit:'tsp' },
+      { id:'shaoxing',     qty:1,   unit:'tbsp' }
+    ],
+    steps: [
+      'Blanch greens in boiling salted water 1 min, drain and pat dry.',
+      'Heat wok until smoking. Add oil.',
+      'Fry garlic and ginger 30 sec.',
+      'Add greens, shaoxing, toss 2 min.',
+      'Add oyster sauce, soy sauce. Toss to coat.',
+      'Finish with sesame oil.'
+    ]
+  },
+  {
+    id: 'sambal_stir_fry',
+    name: 'Sambal Stir-Fry',
+    cuisine: 'SE Asian',
+    serves: 2,
+    prepTime: 10,
+    cookTime: 15,
+    description: 'Spicy stir-fry with sambal. Use prawns, chicken, or tofu puffs.',
+    ingredients: [
+      { id:'prawns_frozen', qty:200, unit:'g' },
+      { id:'sambal_oelek',  qty:2,   unit:'tbsp' },
+      { id:'garlic',        qty:4,   unit:'cloves' },
+      { id:'shallots',      qty:3,   unit:'' },
+      { id:'lemongrass',    qty:1,   unit:'stalk' },
+      { id:'fish_sauce',    qty:1,   unit:'tbsp' },
+      { id:'soy_light',     qty:1,   unit:'tbsp' },
+      { id:'sesame_oil',    qty:1,   unit:'tsp' },
+      { id:'scallion',      qty:3,   unit:'' },
+      { id:'tomato',        qty:1,   unit:'' }
+    ],
+    steps: [
+      'Fry shallots, garlic, lemongrass (white) until soft.',
+      'Add sambal oelek, fry 2 min until fragrant.',
+      'Add protein, cook through.',
+      'Add tomato, fish sauce, soy sauce.',
+      'Finish with sesame oil, top with scallion.'
+    ]
+  },
+  {
+    id: 'tomato_egg',
+    name: 'Tomato & Egg',
+    cuisine: 'Chinese',
+    serves: 2,
+    prepTime: 5,
+    cookTime: 10,
+    description: 'Chinese comfort food. Sweet-savoury tomato and egg stir-fry. Serve over white rice.',
+    ingredients: [
+      { id:'eggs',       qty:4, unit:'' },
+      { id:'tomato',     qty:4, unit:'' },
+      { id:'garlic',     qty:2, unit:'cloves' },
+      { id:'scallion',   qty:2, unit:'' },
+      { id:'soy_light',  qty:1, unit:'tbsp' },
+      { id:'sesame_oil', qty:1, unit:'tsp' },
+      { id:'msg',        qty:1, unit:'pinch optional' }
+    ],
+    steps: [
+      'Beat eggs with a pinch of salt and a dash of sesame oil.',
+      'Fry eggs in generous oil until just set but still silken. Remove.',
+      'Fry garlic 30 sec. Add tomato wedges, cook until softened and releasing juice, ~3 min.',
+      'Add soy sauce, msg, a pinch of sugar.',
+      'Return eggs, stir gently to combine. Top with scallion.'
+    ]
+  },
+  {
+    id: 'butter_chicken',
+    name: 'Butter Chicken',
+    cuisine: 'Indian',
+    serves: 4,
+    prepTime: 20,
+    cookTime: 40,
+    description: 'Rich, creamy tomato-based chicken curry. Marinate overnight if possible.',
+    ingredients: [
+      { id:'chicken_thigh',  qty:600, unit:'g' },
+      { id:'yogurt_plain',   qty:150, unit:'ml' },
+      { id:'butter',         qty:60,  unit:'g' },
+      { id:'cream_heavy',    qty:150, unit:'ml' },
+      { id:'canned_tomatoes',qty:400, unit:'g' },
+      { id:'garlic',         qty:5,   unit:'cloves' },
+      { id:'ginger',         qty:2,   unit:'inch' },
+      { id:'garam_masala',   qty:2,   unit:'tsp' },
+      { id:'turmeric',       qty:1,   unit:'tsp' },
+      { id:'chili_powder',   qty:1,   unit:'tsp' },
+      { id:'cumin_ground',   qty:1,   unit:'tsp' },
+      { id:'onion',          qty:1,   unit:'' },
+      { id:'ghee',           qty:2,   unit:'tbsp' }
+    ],
+    steps: [
+      'Marinate chicken in yogurt, half the spices, half the garlic/ginger, salt. 1hr+.',
+      'Grill or pan-fry marinated chicken until charred. Set aside.',
+      'Sauté onion in butter/ghee until golden. Add remaining garlic, ginger, spices.',
+      'Add canned tomatoes, simmer 15 min. Blend smooth.',
+      'Return to pan. Add cream, simmer 5 min.',
+      'Add chicken, coat well. Simmer 10 min more. Finish with butter.'
+    ]
+  },
+  {
+    id: 'tikka_masala',
+    name: 'Tikka Masala',
+    cuisine: 'Indian',
+    serves: 4,
+    prepTime: 20,
+    cookTime: 40,
+    description: 'Grilled chicken in a spiced tomato-cream sauce. Similar to butter chicken but with more punch.',
+    ingredients: [
+      { id:'chicken_thigh',  qty:600, unit:'g' },
+      { id:'yogurt_plain',   qty:150, unit:'ml' },
+      { id:'cream_heavy',    qty:150, unit:'ml' },
+      { id:'canned_tomatoes',qty:400, unit:'g' },
+      { id:'garlic',         qty:5,   unit:'cloves' },
+      { id:'ginger',         qty:2,   unit:'inch' },
+      { id:'garam_masala',   qty:2,   unit:'tsp' },
+      { id:'turmeric',       qty:1,   unit:'tsp' },
+      { id:'chili_powder',   qty:2,   unit:'tsp' },
+      { id:'cumin_ground',   qty:1,   unit:'tsp' },
+      { id:'coriander_seed', qty:1,   unit:'tsp' },
+      { id:'onion',          qty:2,   unit:'' },
+      { id:'ghee',           qty:3,   unit:'tbsp' }
+    ],
+    steps: [
+      'Marinate chicken in yogurt, 1tsp garam masala, chili, turmeric, half garlic/ginger. 1hr+.',
+      'Grill or broil chicken until charred. Cut into pieces.',
+      'Fry onion in ghee until deep golden. Add garlic, ginger, remaining spices. 2 min.',
+      'Add canned tomatoes. Simmer 15 min. Blend.',
+      'Return to pan, add cream. Simmer 10 min.',
+      'Add chicken, cook through. Finish with garam masala.'
+    ]
+  },
+  {
+    id: 'daal',
+    name: 'Daal',
+    cuisine: 'Indian',
+    serves: 4,
+    prepTime: 10,
+    cookTime: 35,
+    description: 'Simple red lentil daal. The tarka (tempering) at the end is the key step.',
+    ingredients: [
+      { id:'lentils_red',    qty:300, unit:'g' },
+      { id:'onion',          qty:1,   unit:'' },
+      { id:'garlic',         qty:4,   unit:'cloves' },
+      { id:'ginger',         qty:1,   unit:'inch' },
+      { id:'canned_tomatoes',qty:200, unit:'g' },
+      { id:'turmeric',       qty:1,   unit:'tsp' },
+      { id:'cumin_seed',     qty:1,   unit:'tsp' },
+      { id:'garam_masala',   qty:1,   unit:'tsp' },
+      { id:'chili_powder',   qty:1,   unit:'tsp' },
+      { id:'ghee',           qty:3,   unit:'tbsp' },
+      { id:'cilantro',       qty:1,   unit:'handful' }
+    ],
+    ratios: 'Lentils:Water = 1:2.5. Scale up freely.',
+    steps: [
+      'Simmer lentils in 800ml water with turmeric and salt until completely soft, ~25 min. Add water if needed.',
+      'Meanwhile heat ghee, fry cumin seeds until popping.',
+      'Add onion, fry until golden. Add garlic, ginger, chili, tomatoes. Cook 10 min.',
+      'Pour tarka over cooked lentils, stir through.',
+      'Simmer together 5 min. Adjust salt.',
+      'Top with cilantro and a final drizzle of ghee.'
+    ]
+  },
+  {
+    id: 'roast_cauliflower',
+    name: 'Roast Cauliflower',
+    cuisine: 'Western',
+    serves: 2,
+    prepTime: 10,
+    cookTime: 30,
+    description: 'Roasted cauliflower with pimentón and garlic. Works as a side or light main.',
+    ingredients: [
+      { id:'cauliflower', qty:1,  unit:'head' },
+      { id:'olive_oil',   qty:3,  unit:'tbsp' },
+      { id:'garlic',      qty:4,  unit:'cloves' },
+      { id:'pimenton',    qty:2,  unit:'tsp' },
+      { id:'cumin_ground',qty:1,  unit:'tsp' },
+      { id:'lemon',       qty:1,  unit:'' },
+      { id:'parsley',     qty:1,  unit:'handful' }
+    ],
+    steps: [
+      'Preheat oven 220°C.',
+      'Break cauliflower into florets, toss with olive oil, smashed garlic, pimentón, cumin, salt.',
+      'Roast 25-30 min until edges are charred.',
+      'Squeeze lemon over, top with parsley.'
+    ]
+  },
+  {
+    id: 'roast_asparagus',
+    name: 'Roast Asparagus',
+    cuisine: 'Western',
+    serves: 2,
+    prepTime: 5,
+    cookTime: 12,
+    description: 'Simple roasted asparagus with olive oil and lemon.',
+    ingredients: [
+      { id:'asparagus',   qty:400, unit:'g' },
+      { id:'olive_oil',   qty:2,   unit:'tbsp' },
+      { id:'lemon',       qty:1,   unit:'' },
+      { id:'black_pepper',qty:1,   unit:'generous' },
+      { id:'parmigiano',  qty:30,  unit:'g optional' }
+    ],
+    steps: [
+      'Preheat oven 220°C.',
+      'Snap woody ends off asparagus.',
+      'Toss with olive oil, salt, pepper.',
+      'Roast 10-12 min until tender and slightly charred.',
+      'Squeeze lemon over. Top with shaved parmigiano if using.'
+    ]
+  },
+  {
+    id: 'roast_broccolini',
+    name: 'Roast Broccolini',
+    cuisine: 'Western',
+    serves: 2,
+    prepTime: 5,
+    cookTime: 15,
+    description: 'Roasted broccolini with chili flakes and garlic. Easy weeknight side.',
+    ingredients: [
+      { id:'broccolini',   qty:400, unit:'g' },
+      { id:'olive_oil',    qty:3,   unit:'tbsp' },
+      { id:'garlic',       qty:4,   unit:'cloves' },
+      { id:'chili_flakes', qty:1,   unit:'tsp' },
+      { id:'lemon',        qty:0.5, unit:'' },
+      { id:'anchovies',    qty:4,   unit:'optional' }
+    ],
+    steps: [
+      'Preheat oven 220°C.',
+      'Toss broccolini with olive oil, sliced garlic, chili flakes, salt.',
+      'If using anchovies, lay them over the top.',
+      'Roast 12-15 min until crispy at edges.',
+      'Squeeze lemon over before serving.'
+    ]
+  },
+  {
+    id: 'carbonara',
+    name: 'Carbonara',
+    cuisine: 'Italian',
+    serves: 2,
+    prepTime: 10,
+    cookTime: 15,
+    description: 'Classic Roman pasta. No cream. The emulsification is the technique.',
+    ingredients: [
+      { id:'pasta_long',   qty:200, unit:'g' },
+      { id:'guanciale',    qty:100, unit:'g' },
+      { id:'eggs',         qty:4,   unit:'(2 whole + 2 yolks)' },
+      { id:'pecorino',     qty:60,  unit:'g' },
+      { id:'parmigiano',   qty:30,  unit:'g' },
+      { id:'black_pepper', qty:1,   unit:'generous' }
+    ],
+    steps: [
+      'Render guanciale in a cold pan until crispy and fat runs. Keep fat.',
+      'Mix eggs + yolks with grated cheeses + heavy black pepper into a paste.',
+      'Cook pasta in well-salted water, reserve 1 cup pasta water.',
+      'Drain pasta, add to guanciale pan off heat. Let cool 30 sec.',
+      'Add egg/cheese mixture, toss vigorously adding pasta water bit by bit to emulsify.',
+      'Serve immediately with more cheese and pepper.'
+    ]
+  },
+  {
+    id: 'cacio_e_pepe',
+    name: 'Cacio e Pepe',
+    cuisine: 'Italian',
+    serves: 2,
+    prepTime: 5,
+    cookTime: 15,
+    description: 'Three ingredients. The hardest pasta to get right. Use long pasta — spaghetti or tonnarelli.',
+    ingredients: [
+      { id:'pasta_long',   qty:200, unit:'g' },
+      { id:'pecorino',     qty:80,  unit:'g' },
+      { id:'parmigiano',   qty:40,  unit:'g' },
+      { id:'black_pepper', qty:2,   unit:'tsp whole' }
+    ],
+    steps: [
+      'Toast peppercorns in dry pan, crack coarsely.',
+      'Mix cheeses into a paste with a small splash of cold water.',
+      'Cook pasta in minimal well-salted water (less water = more starch).',
+      'Reserve plenty of pasta water.',
+      'Toast pepper briefly in pan, add a ladle of pasta water, reduce.',
+      'Add pasta, toss. Remove from heat, add cheese paste, toss vigorously with water to emulsify. Serve at once.'
+    ]
+  },
+  {
+    id: 'amatriciana',
+    name: 'Amatriciana',
+    cuisine: 'Italian',
+    serves: 2,
+    prepTime: 5,
+    cookTime: 20,
+    description: 'Guanciale, tomato, pecorino. Bucatini is traditional but rigatoni works.',
+    ingredients: [
+      { id:'pasta_long',      qty:200, unit:'g' },
+      { id:'guanciale',       qty:100, unit:'g' },
+      { id:'canned_tomatoes', qty:400, unit:'g' },
+      { id:'pecorino',        qty:50,  unit:'g' },
+      { id:'chili_flakes',    qty:1,   unit:'tsp' },
+      { id:'black_pepper',    qty:1,   unit:'pinch' }
+    ],
+    steps: [
+      'Render guanciale until crispy. Remove, keep fat.',
+      'Fry chili flakes in fat 30 sec.',
+      'Add canned tomatoes, crush them. Simmer 15 min until thickened.',
+      'Cook pasta, reserve pasta water.',
+      'Toss pasta with sauce. Add pasta water as needed.',
+      'Top with guanciale, pecorino, pepper.'
+    ]
+  },
+  {
+    id: 'aglio_olio',
+    name: 'Aglio e Olio',
+    cuisine: 'Italian',
+    serves: 2,
+    prepTime: 5,
+    cookTime: 15,
+    description: 'Pasta with garlic and olive oil. Deceptively simple. Technique matters.',
+    ingredients: [
+      { id:'pasta_long',   qty:200, unit:'g' },
+      { id:'garlic',       qty:6,   unit:'cloves' },
+      { id:'olive_oil',    qty:80,  unit:'ml' },
+      { id:'chili_flakes', qty:1,   unit:'tsp' },
+      { id:'parsley',      qty:1,   unit:'large handful' },
+      { id:'anchovies',    qty:4,   unit:'optional' },
+      { id:'black_pepper', qty:1,   unit:'pinch' }
+    ],
+    steps: [
+      'Gently warm olive oil with sliced garlic over low heat until golden (not brown). Add anchovy if using.',
+      'Add chili flakes.',
+      'Cook pasta, reserve pasta water.',
+      'Add pasta to garlic oil with a ladle of pasta water. Toss to emulsify.',
+      'Add parsley, toss. Add more pasta water if needed.',
+      'Serve with black pepper.'
+    ]
+  },
+  {
+    id: 'pasta_pomodoro',
+    name: 'Pasta al Pomodoro',
+    cuisine: 'Italian',
+    serves: 2,
+    prepTime: 5,
+    cookTime: 25,
+    description: 'Simple tomato pasta. The sauce is cooked until thick and sweet.',
+    ingredients: [
+      { id:'pasta_long',      qty:200, unit:'g' },
+      { id:'canned_tomatoes', qty:400, unit:'g' },
+      { id:'garlic',          qty:4,   unit:'cloves' },
+      { id:'olive_oil',       qty:4,   unit:'tbsp' },
+      { id:'fresh_basil',     qty:1,   unit:'large handful' },
+      { id:'black_pepper',    qty:1,   unit:'pinch' }
+    ],
+    steps: [
+      'Gently fry whole garlic cloves in olive oil until golden. Remove.',
+      'Add canned tomatoes. Simmer 20 min until thick.',
+      'Add salt, pepper, torn basil.',
+      'Cook pasta, toss with sauce. Finish with more olive oil and basil.'
+    ]
+  },
+  {
+    id: 'chili_oil_pasta',
+    name: 'Chili Oil Noodles',
+    cuisine: 'Chinese',
+    serves: 2,
+    prepTime: 5,
+    cookTime: 10,
+    description: 'Sichuan-inspired cold noodles with chili oil. Quick and punchy.',
+    ingredients: [
+      { id:'pasta_long',    qty:200, unit:'g' },
+      { id:'chili_oil',     qty:3,   unit:'tbsp' },
+      { id:'soy_light',     qty:2,   unit:'tbsp' },
+      { id:'black_vinegar', qty:1,   unit:'tbsp' },
+      { id:'garlic',        qty:3,   unit:'cloves' },
+      { id:'sesame_oil',    qty:1,   unit:'tsp' },
+      { id:'scallion',      qty:3,   unit:'' },
+      { id:'msg',           qty:1,   unit:'pinch optional' }
+    ],
+    steps: [
+      'Cook pasta al dente, rinse under cold water to cool (unusual but intentional here).',
+      'Make sauce: chili oil + soy + black vinegar + raw minced garlic + sesame oil + msg.',
+      'Toss cold pasta with sauce.',
+      'Top with scallion, more chili oil.'
+    ]
+  },
+  {
+    id: 'pasta_noci',
+    name: 'Pasta alle Noci',
+    cuisine: 'Italian',
+    serves: 2,
+    prepTime: 10,
+    cookTime: 15,
+    description: 'Pasta with walnut sauce. Rich and earthy. Ligurian classic.',
+    ingredients: [
+      { id:'pasta_long',   qty:200, unit:'g' },
+      { id:'walnuts',      qty:100, unit:'g' },
+      { id:'parmigiano',   qty:40,  unit:'g' },
+      { id:'garlic',       qty:2,   unit:'cloves' },
+      { id:'breadcrumbs',  qty:30,  unit:'g' },
+      { id:'cream_heavy',  qty:50,  unit:'ml' },
+      { id:'olive_oil',    qty:3,   unit:'tbsp' },
+      { id:'black_pepper', qty:1,   unit:'pinch' },
+      { id:'milk',         qty:1,   unit:'splash' }
+    ],
+    steps: [
+      'Toast breadcrumbs in olive oil until golden.',
+      'Blend walnuts + garlic + parmigiano + a splash of milk + cream into a rough paste.',
+      'Cook pasta, reserve pasta water.',
+      'Toss pasta with walnut sauce, thin with pasta water.',
+      'Top with toasted breadcrumbs, black pepper.'
+    ]
+  }
+];
+
+
+const LS_KEY = 'recipe_pantry_v2';
+let state = {};
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function saveState() {
+  localStorage.setItem(LS_KEY, JSON.stringify(state));
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      state = JSON.parse(raw);
+      if (state.version !== 4) {
+        const oldPantry = state.pantry || {};
+        const oldNotes = state.recipeNotes || {};
+        state = buildDefaultState();
+        for (const [id, val] of Object.entries(oldPantry)) {
+          if (state.pantry[id] !== undefined) state.pantry[id] = val;
+        }
+        state.recipeNotes = oldNotes;
+      }
+    } else {
+      state = buildDefaultState();
+    }
+  } catch(e) {
+    state = buildDefaultState();
+  }
+}
+
+function buildDefaultState() {
+  // Build default pantry from all ingredients (default status 'full')
+  const pantry = {};
+  for (const id of Object.keys(INGREDIENTS_DEFAULT)) {
+    pantry[id] = { status: 'out', note: '' };
+  }
+  return {
+    version: 4,
+    theme: 'light',
+    activeTab: 'cook',
+    initialized: true,
+    stores: JSON.parse(JSON.stringify(STORES_DEFAULT)),
+    ingredients: JSON.parse(JSON.stringify(INGREDIENTS_DEFAULT)),
+    recipes: JSON.parse(JSON.stringify(RECIPES_DEFAULT)),
+    pantry,
+    recipeNotes: {},
+    lastCookRecipe: null
+  };
+}
+
+function toggleTheme() {
+  state.theme = state.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', state.theme);
+  document.getElementById('theme-btn').textContent = state.theme === 'dark' ? '☀ Light' : '☾ Dark';
+  saveState();
+}
+
+function switchTab(tabName) {
+  state.activeTab = tabName;
+  saveState();
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tabName));
+  if (tabName === 'recipes') renderRecipes();
+  if (tabName === 'pantry') renderPantry();
+  if (tabName === 'cook') renderCook();
+  if (tabName === 'stores') renderStores();
+}
+
+function greedyCover(toGet, storeEntries) {
+  const storeNeeds = {};
+  const cantGet = [];
+  const rem = new Set(toGet);
+  while (rem.size > 0) {
+    let bestSid = null, bestHits = [], bestEffort = 99;
+    for (const [sid, store] of storeEntries) {
+      const hits = [...rem].filter(ingId => {
+        const avail = state.ingredients[ingId]?.stores?.[sid];
+        return avail === 'yes' || avail === 'maybe';
+      });
+      if (hits.length > bestHits.length ||
+          (hits.length === bestHits.length && hits.length > 0 && store.effort < bestEffort)) {
+        bestSid = sid; bestHits = hits; bestEffort = store.effort;
+      }
+    }
+    if (!bestSid || bestHits.length === 0) { rem.forEach(id => cantGet.push(id)); break; }
+    storeNeeds[bestSid] = bestHits;
+    bestHits.forEach(id => rem.delete(id));
+  }
+  return { storeNeeds, cantGet };
+}
+
+function applyStoreMerges(sn) {
+  if (sn['dia_small'] && sn['carrefour_tirso']) { sn['carrefour_tirso'].push(...sn['dia_small']); delete sn['dia_small']; }
+  if (sn['dia_imperial'] && sn['dia_large'])    { sn['dia_large'].push(...sn['dia_imperial']);    delete sn['dia_imperial']; }
+  if (sn['dia_small'] && sn['dia_large'])        { sn['dia_large'].push(...sn['dia_small']);        delete sn['dia_small']; }
+}
+
+function getRecipeInfo(recipeId, mode) {
+  mode = mode || 'fewest';
+  const recipe = state.recipes.find(r => r.id === recipeId);
+  if (!recipe) return null;
+
+  const toGet = [];
+  for (const ing of recipe.ingredients) {
+    const p = state.pantry[ing.id];
+    if (p && p.status !== 'out') continue;
+    toGet.push(ing.id);
+  }
+
+  if (toGet.length === 0) {
+    return { trips: [], storeNeeds: {}, cantGet: [], tripCount: 0, feasible: true, maxEffort: 0 };
+  }
+
+  const allEntries = Object.entries(state.stores);
+  let storeNeeds, cantGet, maxEffort;
+
+  if (mode === 'closest') {
+    // Find minimum effort threshold where recipe is fully coverable,
+    // then run greedy using only stores at that effort level or closer.
+    // This surfaces recipes where everything is nearby even if more trips.
+    let solved = false;
+    for (let maxE = 1; maxE <= 4; maxE++) {
+      const entries = allEntries.filter(([, s]) => s.effort <= maxE);
+      const result = greedyCover(toGet, entries);
+      if (result.cantGet.length === 0) {
+        storeNeeds = result.storeNeeds;
+        cantGet = result.cantGet;
+        maxEffort = maxE;
+        solved = true;
+        break;
+      }
+    }
+    if (!solved) {
+      const result = greedyCover(toGet, allEntries);
+      storeNeeds = result.storeNeeds;
+      cantGet = result.cantGet;
+      maxEffort = 99;
+    }
+  } else {
+    const result = greedyCover(toGet, allEntries);
+    storeNeeds = result.storeNeeds;
+    cantGet = result.cantGet;
+  }
+
+  applyStoreMerges(storeNeeds);
+
+  const trips = Object.keys(storeNeeds);
+  if (mode !== 'closest') {
+    maxEffort = trips.length ? Math.max(...trips.map(sid => state.stores[sid]?.effort || 0)) : 0;
+  }
+  return { trips, storeNeeds, cantGet, tripCount: trips.length, feasible: cantGet.length === 0, maxEffort };
+}
+
+function getBadgeText(info) {
+  if (!info.feasible) return '✗ Missing: ' + info.cantGet.map(id => state.ingredients[id]?.name || id).join(', ');
+  if (info.tripCount === 0) return '✓ Cook now';
+  if (info.tripCount === 1) {
+    const sid = info.trips[0];
+    return '1 trip: ' + (state.stores[sid]?.name || sid);
+  }
+  return info.tripCount + ' trips: ' + info.trips.map(sid => state.stores[sid]?.name || sid).join(' + ');
+}
+
+function getBadgeClass(info) {
+  if (!info.feasible) return 'infeasible';
+  if (info.tripCount === 0) return 'trips-0';
+  if (info.tripCount === 1) return 'trips-1';
+  return 'trips-multi';
+}
+
+let selectedCookRecipe = null;
+let shopSortMode = 'closest'; // 'closest' | 'fewest'
+
+function setShopSort(mode) {
+  shopSortMode = mode;
+  renderCook();
+}
+
+function renderCook() {
+  if (state.lastCookRecipe) selectedCookRecipe = state.lastCookRecipe;
+  const infos = state.recipes.map(r => ({ recipe: r, info: getRecipeInfo(r.id, shopSortMode) }))
+    .filter(x => x.info)
+    .sort((a, b) => {
+      if (a.info.feasible !== b.info.feasible) return a.info.feasible ? -1 : 1;
+      if (shopSortMode === 'closest') {
+        if (a.info.maxEffort !== b.info.maxEffort) return a.info.maxEffort - b.info.maxEffort;
+        if (a.info.tripCount !== b.info.tripCount) return a.info.tripCount - b.info.tripCount;
+      } else {
+        if (a.info.tripCount !== b.info.tripCount) return a.info.tripCount - b.info.tripCount;
+        if (a.info.maxEffort !== b.info.maxEffort) return a.info.maxEffort - b.info.maxEffort;
+      }
+      return (a.info.cantGet.length) - (b.info.cantGet.length);
+    });
+
+  const activeStyle = 'background:var(--accent);color:#fff;border-color:var(--accent)';
+  const inactiveStyle = 'background:var(--surface2);color:var(--text-muted);border-color:var(--border)';
+  let html = `<div style="display:flex;gap:6px;margin-bottom:12px">
+    <button class="btn btn-sm" style="${shopSortMode==='closest'?activeStyle:inactiveStyle}" onclick="setShopSort('closest')">Closest stores</button>
+    <button class="btn btn-sm" style="${shopSortMode==='fewest'?activeStyle:inactiveStyle}" onclick="setShopSort('fewest')">Fewest trips</button>
+  </div>`;
+
+  html += '<div class="cook-list">';
+  for (const { recipe, info } of infos) {
+    const badge = getBadgeText(info);
+    const cls = getBadgeClass(info);
+    const isSelected = selectedCookRecipe === recipe.id;
+    const selected = isSelected ? ' selected' : '';
+    html += `<div class="cook-entry">
+      <div class="cook-row ${cls}${selected}" onclick="selectCookRecipe('${escapeHtml(recipe.id)}')">
+        <div class="cook-badge">${escapeHtml(badge)}</div>
+        <div><strong>${escapeHtml(recipe.name)}</strong> <span class="cuisine-badge cuisine-${escapeHtml(recipe.cuisine.replace(/\s+/g,'-'))}">${escapeHtml(recipe.cuisine)}</span></div>
+        <div style="margin-left:auto;font-size:0.8rem;color:var(--text-muted)">${escapeHtml(recipe.serves + ' serves · ' + recipe.prepTime + ' prep · ' + recipe.cookTime + ' cook')}</div>
+      </div>`;
+    if (isSelected) {
+      html += renderCookExpansion(recipe.id, info);
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+
+  document.getElementById('cook-content').innerHTML = html;
+}
+
+function selectCookRecipe(id) {
+  selectedCookRecipe = selectedCookRecipe === id ? null : id;
+  state.lastCookRecipe = selectedCookRecipe;
+  saveState();
+  renderCook();
+}
+
+function goToRecipe(id) {
+  selectedRecipe = id;
+  recipeEditMode = false;
+  switchTab('recipes');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderCookExpansion(recipeId, info) {
+  const recipe = state.recipes.find(r => r.id === recipeId);
+  if (!recipe) return '';
+
+  let html = `<div class="cook-expansion" onclick="event.stopPropagation()">
+    <div style="margin-bottom:10px">
+      <button class="btn btn-sm btn-ghost" onclick="goToRecipe('${escapeHtml(recipe.id)}')">View full recipe →</button>
+    </div>`;
+
+  if (info.tripCount > 0) {
+    html += '<div class="shopping-section">';
+    for (const sid of info.trips) {
+      const store = state.stores[sid];
+      const mapsUrl = store?.address ? 'https://maps.google.com/?q=' + encodeURIComponent((store.name || sid) + ' ' + store.address + ' Madrid') : null;
+      html += `<div class="shopping-store">
+        <div class="shopping-store-header">
+          ${mapsUrl ? `<a href="${mapsUrl}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${escapeHtml(store?.name || sid)} 🗺</a>` : escapeHtml(store?.name || sid)}
+          ${store?.address ? `<span class="effort-badge">${escapeHtml(store.address)}</span>` : ''}
+        </div>
+        <ul style="list-style:none;padding:0;margin:0">`;
+      for (const ingId of info.storeNeeds[sid]) {
+        const name = state.ingredients[ingId]?.name || ingId;
+        html += `<li style="padding:3px 0;font-size:0.88rem">• ${escapeHtml(name)}</li>`;
+      }
+      html += '</ul></div>';
+    }
+    html += '</div>';
+  } else if (info.feasible) {
+    html += '<div style="color:var(--green);font-size:0.88rem">All ingredients in pantry — ready to cook.</div>';
+  }
+
+  if (info.cantGet.length > 0) {
+    html += `<div class="rare-hint" style="margin-top:8px"><div class="rare-hint-title">⚠ Can't source these</div>`;
+    html += info.cantGet.map(id => {
+      const master = state.ingredients[id];
+      return `<div>• <strong>${escapeHtml(master?.name || id)}</strong>${master?.rareHint ? ': ' + escapeHtml(master.rareHint) : ''}</div>`;
+    }).join('');
+    html += '</div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function renderCookDetail(recipeId) {
+  const recipe = state.recipes.find(r => r.id === recipeId);
+  if (!recipe) return '';
+  const info = getRecipeInfo(recipeId);
+
+  let html = `<div class="cook-detail">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <button class="btn btn-ghost btn-sm" onclick="selectCookRecipe('${escapeHtml(recipe.id)}')" title="Close" style="padding:4px 10px;font-size:1rem;line-height:1">✕</button>
+      <h2 style="margin:0">${escapeHtml(recipe.name)}</h2>
+      <span class="cuisine-badge cuisine-${escapeHtml(recipe.cuisine.replace(/\s+/g,'-'))}">${escapeHtml(recipe.cuisine)}</span>
+    </div>
+    <p style="color:var(--text-muted);margin-bottom:12px">${escapeHtml(recipe.description)}</p>`;
+
+  // Ingredients: grouped by have / need
+  html += '<h3 style="margin-bottom:8px">Ingredients</h3><ul class="ing-list">';
+  for (const ing of recipe.ingredients) {
+    const master = state.ingredients[ing.id];
+    const name = master ? master.name : ing.id;
+    const p = state.pantry[ing.id];
+    const have = p && p.status !== 'out';
+    const color = have ? 'var(--green)' : 'var(--red)';
+    const mark = have ? '✓' : '✗';
+    html += `<li class="ing-row"><span style="color:${color};font-weight:700;width:16px">${mark}</span> <span>${escapeHtml(ing.qty + ' ' + ing.unit)}</span> <span>${escapeHtml(name)}</span></li>`;
+  }
+  html += '</ul>';
+
+  // Shopping list grouped by store
+  if (info.tripCount > 0) {
+    html += '<div class="shopping-section"><h3 style="margin-bottom:8px">Shopping List</h3>';
+    for (const sid of info.trips) {
+      const store = state.stores[sid];
+      const mapsUrl = store?.address ? 'https://maps.google.com/?q=' + encodeURIComponent((store.name || sid) + ' ' + store.address + ' Madrid') : null;
+      html += `<div class="shopping-store">
+        <div class="shopping-store-header">
+          ${mapsUrl ? `<a href="${mapsUrl}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${escapeHtml(store?.name || sid)} 🗺</a>` : escapeHtml(store?.name || sid)}
+          ${store?.address ? `<span class="effort-badge">${escapeHtml(store.address)}</span>` : ''}
+        </div>
+        ${store?.note ? `<div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:4px">${escapeHtml(store.note)}</div>` : ''}
+        <ul style="list-style:none;padding:0;margin:0">`;
+      for (const ingId of info.storeNeeds[sid]) {
+        const master = state.ingredients[ingId];
+        const name = master ? master.name : ingId;
+        html += `<li style="padding:3px 0;font-size:0.88rem">• ${escapeHtml(name)}</li>`;
+      }
+      html += '</ul></div>';
+    }
+    html += '</div>';
+  }
+
+  // Can't get items
+  if (info.cantGet.length > 0) {
+    html += `<div class="rare-hint"><div class="rare-hint-title">⚠ Can't source these</div>`;
+    html += info.cantGet.map(id => {
+      const master = state.ingredients[id];
+      return `<div>• <strong>${escapeHtml(master?.name || id)}</strong>${master?.rareHint ? ': ' + escapeHtml(master.rareHint) : ''}</div>`;
+    }).join('');
+    html += '</div>';
+  }
+
+  // Rare hints for items we do have
+  const rareNeeded = recipe.ingredients.filter(ing => {
+    const master = state.ingredients[ing.id];
+    return master?.rareHint;
+  });
+  if (rareNeeded.length > 0) {
+    html += '<div class="rare-hint" style="margin-top:8px"><div class="rare-hint-title">💡 Sourcing tips</div>';
+    for (const ing of rareNeeded) {
+      const master = state.ingredients[ing.id];
+      html += `<div style="margin-top:4px">• <strong>${escapeHtml(master.name)}</strong>: ${escapeHtml(master.rareHint)}</div>`;
+    }
+    html += '</div>';
+  }
+
+  // Steps
+  html += '<h3 style="margin:16px 0 8px">Method</h3><ol class="steps-list">';
+  for (const step of (recipe.steps || [])) {
+    html += `<li>${escapeHtml(step)}</li>`;
+  }
+  html += '</ol>';
+
+  if (recipe.ratios) {
+    html += `<div class="tag" style="margin-top:8px">Ratios: ${escapeHtml(recipe.ratios)}</div>`;
+  }
+
+  // Notes
+  const noteVal = state.recipeNotes[recipeId] || '';
+  html += `<div class="form-group" style="margin-top:16px"><label>My Notes</label>
+    <textarea class="note-area" id="cook-note-${escapeHtml(recipeId)}" onblur="saveRecipeNote('${escapeHtml(recipeId)}')">${escapeHtml(noteVal)}</textarea>
+  </div>`;
+
+  html += '</div>';
+  return html;
+}
+
+function saveRecipeNote(recipeId) {
+  const el = document.getElementById('cook-note-' + recipeId);
+  if (el) {
+    state.recipeNotes[recipeId] = el.value;
+    saveState();
+  }
+}
+
+let pantryOpenIng = null;
+
+function renderPantry() {
+  const cats = ['Staples','Protein','Veg','Spices','Condiments','Dairy'];
+  let html = '<div class="pantry-grid">';
+  for (const cat of cats) {
+    const ings = Object.entries(state.ingredients).filter(([,v]) => v.cat === cat);
+    html += `<div class="pantry-section"><div class="pantry-section-header">${escapeHtml(cat)}</div>`;
+    for (const [id, ing] of ings) {
+      const status = state.pantry[id]?.status || 'out';
+      const open = pantryOpenIng === id;
+      html += `<div class="pantry-row">
+        <span class="pantry-name ing-avail-btn${open?' ing-avail-open':''}" onclick="toggleIngAvail('${escapeHtml(id)}')" title="Click to see where to find this">${escapeHtml(ing.name)}</span>
+        <div class="status-btns">
+          ${['full','half','low','out'].map(s => `<button class="status-btn${status===s?' active-'+s:''}" onclick="setPantryStatus('${escapeHtml(id)}','${s}')">${s}</button>`).join('')}
+        </div>
+      </div>`;
+      if (open) {
+        html += `<div class="ing-avail-panel">${buildIngAvailHtml(id, ing)}</div>`;
+      }
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  document.getElementById('pantry-content').innerHTML = html;
+}
+
+function buildIngAvailHtml(id, ing) {
+  const storeOrder = Object.keys(state.stores);
+  let html = '<div class="ing-avail-stores">';
+  for (const sid of storeOrder) {
+    const store = state.stores[sid];
+    const avail = ing.stores?.[sid] || 'no';
+    const cls = avail === 'yes' ? 'avail-yes' : avail === 'maybe' ? 'avail-maybe' : 'avail-no';
+    const effortStr = ['','★','★★','★★★','★★★★'][store.effort] || '';
+    html += `<span class="ing-avail-chip ${cls}">${escapeHtml(store.name)} <span class="avail-effort">${effortStr}</span></span>`;
+  }
+  html += '</div>';
+  if (ing.rareHint) {
+    html += `<div class="ing-avail-hint">💡 ${escapeHtml(ing.rareHint)}</div>`;
+  }
+  return html;
+}
+
+function toggleIngAvail(id) {
+  pantryOpenIng = pantryOpenIng === id ? null : id;
+  renderPantry();
+}
+
+function setPantryStatus(ingId, status) {
+  if (!state.pantry[ingId]) state.pantry[ingId] = { status: 'out', note: '' };
+  state.pantry[ingId].status = status;
+  saveState();
+  renderPantry();
+}
+
+let selectedRecipe = null;
+let recipeEditMode = false;
+
+function renderRecipes() {
+  let html = '';
+
+  if (selectedRecipe && !recipeEditMode) {
+    html += renderRecipeDetail(selectedRecipe);
+    html += '<h3 style="margin:20px 0 10px;font-size:0.9rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em">All recipes</h3>';
+  }
+  if (recipeEditMode) {
+    html += renderRecipeEdit(selectedRecipe);
+  }
+
+  if (!recipeEditMode) {
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+    html += '<div></div>';
+    html += `<button class="btn btn-primary btn-sm" onclick="startNewRecipe()">+ New Recipe</button>`;
+    html += '</div>';
+    html += '<div class="recipe-list">';
+    for (const r of state.recipes) {
+      const selected = selectedRecipe === r.id ? ' selected' : '';
+      html += `<div class="recipe-card${selected}" onclick="selectRecipe('${escapeHtml(r.id)}')">
+        <div style="font-weight:600">${escapeHtml(r.name)}</div>
+        <div class="recipe-meta">
+          <span class="cuisine-badge cuisine-${escapeHtml(r.cuisine.replace(/\s+/g,'-'))}">${escapeHtml(r.cuisine)}</span>
+          <span class="tag">${escapeHtml(r.serves + ' serves')}</span>
+          <span class="tag">${escapeHtml(r.prepTime + ' prep')}</span>
+        </div>
+      </div>`;
+    }
+    html += '</div>';
+  }
+  document.getElementById('recipes-content').innerHTML = html;
+}
+
+function selectRecipe(id) {
+  const opening = selectedRecipe !== id;
+  selectedRecipe = selectedRecipe === id ? null : id;
+  recipeEditMode = false;
+  renderRecipes();
+  if (opening && selectedRecipe) window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderRecipeDetail(recipeId) {
+  const r = state.recipes.find(x => x.id === recipeId);
+  if (!r) return '';
+  let html = `<div class="recipe-detail">
+    <div class="detail-header">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <button class="btn btn-ghost btn-sm" onclick="selectRecipe('${escapeHtml(r.id)}')" title="Close" style="padding:4px 10px;font-size:1rem;line-height:1;margin-top:2px">✕</button>
+        <div>
+          <h2 style="margin:0">${escapeHtml(r.name)}</h2>
+          <div class="detail-meta">
+            <span class="cuisine-badge cuisine-${escapeHtml(r.cuisine.replace(/\s+/g,'-'))}">${escapeHtml(r.cuisine)}</span>
+            <span>${escapeHtml(r.serves + ' serves')}</span>
+            <span>${escapeHtml(r.prepTime + ' prep · ' + r.cookTime + ' cook')}</span>
+            ${r.source ? '<span>Source: ' + escapeHtml(r.source) + '</span>' : ''}
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm btn-ghost" onclick="editRecipe('${escapeHtml(r.id)}')">Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteRecipe('${escapeHtml(r.id)}')">Delete</button>
+      </div>
+    </div>
+    <p style="color:var(--text-muted)">${escapeHtml(r.description)}</p>
+    <h3>Ingredients</h3><ul class="ing-list">`;
+  for (const ing of r.ingredients) {
+    const name = state.ingredients[ing.id]?.name || ing.id;
+    html += `<li class="ing-row">${escapeHtml(ing.qty + ' ' + ing.unit + ' ' + name)}</li>`;
+  }
+  html += `</ul><h3>Method</h3><ol class="steps-list">`;
+  for (const step of (r.steps || [])) html += `<li>${escapeHtml(step)}</li>`;
+  html += '</ol>';
+  if (r.ratios) html += `<div class="tag" style="margin-top:8px">Ratios: ${escapeHtml(r.ratios)}</div>`;
+  const noteVal = state.recipeNotes[recipeId] || '';
+  html += `<div class="form-group" style="margin-top:16px"><label>My Notes</label>
+    <textarea class="note-area" id="recipe-note-${escapeHtml(recipeId)}" onblur="saveRecipeNote('${escapeHtml(recipeId)}')">${escapeHtml(noteVal)}</textarea>
+  </div></div>`;
+  return html;
+}
+
+function editRecipe(id) {
+  selectedRecipe = id;
+  recipeEditMode = true;
+  renderRecipes();
+}
+
+function startNewRecipe() {
+  const id = 'recipe_' + Date.now();
+  const newRecipe = { id, name:'New Recipe', cuisine:'Western', serves:'2', prepTime:'15 min', cookTime:'20 min', description:'', steps:[], ingredients:[] };
+  state.recipes.push(newRecipe);
+  saveState();
+  selectedRecipe = id;
+  recipeEditMode = true;
+  renderRecipes();
+}
+
+function deleteRecipe(id) {
+  if (!confirm('Delete this recipe?')) return;
+  state.recipes = state.recipes.filter(r => r.id !== id);
+  if (selectedRecipe === id) { selectedRecipe = null; recipeEditMode = false; }
+  saveState();
+  renderRecipes();
+}
+
+function renderRecipeEdit(recipeId) {
+  const r = state.recipes.find(x => x.id === recipeId);
+  if (!r) return '';
+  const stepsStr = (r.steps || []).join('\n');
+  const ingsStr = (r.ingredients || []).map(i => i.qty + ' ' + i.unit + ' ' + (state.ingredients[i.id]?.name || i.id)).join('\n');
+  return `<div class="recipe-detail">
+    <div class="detail-header"><h2>Edit Recipe</h2>
+      <button class="btn btn-sm btn-ghost" onclick="cancelEditRecipe()">Cancel</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Name</label><input id="re-name" value="${escapeHtml(r.name)}"></div>
+      <div class="form-group"><label>Cuisine</label>
+        <select id="re-cuisine">
+          ${['SE Asian','Chinese','Indian','Italian','Western'].map(c=>`<option value="${c}"${r.cuisine===c?' selected':''}>${c}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row-3">
+      <div class="form-group"><label>Serves</label><input id="re-serves" value="${escapeHtml(r.serves)}"></div>
+      <div class="form-group"><label>Prep Time</label><input id="re-preptime" value="${escapeHtml(r.prepTime)}"></div>
+      <div class="form-group"><label>Cook Time</label><input id="re-cooktime" value="${escapeHtml(r.cookTime)}"></div>
+    </div>
+    <div class="form-group"><label>Description</label><textarea id="re-desc" style="min-height:60px">${escapeHtml(r.description)}</textarea></div>
+    <div class="form-group"><label>Steps (one per line)</label><textarea id="re-steps" style="min-height:120px">${escapeHtml(stepsStr)}</textarea></div>
+    <div class="form-group"><label>Ingredients (one per line: qty unit name-or-id, e.g. "200 g pasta_long")</label><textarea id="re-ings" style="min-height:100px">${escapeHtml(ingsStr)}</textarea></div>
+    <div class="form-group"><label>Ratios (optional)</label><input id="re-ratios" value="${escapeHtml(r.ratios||'')}"></div>
+    <div class="form-group"><label>Source (optional)</label><input id="re-source" value="${escapeHtml(r.source||'')}"></div>
+    <button class="btn btn-primary" onclick="saveRecipeEdit('${escapeHtml(recipeId)}')">Save Recipe</button>
+  </div>`;
+}
+
+function cancelEditRecipe() {
+  recipeEditMode = false;
+  renderRecipes();
+}
+
+function saveRecipeEdit(recipeId) {
+  const r = state.recipes.find(x => x.id === recipeId);
+  if (!r) return;
+  r.name = document.getElementById('re-name').value.trim();
+  r.cuisine = document.getElementById('re-cuisine').value;
+  r.serves = document.getElementById('re-serves').value.trim();
+  r.prepTime = document.getElementById('re-preptime').value.trim();
+  r.cookTime = document.getElementById('re-cooktime').value.trim();
+  r.description = document.getElementById('re-desc').value.trim();
+  r.ratios = document.getElementById('re-ratios').value.trim();
+  r.source = document.getElementById('re-source').value.trim();
+  r.steps = document.getElementById('re-steps').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  // Parse ingredients: "qty unit id/name"
+  r.ingredients = document.getElementById('re-ings').value.split('\n').map(line => {
+    const parts = line.trim().split(/\s+/);
+    if (parts.length < 3) return null;
+    const qty = parts[0];
+    const unit = parts[1];
+    // Try to match ingredient id by name or id
+    const rest = parts.slice(2).join(' ').toLowerCase();
+    let ingId = rest; // default: use as-is
+    for (const [id, ing] of Object.entries(state.ingredients)) {
+      if (id === rest || ing.name.toLowerCase() === rest) { ingId = id; break; }
+    }
+    return { id: ingId, qty, unit };
+  }).filter(Boolean);
+  // Auto-register any new ingredient IDs into master list + pantry
+  for (const ing of r.ingredients) {
+    if (!state.ingredients[ing.id]) {
+      state.ingredients[ing.id] = { name: ing.id, cat: 'Staples', stores: {} };
+    }
+    if (!state.pantry[ing.id]) {
+      state.pantry[ing.id] = { status: 'out', note: '' };
+    }
+  }
+  recipeEditMode = false;
+  saveState();
+  renderRecipes();
+}
+
+let activeStoreId = null;
+let storeActiveCat = 'all';
+
+function renderStores() {
+  const storeIds = Object.keys(state.stores).sort((a, b) =>
+    (state.stores[a].effort || 0) - (state.stores[b].effort || 0)
+  );
+  if (!activeStoreId || !state.stores[activeStoreId]) activeStoreId = storeIds[0] || null;
+
+  let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+  html += '<div class="store-tabs">';
+  for (const sid of storeIds) {
+    const s = state.stores[sid];
+    html += `<button class="store-tab-btn${activeStoreId===sid?' active':''}" onclick="setActiveStore('${escapeHtml(sid)}')">${escapeHtml(s.name)}</button>`;
+  }
+  html += '</div>';
+  html += `<button class="btn btn-primary btn-sm" onclick="addStore()">+ Add Store</button>`;
+  html += '</div>';
+
+  if (!activeStoreId) {
+    html += '<div class="empty-state">No stores. Add one above.</div>';
+    document.getElementById('stores-content').innerHTML = html;
+    return;
+  }
+
+  const store = state.stores[activeStoreId];
+  html += `<div class="card">
+    <div class="form-row">
+      <div class="form-group"><label>Store Name</label><input id="st-name" value="${escapeHtml(store.name)}" onchange="saveStoreField('name')"></div>
+      <div class="form-group"><label>Effort (1=walk, 2=nearby, 3=travel, 4=far)</label>
+        <select id="st-effort" onchange="saveStoreField('effort')">
+          ${[1,2,3,4].map(n=>`<option value="${n}"${store.effort==n?' selected':''}>${n}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Address / Notes</label><input id="st-address" value="${escapeHtml(store.address||'')}" onchange="saveStoreField('address')"></div>
+      <div class="form-group"><label>Note</label><input id="st-note" value="${escapeHtml(store.note||'')}" onchange="saveStoreField('note')"></div>
+    </div>
+    <button class="btn btn-danger btn-sm" onclick="deleteStore('${escapeHtml(activeStoreId)}')">Delete Store</button>
+  </div>`;
+
+  // Category filter
+  const cats = ['all','Staples','Protein','Veg','Spices','Condiments','Dairy'];
+  html += '<div class="cat-filter">';
+  for (const cat of cats) {
+    html += `<button class="cat-btn${storeActiveCat===cat?' active':''}" onclick="setStoreCat('${cat}')">${cat==='all'?'All':cat}</button>`;
+  }
+  html += '</div>';
+
+  // Availability table
+  html += '<div style="overflow-x:auto"><table class="avail-table"><thead><tr><th>Ingredient</th><th>Category</th><th>Available</th></tr></thead><tbody>';
+  for (const [ingId, ing] of Object.entries(state.ingredients)) {
+    if (storeActiveCat !== 'all' && ing.cat !== storeActiveCat) continue;
+    const avail = ing.stores?.[activeStoreId] || 'no';
+    const cls = avail === 'yes' ? 'avail-yes' : avail === 'maybe' ? 'avail-maybe' : 'avail-no';
+    html += `<tr>
+      <td>${escapeHtml(ing.name)}${ing.rareHint ? ' <span style="color:var(--yellow);font-size:0.7rem">★rare</span>' : ''}</td>
+      <td style="color:var(--text-muted)">${escapeHtml(ing.cat)}</td>
+      <td><button class="avail-toggle ${cls}" onclick="cycleAvail('${escapeHtml(ingId)}')">${avail}</button></td>
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  document.getElementById('stores-content').innerHTML = html;
+}
+
+function setActiveStore(sid) {
+  activeStoreId = sid;
+  renderStores();
+}
+
+function setStoreCat(cat) {
+  storeActiveCat = cat;
+  renderStores();
+}
+
+function saveStoreField(field) {
+  const store = state.stores[activeStoreId];
+  if (!store) return;
+  if (field === 'name') store.name = document.getElementById('st-name').value.trim();
+  if (field === 'effort') store.effort = parseInt(document.getElementById('st-effort').value);
+  if (field === 'address') store.address = document.getElementById('st-address').value.trim();
+  if (field === 'note') store.note = document.getElementById('st-note').value.trim();
+  saveState();
+  renderStores();
+}
+
+function deleteStore(sid) {
+  if (!confirm('Delete this store?')) return;
+  delete state.stores[sid];
+  if (activeStoreId === sid) activeStoreId = Object.keys(state.stores)[0] || null;
+  saveState();
+  renderStores();
+}
+
+function addStore() {
+  const id = 'store_' + Date.now();
+  state.stores[id] = { id, name:'New Store', effort:2, address:'', note:'' };
+  // Give it 'no' availability for all ingredients
+  for (const ing of Object.values(state.ingredients)) {
+    if (!ing.stores) ing.stores = {};
+    ing.stores[id] = 'no';
+  }
+  activeStoreId = id;
+  saveState();
+  renderStores();
+}
+
+function cycleAvail(ingId) {
+  const ing = state.ingredients[ingId];
+  if (!ing) return;
+  if (!ing.stores) ing.stores = {};
+  const cur = ing.stores[activeStoreId] || 'no';
+  ing.stores[activeStoreId] = cur === 'no' ? 'yes' : cur === 'yes' ? 'maybe' : 'no';
+  saveState();
+  renderStores();
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'recipe-pantry-backup.json';
+  a.click();
+}
+
+function importData() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const imported = JSON.parse(ev.target.result);
+        if (!imported.version || !imported.recipes) { alert('Invalid backup file.'); return; }
+        state = imported;
+        // Ensure all ingredient stores include any stores in state
+        for (const ing of Object.values(state.ingredients)) {
+          if (!ing.stores) ing.stores = {};
+          for (const sid of Object.keys(state.stores)) {
+            if (!(sid in ing.stores)) ing.stores[sid] = 'no';
+          }
+        }
+        saveState();
+        document.documentElement.setAttribute('data-theme', state.theme || 'light');
+        switchTab(state.activeTab || 'cook');
+        alert('Import successful!');
+      } catch(e) { alert('Failed to parse file: ' + e.message); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function resetToDefaults() {
+  if (!confirm('Reset all data to defaults? This will erase all your changes.')) return;
+  state = buildDefaultState();
+  saveState();
+  switchTab('cook');
+}
+
+function init() {
+  loadState();
+  document.documentElement.setAttribute('data-theme', state.theme || 'light');
+  const themeBtn = document.getElementById('theme-btn');
+  if (themeBtn) themeBtn.textContent = state.theme === 'dark' ? '☀ Light' : '☾ Dark';
+  switchTab(state.activeTab || 'cook');
+}
+
+
+function setAllPantry(status) {
+  for (const id of Object.keys(state.pantry)) {
+    state.pantry[id].status = status;
+  }
+  saveState();
+  renderPantry();
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
