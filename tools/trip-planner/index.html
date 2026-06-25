@@ -456,6 +456,7 @@
         freePlanCity: null,
         freePlanShowDone: false,
         freePlanGeoDetecting: false,
+        tripsShowArchived: false,
     };
 
     // --- Exchange Rates ---
@@ -1937,24 +1938,21 @@
 
     function renderTripsList() {
         const mc = document.getElementById('mainContent');
-        if (data.trips.length === 0) {
-            mc.innerHTML = `
-                <div class="view-content">
-                    <div class="empty-state">
-                        <div class="empty-icon">\u2708\uFE0F</div>
-                        <p>No trips yet. Plan your next adventure!</p>
-                        <button class="btn btn-primary" onclick="openTripModal()">Create Trip</button>
-                    </div>
-                </div>
-            `;
-            return;
-        }
-        const cards = data.trips.map(t => {
+        const showArchived = !!state.tripsShowArchived;
+        const allTrips = data.trips || [];
+        const activeTrips = allTrips.filter(t => !t.archived);
+        const archivedTrips = allTrips.filter(t => t.archived);
+        const visibleTrips = showArchived ? archivedTrips : activeTrips;
+
+        function tripCard(t) {
             const legCount = t.legs?.length || 0;
             const actCount = t.activities?.length || 0;
             const bookedLodging = (t.lodging || []).filter(l => l.booked).length;
             const totalLodging = (t.lodging || []).length;
             const dates = t.startDate ? formatDateRange(t.startDate, t.endDate) : 'No dates set';
+            const archiveBtn = showArchived
+                ? `<button class="btn-icon" style="font-size:14px;opacity:0.5" onclick="event.stopPropagation();unarchiveTrip('${t.id}')" title="Restore trip">\u21A9\uFE0F</button>`
+                : `<button class="btn-icon" style="font-size:14px;opacity:0.5" onclick="event.stopPropagation();archiveTrip('${t.id}')" title="Archive trip">\uD83D\uDCE6</button>`;
             return `
                 <div class="card trip-card" onclick="openTrip('${t.id}')">
                     <div class="card-body">
@@ -1962,40 +1960,56 @@
                             <strong style="font-size:1.05rem">${esc(t.name)}</strong>
                             <div style="display:flex;align-items:center;gap:8px">
                                 <span class="badge badge-${t.status}">${TRIP_STATUSES[t.status] || 'Planning'}</span>
-                                <button class="btn-icon" style="font-size:14px;opacity:0.5" onclick="event.stopPropagation();deleteTrip('${t.id}')" title="Delete trip">\u{1F5D1}</button>
+                                ${archiveBtn}
+                                <button class="btn-icon" style="font-size:14px;opacity:0.5" onclick="event.stopPropagation();deleteTrip('${t.id}')" title="Delete trip">\uD83D\uDDD1\uFE0F</button>
                             </div>
                         </div>
                         <div class="trip-dates">${dates}</div>
                         <div class="trip-stats">
-                            <span>\u{1F4CD} ${legCount} ${legCount === 1 ? 'city' : 'cities'}</span>
-                            <span>\u{1F3AF} ${actCount} activities</span>
-                            ${totalLodging ? `<span>\u{1F3E8} ${bookedLodging}/${totalLodging} booked</span>` : ''}
+                            <span>\uD83D\uDCCD ${legCount} ${legCount === 1 ? 'city' : 'cities'}</span>
+                            <span>\uD83C\uDFAF ${actCount} activities</span>
+                            ${totalLodging ? `<span>\uD83C\uDFE8 ${bookedLodging}/${totalLodging} booked</span>` : ''}
                             ${settings.showSheetsSync && t.sheetId ? '<span style="color:var(--success)">\u2601 Sheets</span>' : ''}
                             ${settings.showSheetsSync && t.previousSheetId ? '<span style="color:var(--warning,#f59e0b)">\u2601 Offline</span>' : ''}
                         </div>
                     </div>
                 </div>
             `;
-        }).join('');
+        }
+
+        const archiveToggleBtn = showArchived
+            ? `<button class="btn btn-sm" onclick="state.tripsShowArchived=false;render()">\u2190 Active</button>`
+            : `<button class="btn btn-sm" onclick="state.tripsShowArchived=true;render()">\uD83D\uDCE6 Archived${archivedTrips.length ? ' (' + archivedTrips.length + ')' : ''}</button>`;
+
+        let content;
+        if (visibleTrips.length === 0) {
+            content = showArchived
+                ? `<div class="empty-state"><div class="empty-icon">\uD83D\uDCE6</div><p>No archived trips.</p></div>`
+                : `<div class="empty-state"><div class="empty-icon">\u2708\uFE0F</div><p>No trips yet. Plan your next adventure!</p><button class="btn btn-primary" onclick="openTripModal()">Create Trip</button></div>`;
+        } else {
+            content = visibleTrips.map(tripCard).join('');
+        }
+
         mc.innerHTML = `
             <div class="view-content">
                 <div class="view-header">
-                    <h2>My Trips</h2>
+                    <h2>${showArchived ? 'Archived Trips' : 'My Trips'}</h2>
                     <div style="display:flex;gap:8px;flex-wrap:wrap">
-                        <button class="btn btn-sm" onclick="document.getElementById('importFile').click()">Import</button>
-                        ${settings.showSheetsSync ? '<button class="btn btn-sm" onclick="openImportFromSheetsModal()">Import from Sheets</button>' : ''}
-                        <button class="btn btn-sm" onclick="exportAll()">Export</button>
-                        <button class="btn btn-primary btn-sm" onclick="openTripModal()">+ New Trip</button>
+                        ${archiveToggleBtn}
+                        ${!showArchived ? `<button class="btn btn-sm" onclick="document.getElementById('importFile').click()">Import</button>` : ''}
+                        ${!showArchived && settings.showSheetsSync ? '<button class="btn btn-sm" onclick="openImportFromSheetsModal()">Import from Sheets</button>' : ''}
+                        ${!showArchived ? `<button class="btn btn-sm" onclick="exportAll()">Export</button>` : ''}
+                        ${!showArchived ? `<button class="btn btn-primary btn-sm" onclick="openTripModal()">+ New Trip</button>` : ''}
                     </div>
                 </div>
-                ${cards}
+                ${content}
             </div>
         `;
     }
 
     function renderHomeView() {
         const mc = document.getElementById('mainContent');
-        const tripCount = (data.trips || []).length;
+        const tripCount = (data.trips || []).filter(t => !t.archived).length;
         const planCount = (data.dayPlanLibrary || []).length;
         mc.innerHTML = `<div style="padding:16px;display:flex;flex-direction:column;gap:16px;min-height:calc(100svh - 72px)">
             <div class="card" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:40px 16px;min-height:180px;transition:background .15s" onclick="enterTripsView()" onmouseenter="this.style.background='var(--bg-hover)'" onmouseleave="this.style.background=''">
@@ -2369,6 +2383,20 @@
         closeModal();
         render();
         toast(state.editingId ? 'Trip updated' : 'Trip created');
+    }
+
+    function archiveTrip(tripId) {
+        const trip = data.trips.find(t => t.id === tripId);
+        if (!trip) return;
+        trip.archived = true;
+        save().then(() => { toast('Trip archived'); render(); });
+    }
+
+    function unarchiveTrip(tripId) {
+        const trip = data.trips.find(t => t.id === tripId);
+        if (!trip) return;
+        trip.archived = false;
+        save().then(() => { toast('Trip restored'); render(); });
     }
 
     async function deleteTrip(tripId) {
