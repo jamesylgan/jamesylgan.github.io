@@ -1630,6 +1630,7 @@
     function openModal(html) {
         document.getElementById('modalBody').innerHTML = html;
         document.getElementById('modalOverlay').classList.add('open');
+        _appNavPush();
         startFormAutoSave();
     }
 
@@ -1789,12 +1790,14 @@
     function enterTripsView() {
         settings.homeDefault = 'trips';
         saveSetting();
+        _appNavPush();
         showTripsView();
     }
 
     function enterFreePlanView() {
         settings.homeDefault = 'freeplan';
         saveSetting();
+        _appNavPush();
         showFreePlanView();
     }
 
@@ -1805,6 +1808,7 @@
     }
 
     function openTrip(tripId) {
+        _appNavPush();
         state.view = 'trip';
         state.tripId = tripId;
         if (isTravelMode()) {
@@ -2066,10 +2070,9 @@
                 if (hour < 17) return { ok: null, label: 'Opens up ~18:00' };
                 return { ok: false, label: 'Too late' };
             }
-            if (hour < 11) return { ok: true, label: 'Full day ahead' };
-            if (hour < 14) return { ok: true, label: 'Afternoon start' };
-            if (hour < 17) return { ok: true, label: 'Late start' };
-            return { ok: false, label: 'Too late for today' };
+            if (hour < 10) return { ok: true, label: 'Great morning start' };
+            if (hour >= 18) return { ok: false, label: 'Too late for today' };
+            return { ok: true, label: null };
         }
 
         function sortPlans(plans) {
@@ -2088,7 +2091,8 @@
 
         function suitBadgeHTML(plan) {
             const suit = getSuit(plan);
-            const style = suit.ok === true ? 'background:var(--success-light);color:var(--success)' : 'background:var(--border-light);color:var(--text-muted)';
+            if (!suit.label) return '';
+            const style = suit.ok === true ? 'background:var(--success-light);color:var(--success)' : suit.ok === null ? 'background:var(--bg-hover);color:var(--text-muted)' : 'background:var(--border-light);color:var(--text-muted)';
             return '<span class="badge" style="font-size:10px;' + style + '">' + (suit.ok === true ? '✓ ' : '') + esc(suit.label) + '</span>';
         }
 
@@ -2096,16 +2100,24 @@
         function compactCard(plan) {
             const suit = getSuit(plan);
             const typeLabel = plan.type === 'after-work' ? '🌆' : '🌅';
-            const doneTag = plan.doneCount > 0 ? ' <span style="font-size:11px;color:var(--text-muted)">(' + plan.doneCount + '×)</span>' : '';
+            const doneTag = plan.doneCount > 0
+                ? '<div style="display:flex;align-items:center;gap:5px;margin-top:3px">'
+                  + '<span style="font-size:12px;font-weight:700;color:var(--primary,#2563eb)">' + plan.doneCount + '\xd7</span>'
+                  + '<span style="font-size:11px;color:var(--text-muted)">' + (plan.doneHistory && plan.doneHistory.length ? formatDate(plan.doneHistory[plan.doneHistory.length - 1]) : '') + '</span>'
+                  + '<button class="btn btn-sm btn-ghost" style="padding:1px 5px;height:18px;font-size:10px" onclick="event.stopPropagation();editLibraryPlanDone(\'' + plan.id + '\')">edit</button>'
+                  + '</div>'
+                : '';
+            const suitBadge = suitBadgeHTML(plan);
             const dim = suit.ok === false ? 'opacity:0.55;' : '';
             return '<div class="card" style="margin-bottom:8px;' + dim + '">'
                 + '<div class="card-body" style="padding:10px 12px">'
                 + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">'
                 + '<div style="flex:1;min-width:0">'
-                + '<span style="font-size:13px;font-weight:600">' + typeLabel + ' ' + esc(plan.name) + '</span>' + doneTag
-                + '<div style="margin-top:3px">' + suitBadgeHTML(plan) + '</div>'
+                + '<span style="font-size:13px;font-weight:600">' + typeLabel + ' ' + esc(plan.name) + '</span>'
+                + doneTag
+                + (suitBadge ? '<div style="margin-top:3px">' + suitBadge + '</div>' : '')
                 + '</div>'
-                + '<button class="btn btn-sm btn-primary" onclick="selectFreePlan(\'' + plan.id + '\')">Select</button>'
+                + '<button class="btn btn-sm btn-primary" style="flex-shrink:0" onclick="selectFreePlan(\'' + plan.id + '\')">Select</button>'
                 + '</div></div></div>';
         }
 
@@ -2117,7 +2129,11 @@
                 return (CATEGORIES[a.category] || '📌') + ' ' + esc(a.name);
             }).join(' → ');
             const doneInfo = plan.doneCount > 0
-                ? '<div style="font-size:12px;color:var(--text-muted);margin-top:2px">Done ' + plan.doneCount + '\xd7' + (plan.doneHistory && plan.doneHistory.length ? ' — last ' + formatDate(plan.doneHistory[plan.doneHistory.length - 1]) : '') + '</div>'
+                ? '<div style="display:flex;align-items:center;gap:6px;margin-top:4px">'
+                  + '<span style="font-size:13px;font-weight:700;color:var(--primary,#2563eb)">' + plan.doneCount + '\xd7</span>'
+                  + '<span style="font-size:12px;color:var(--text-muted)">' + (plan.doneHistory && plan.doneHistory.length ? 'last ' + formatDate(plan.doneHistory[plan.doneHistory.length - 1]) : 'done') + '</span>'
+                  + '<button class="btn btn-sm btn-ghost" style="padding:1px 6px;height:20px;font-size:11px" onclick="event.stopPropagation();editLibraryPlanDone(\'' + plan.id + '\')">edit</button>'
+                  + '</div>'
                 : '';
             const isExpanded = state.expandedDayPlans.has(plan.id);
             const tid = plan.id;
@@ -2180,11 +2196,19 @@
                     + (a.notes ? '<div style="font-size:13px;color:var(--text);margin-top:6px;line-height:1.45">' + esc(a.notes) + '</div>' : '')
                     + '</div></div></div>';
             }).join('');
+            const prevDoneHtml = selectedPlan.doneCount > 0
+                ? '<div style="display:flex;align-items:center;gap:6px;margin-top:3px">'
+                  + '<span style="font-size:12px;color:var(--text-muted)">Done before: <strong style="color:var(--primary,#2563eb)">' + selectedPlan.doneCount + '\xd7</strong>'
+                  + (selectedPlan.doneHistory && selectedPlan.doneHistory.length ? ' — last ' + formatDate(selectedPlan.doneHistory[selectedPlan.doneHistory.length - 1]) : '') + '</span>'
+                  + '<button class="btn btn-sm btn-ghost" style="padding:1px 6px;height:20px;font-size:11px" onclick="editLibraryPlanDone(\'' + selectedPlan.id + '\')">edit</button>'
+                  + '</div>'
+                : '';
             return '<div class="card" style="margin-bottom:16px;border:2px solid #2563eb">'
                 + '<div class="card-body">'
                 + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px">'
                 + '<div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#2563eb;font-weight:600;margin-bottom:2px">Today\'s Plan</div>'
-                + '<strong style="font-size:16px">' + esc(selectedPlan.name) + '</strong></div>'
+                + '<strong style="font-size:16px">' + esc(selectedPlan.name) + '</strong>'
+                + prevDoneHtml + '</div>'
                 + '<div style="display:flex;gap:6px;flex-shrink:0">'
                 + '<button class="btn btn-sm btn-ghost" onclick="deselectFreePlan()">← Change</button>'
                 + '<button class="btn btn-sm btn-primary" onclick="markLibraryPlanDone(\'' + selectedPlan.id + '\')">✓ Done</button>'
@@ -2306,6 +2330,49 @@
         save().then(function() { toast('Marked done — ' + plan.doneCount + '\xd7 total'); render(); });
     }
 
+    window._fpEditPlanId = null;
+    function editLibraryPlanDone(planId) {
+        const plan = (data.dayPlanLibrary || []).find(function(p) { return p.id === planId; });
+        if (!plan) return;
+        window._fpEditPlanId = planId;
+        openModal(
+            '<div class="modal-header"><h3>' + esc(plan.name) + '</h3>'
+            + '<button class="btn-icon" onclick="closeModal();render()">×</button></div>'
+            + '<div class="modal-body" style="padding:20px">'
+            + '<div style="text-align:center;font-size:13px;color:var(--text-muted);margin-bottom:12px">Times done</div>'
+            + '<div style="display:flex;align-items:center;gap:20px;justify-content:center;margin-bottom:16px">'
+            + '<button class="btn btn-secondary" style="width:44px;height:44px;font-size:22px;flex-shrink:0" onclick="_fpAdjustDone(-1)">−</button>'
+            + '<span id="fpDoneCount" style="font-size:40px;font-weight:700;min-width:2ch;text-align:center">' + (plan.doneCount || 0) + '</span>'
+            + '<button class="btn btn-secondary" style="width:44px;height:44px;font-size:22px;flex-shrink:0" onclick="_fpAdjustDone(1)">+</button>'
+            + '</div>'
+            + '<div id="fpDoneHistory" style="font-size:12px;color:var(--text-muted);text-align:center;line-height:1.6">' + _fpHistoryText(plan) + '</div>'
+            + '</div>'
+        );
+    }
+
+    function _fpHistoryText(plan) {
+        if (!plan || !plan.doneHistory || !plan.doneHistory.length) return '';
+        return 'Visits: ' + plan.doneHistory.map(function(d) { return formatDate(d); }).join(', ');
+    }
+
+    function _fpAdjustDone(delta) {
+        const plan = (data.dayPlanLibrary || []).find(function(p) { return p.id === window._fpEditPlanId; });
+        if (!plan) return;
+        if (delta < 0 && !plan.doneCount) return;
+        plan.doneCount = Math.max(0, (plan.doneCount || 0) + delta);
+        if (delta > 0) {
+            if (!plan.doneHistory) plan.doneHistory = [];
+            plan.doneHistory.push(localDateStr(new Date()));
+        } else if (plan.doneHistory && plan.doneHistory.length > 0) {
+            plan.doneHistory.pop();
+        }
+        const countEl = document.getElementById('fpDoneCount');
+        const histEl = document.getElementById('fpDoneHistory');
+        if (countEl) countEl.textContent = plan.doneCount;
+        if (histEl) histEl.textContent = _fpHistoryText(plan);
+        save();
+    }
+
     function addAllDayPlansToLibrary(tripId) {
         const trip = data.trips.find(function(t) { return t.id === tripId; });
         if (!trip) return;
@@ -2396,6 +2463,7 @@
     function selectFreePlan(planId) {
         state.freePlanSelectedId = planId;
         try { localStorage.setItem('freePlanSelectedId', planId); } catch(e) {}
+        _appNavPush();
         render();
     }
 
@@ -7071,6 +7139,43 @@
             banner.innerHTML = `<span>Unsaved ${esc(label)} form found</span><button style="background:#fff;color:var(--purple,#7c3aed);border:none;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600" onclick="this.parentElement.remove();reopenCachedForm()">Restore</button><button style="background:none;border:none;color:#fff;cursor:pointer;font-size:16px;padding:0 4px" onclick="this.parentElement.remove();clearFormCache()">\u2715</button>`;
             document.body.appendChild(banner);
             setTimeout(() => { if (banner.parentElement) banner.remove(); }, 15000);
+        }
+    });
+
+    // Hardware / browser back button support
+    // The Android wrapper already calls webView.goBack() on back press,
+    // which fires popstate when there are history entries we've pushed.
+    // We push one entry whenever navigating forward; when back fires we
+    // handle it in JS and re-push if we're still not at the home screen.
+    function _appNavPush() {
+        history.pushState({ tpNav: true }, '', window.location.pathname + window.location.search);
+    }
+
+    function handleAppBack() {
+        const overlay = document.getElementById('modalOverlay');
+        if (overlay && overlay.classList.contains('open')) {
+            closeModal();
+            return true;
+        }
+        if (state.view === 'freeplan' && state.freePlanSelectedId) {
+            deselectFreePlan();
+            return true;
+        }
+        if (state.view === 'freeplan' || state.view === 'trips') {
+            showHomeView();
+            return true;
+        }
+        if (state.view === 'trip') {
+            showTripsView();
+            return true;
+        }
+        return false;
+    }
+
+    window.addEventListener('popstate', function() {
+        const handled = handleAppBack();
+        if (handled && state.view !== 'home') {
+            _appNavPush();
         }
     });
 
