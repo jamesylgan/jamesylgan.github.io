@@ -456,6 +456,7 @@
         freePlanCity: null,
         freePlanShowDone: false,
         freePlanGeoDetecting: false,
+        freePlanSelectedId: (function() { try { return localStorage.getItem('freePlanSelectedId') || null; } catch(e) { return null; } })(),
         tripsShowArchived: false,
     };
 
@@ -2056,6 +2057,8 @@
         const showDone = !!state.freePlanShowDone;
         const cityPlans = library.filter(p => p.city === city);
         const visiblePlans = showDone ? cityPlans : cityPlans.filter(p => !p.doneCount);
+        const selId = state.freePlanSelectedId;
+        const selectedPlan = selId ? cityPlans.find(function(p) { return p.id === selId; }) : null;
 
         function getSuit(plan) {
             if (plan.type === 'after-work') {
@@ -2069,7 +2072,45 @@
             return { ok: false, label: 'Too late for today' };
         }
 
-        function planCard(plan) {
+        function sortPlans(plans) {
+            return plans.slice().sort(function(a, b) {
+                function grp(p) { return !p.doneCount ? 0 : p.doneCount >= 2 ? 1 : 2; }
+                const ga = grp(a), gb = grp(b);
+                if (ga !== gb) return ga - gb;
+                if (ga === 0) {
+                    const sa = getSuit(a), sb = getSuit(b);
+                    if (sa.ok === true && sb.ok !== true) return -1;
+                    if (sa.ok !== true && sb.ok === true) return 1;
+                }
+                return 0;
+            });
+        }
+
+        function suitBadgeHTML(plan) {
+            const suit = getSuit(plan);
+            const style = suit.ok === true ? 'background:var(--success-light);color:var(--success)' : 'background:var(--border-light);color:var(--text-muted)';
+            return '<span class="badge" style="font-size:10px;' + style + '">' + (suit.ok === true ? '✓ ' : '') + esc(suit.label) + '</span>';
+        }
+
+        // Compact row shown in "Other plans" section when a plan is already selected
+        function compactCard(plan) {
+            const suit = getSuit(plan);
+            const typeLabel = plan.type === 'after-work' ? '🌆' : '🌅';
+            const doneTag = plan.doneCount > 0 ? ' <span style="font-size:11px;color:var(--text-muted)">(' + plan.doneCount + '×)</span>' : '';
+            const dim = suit.ok === false ? 'opacity:0.55;' : '';
+            return '<div class="card" style="margin-bottom:8px;' + dim + '">'
+                + '<div class="card-body" style="padding:10px 12px">'
+                + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">'
+                + '<div style="flex:1;min-width:0">'
+                + '<span style="font-size:13px;font-weight:600">' + typeLabel + ' ' + esc(plan.name) + '</span>' + doneTag
+                + '<div style="margin-top:3px">' + suitBadgeHTML(plan) + '</div>'
+                + '</div>'
+                + '<button class="btn btn-sm btn-primary" onclick="selectFreePlan(\'' + plan.id + '\')">Select</button>'
+                + '</div></div></div>';
+        }
+
+        // Full card shown in browse mode (no plan selected)
+        function fullCard(plan) {
             const suit = getSuit(plan);
             const typeLabel = plan.type === 'after-work' ? '🌆 After-work' : '🌅 Full day';
             const preview = (plan.activities || []).slice(0, 5).map(function(a) {
@@ -2078,8 +2119,6 @@
             const doneInfo = plan.doneCount > 0
                 ? '<div style="font-size:12px;color:var(--text-muted);margin-top:2px">Done ' + plan.doneCount + '\xd7' + (plan.doneHistory && plan.doneHistory.length ? ' — last ' + formatDate(plan.doneHistory[plan.doneHistory.length - 1]) : '') + '</div>'
                 : '';
-            const suitStyle = suit.ok === true ? 'background:var(--success-light);color:var(--success)' : 'background:var(--border-light);color:var(--text-muted)';
-            const suitBadge = '<span class="badge" style="font-size:10px;' + suitStyle + '">' + (suit.ok === true ? '✓ ' : '') + esc(suit.label) + '</span>';
             const isExpanded = state.expandedDayPlans.has(plan.id);
             const tid = plan.id;
             const toggleFn = "state.expandedDayPlans.has('" + tid + "')?state.expandedDayPlans.delete('" + tid + "'):state.expandedDayPlans.add('" + tid + "');render()";
@@ -2089,13 +2128,13 @@
                     + (plan.activities || []).map(function(a) {
                         const catIcon = CATEGORIES[a.category] || '📌';
                         const meta = [a.time ? formatTime(a.time) : '', a.duration ? formatDuration(a.duration) : '', a.cost != null ? formatCurrency(a.cost, a.currency || 'EUR') : ''].filter(Boolean).join(' · ');
-                        return '<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border-light)">'
+                        return '<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-light)">'
                             + '<span class="category-icon">' + catIcon + '</span>'
                             + '<div style="flex:1;min-width:0">'
                             + '<div style="font-size:13px;font-weight:500">' + esc(a.name) + '</div>'
                             + (meta ? '<div style="font-size:12px;color:var(--text-muted)">' + meta + '</div>' : '')
                             + (a.address ? '<div style="font-size:12px;color:var(--text-muted)">' + esc(a.address) + '</div>' : '')
-                            + (a.notes ? '<div style="font-size:12px;color:var(--text-muted);margin-top:2px">' + esc(a.notes.substring(0, 150)) + (a.notes.length > 150 ? '…' : '') + '</div>' : '')
+                            + (a.notes ? '<div style="font-size:12px;color:var(--text-muted);margin-top:2px">' + esc(a.notes) + '</div>' : '')
                             + '</div></div>';
                     }).join('') + '</div>';
             }
@@ -2107,23 +2146,59 @@
                 + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px">'
                 + '<strong style="font-size:14px">' + esc(plan.name) + '</strong>'
                 + '<span class="badge" style="font-size:10px;background:var(--bg-hover)">' + typeLabel + '</span>'
-                + suitBadge + '</div>'
+                + suitBadgeHTML(plan) + '</div>'
                 + doneInfo
                 + (!isExpanded ? '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">' + preview + '</div>' : '')
                 + '</div>'
                 + '<div style="display:flex;gap:4px;flex-shrink:0;align-items:flex-start">'
                 + '<button class="btn btn-sm btn-ghost" onclick="' + toggleFn + '">' + (isExpanded ? 'Less' : 'Details') + '</button>'
-                + '<button class="btn btn-sm btn-ghost" onclick="openFreePlanMap(\'' + tid + '\')" title="Map">📍</button>'
-                + '<button class="btn btn-sm btn-primary" onclick="markLibraryPlanDone(\'' + tid + '\')">✓ Done</button>'
+                + '<button class="btn btn-sm btn-primary" onclick="selectFreePlan(\'' + tid + '\')">Select</button>'
                 + '</div></div>' + expandBody + '</div></div>';
         }
 
-        const doneCounts = cityPlans.reduce(function(acc, p) { acc[p.doneCount > 0 ? (p.doneCount >= 2 ? 'fav' : 'once') : 'none']++; return acc; }, { none: 0, fav: 0, once: 0 });
+        // Selected plan: inline map + full activity list with photos and full descriptions
+        function renderSelectedSection() {
+            if (!selectedPlan) return '';
+            const acts = selectedPlan.activities || [];
+            const mapActs = acts.filter(function(a) { return a.coordinates && a.coordinates.lat != null; });
+            const actList = acts.map(function(a, i) {
+                const catIcon = CATEGORIES[a.category] || '📌';
+                const isVisual = ['museum', 'landmark', 'tour', 'nature'].includes(a.category);
+                const meta = [a.time ? formatTime(a.time) : '', a.duration ? formatDuration(a.duration) : '', a.cost != null ? formatCurrency(a.cost, a.currency || 'EUR') : ''].filter(Boolean).join(' · ');
+                const cachedPhoto = window._photoCache && window._photoCache.hasOwnProperty(a.name) && window._photoCache[a.name];
+                const photoHtml = cachedPhoto
+                    ? '<img src="' + cachedPhoto + '" style="width:100%;height:160px;object-fit:cover;border-radius:var(--radius-sm);margin-bottom:8px" loading="lazy" onerror="this.style.display=\'none\'">'
+                    : (isVisual ? '<div id="fpphoto_' + a.id + '"></div>' : '');
+                return '<div id="fpact_' + a.id + '" style="padding:12px 0;border-bottom:1px solid var(--border-light)">'
+                    + photoHtml
+                    + '<div style="display:flex;gap:8px">'
+                    + '<div style="background:#2563eb;color:white;border-radius:50%;width:22px;height:22px;min-width:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-top:1px">' + (i + 1) + '</div>'
+                    + '<div style="flex:1;min-width:0">'
+                    + '<div style="font-size:14px;font-weight:600">' + catIcon + ' ' + esc(a.name) + '</div>'
+                    + (meta ? '<div style="font-size:12px;color:var(--text-muted);margin-top:2px">' + meta + '</div>' : '')
+                    + (a.address ? '<div style="font-size:12px;color:var(--text-muted)">' + esc(a.address) + '</div>' : '')
+                    + (a.notes ? '<div style="font-size:13px;color:var(--text);margin-top:6px;line-height:1.45">' + esc(a.notes) + '</div>' : '')
+                    + '</div></div></div>';
+            }).join('');
+            return '<div class="card" style="margin-bottom:16px;border:2px solid #2563eb">'
+                + '<div class="card-body">'
+                + '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px">'
+                + '<div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#2563eb;font-weight:600;margin-bottom:2px">Today\'s Plan</div>'
+                + '<strong style="font-size:16px">' + esc(selectedPlan.name) + '</strong></div>'
+                + '<div style="display:flex;gap:6px;flex-shrink:0">'
+                + '<button class="btn btn-sm btn-ghost" onclick="deselectFreePlan()">← Change</button>'
+                + '<button class="btn btn-sm btn-primary" onclick="markLibraryPlanDone(\'' + selectedPlan.id + '\')">✓ Done</button>'
+                + '</div></div>'
+                + (mapActs.length > 0 ? '<div id="fpInlineMap" style="height:290px;border-radius:var(--radius-sm);overflow:hidden;margin-bottom:12px"></div>' : '')
+                + actList
+                + '</div></div>';
+        }
+
         const citySelector = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px">'
             + (state.freePlanGeoDetecting && !city
                 ? '<span style="font-size:13px;color:var(--text-muted)">📍 Detecting location…</span>'
                 : allCities.length > 0
-                    ? '<select class="select" style="width:auto" onchange="state.freePlanCity=this.value;render()">'
+                    ? '<select class="select" style="width:auto" onchange="state.freePlanCity=this.value;state.freePlanSelectedId=null;try{localStorage.removeItem(\'freePlanSelectedId\')}catch(e){};render()">'
                       + allCities.map(function(c) { return '<option value="' + esc(c) + '"' + (c === city ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('')
                       + '</select>'
                     : '<span style="font-size:13px;color:var(--text-muted)">No plans in library yet — import a trip file to get started</span>')
@@ -2132,31 +2207,20 @@
             + '</div>'
             + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">' + timeStr + ' — ' + timeCtx + '</div>';
 
-        function sortPlans(plans) {
-            return plans.slice().sort(function(a, b) {
-                // 0x first, then 2x+ (favorites), then 1x
-                function grp(p) { return !p.doneCount ? 0 : p.doneCount >= 2 ? 1 : 2; }
-                const ga = grp(a), gb = grp(b);
-                if (ga !== gb) return ga - gb;
-                // Within undone: suitable-now first
-                if (ga === 0) {
-                    const sa = getSuit(a), sb = getSuit(b);
-                    if (sa.ok === true && sb.ok !== true) return -1;
-                    if (sa.ok !== true && sb.ok === true) return 1;
-                }
-                return 0;
-            });
-        }
-
         let bodyHTML;
         if (!city) {
             bodyHTML = '<div class="empty-state"><div class="empty-icon">🗺️</div><p>Select a city to see day plans.</p></div>';
-        } else if (visiblePlans.length === 0) {
+        } else if (!selectedPlan && visiblePlans.length === 0) {
             bodyHTML = showDone
                 ? '<div class="empty-state"><div class="empty-icon">📋</div><p>No plans in library for ' + esc(city) + ' yet.</p></div>'
                 : '<div class="empty-state"><div class="empty-icon">✅</div><p>All plans done! Toggle "Show done" to see them.</p></div>';
         } else {
-            bodyHTML = sortPlans(visiblePlans).map(planCard).join('');
+            const others = sortPlans(visiblePlans.filter(function(p) { return p.id !== selId; }));
+            const othersHTML = (selectedPlan && others.length > 0
+                ? '<div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin:14px 0 8px">Other plans</div>'
+                : '')
+                + others.map(function(p) { return selectedPlan ? compactCard(p) : fullCard(p); }).join('');
+            bodyHTML = renderSelectedSection() + othersHTML;
         }
 
         const hint = library.length === 0
@@ -2164,6 +2228,47 @@
             : '';
 
         mc.innerHTML = '<div class="view-content"><div class="view-header"><h2>Free Plan</h2></div>' + hint + citySelector + bodyHTML + '</div>';
+
+        // Post-render: init inline map and fetch photos for selected plan
+        if (selectedPlan) {
+            const acts = selectedPlan.activities || [];
+            const mapActs = acts.filter(function(a) { return a.coordinates && a.coordinates.lat != null; });
+            setTimeout(function() {
+                const mapEl = document.getElementById('fpInlineMap');
+                if (mapEl && window.L && mapActs.length > 0) {
+                    const m = L.map(mapEl, { center: [mapActs[0].coordinates.lat, mapActs[0].coordinates.lng], zoom: 14 });
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© <a href="https://openstreetmap.org">OSM</a>', maxZoom: 19 }).addTo(m);
+                    const bounds = [];
+                    mapActs.forEach(function(a) {
+                        const idx = acts.indexOf(a);
+                        const icon = L.divIcon({
+                            html: '<div style="background:#2563eb;color:white;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.4)">' + (idx + 1) + '</div>',
+                            iconSize: [26, 26], iconAnchor: [13, 13], className: ''
+                        });
+                        const catIcon = CATEGORIES[a.category] || '📌';
+                        const popup = '<div style="min-width:160px;max-width:220px">'
+                            + '<strong>' + catIcon + ' ' + esc(a.name) + '</strong>'
+                            + (a.time ? '<div style="font-size:12px;margin-top:2px">' + formatTime(a.time) + (a.duration ? ' · ' + formatDuration(a.duration) : '') + '</div>' : '')
+                            + (a.notes ? '<div style="font-size:12px;margin-top:4px;color:#555">' + esc(a.notes.substring(0, 130)) + (a.notes.length > 130 ? '…' : '') + '</div>' : '')
+                            + '</div>';
+                        L.marker([a.coordinates.lat, a.coordinates.lng], { icon: icon }).addTo(m).bindPopup(popup);
+                        bounds.push([a.coordinates.lat, a.coordinates.lng]);
+                    });
+                    if (bounds.length > 1) m.fitBounds(bounds, { padding: [20, 20] });
+                    setTimeout(function() { m.invalidateSize(); }, 100);
+                }
+                if (!window._photoCache) window._photoCache = {};
+                acts.filter(function(a) {
+                    return ['museum', 'landmark', 'tour', 'nature'].includes(a.category);
+                }).forEach(function(a) {
+                    if (window._photoCache.hasOwnProperty(a.name)) {
+                        if (window._photoCache[a.name]) _injectActivityPhoto(a.id, window._photoCache[a.name]);
+                        return;
+                    }
+                    fetchActivityPhoto(a.name).then(function(url) { if (url) _injectActivityPhoto(a.id, url); });
+                });
+            }, 200);
+        }
     }
 
     function addDayPlanToLibrary(tripId, dpId) {
@@ -2196,6 +2301,8 @@
         plan.doneCount = (plan.doneCount || 0) + 1;
         if (!plan.doneHistory) plan.doneHistory = [];
         plan.doneHistory.push(localDateStr(new Date()));
+        state.freePlanSelectedId = null;
+        try { localStorage.removeItem('freePlanSelectedId'); } catch(e) {}
         save().then(function() { toast('Marked done — ' + plan.doneCount + '\xd7 total'); render(); });
     }
 
@@ -2284,6 +2391,45 @@
             if (bounds.length > 1) m.fitBounds(bounds, { padding: [30, 30] });
             setTimeout(function() { m.invalidateSize(); }, 100);
         }, 150);
+    }
+
+    function selectFreePlan(planId) {
+        state.freePlanSelectedId = planId;
+        try { localStorage.setItem('freePlanSelectedId', planId); } catch(e) {}
+        render();
+    }
+
+    function deselectFreePlan() {
+        state.freePlanSelectedId = null;
+        try { localStorage.removeItem('freePlanSelectedId'); } catch(e) {}
+        render();
+    }
+
+    window._photoCache = window._photoCache || {};
+    function fetchActivityPhoto(name) {
+        if (window._photoCache.hasOwnProperty(name)) return Promise.resolve(window._photoCache[name]);
+        return fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(name))
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(data) {
+                let src = null;
+                if (data && data.thumbnail && data.thumbnail.source) {
+                    src = data.thumbnail.source.replace(/\/\d+px-/, '/400px-');
+                }
+                window._photoCache[name] = src;
+                return src;
+            })
+            .catch(function() { window._photoCache[name] = null; return null; });
+    }
+
+    function _injectActivityPhoto(actId, src) {
+        const placeholder = document.getElementById('fpphoto_' + actId);
+        if (!placeholder) return;
+        const img = document.createElement('img');
+        img.src = src;
+        img.style.cssText = 'width:100%;height:160px;object-fit:cover;border-radius:var(--radius-sm);margin-bottom:8px';
+        img.loading = 'lazy';
+        img.onerror = function() { this.style.display = 'none'; };
+        placeholder.parentNode.replaceChild(img, placeholder);
     }
 
     function _detectFreePlanCityFromGeo() {
