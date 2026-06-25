@@ -7128,6 +7128,13 @@
     loadData().then(async () => {
         loadExchangeRates();
         restoreNavState();
+        // Seed history depth to match restored nav state so back button has entries to consume
+        if (state.view === 'trip') { _appNavPush(); _appNavPush(); }
+        else if (state.view === 'trips') { _appNavPush(); }
+        else if (state.view === 'freeplan') {
+            _appNavPush();
+            if (state.freePlanSelectedId) _appNavPush();
+        }
         await checkShareLink();
         await checkSharedFile();
         render();
@@ -7173,10 +7180,7 @@
     }
 
     window.addEventListener('popstate', function() {
-        const handled = handleAppBack();
-        if (handled && state.view !== 'home') {
-            _appNavPush();
-        }
+        handleAppBack();
     });
 
     window.addEventListener('online', () => {
