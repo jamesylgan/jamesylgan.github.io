@@ -1696,6 +1696,27 @@
         });
     }
 
+    // 3-way dialog for full backup imports: returns 'replace', 'add', or null (cancel)
+    function showImportChoice() {
+        return new Promise(resolve => {
+            const ov = document.getElementById('confirmOverlay');
+            const body = document.getElementById('confirmBody');
+            body.innerHTML = `
+                <div class="modal-header"><h3>Import All Data</h3></div>
+                <div class="modal-body"><p><strong>Replace all</strong> — overwrites all current trips &amp; settings.<br><strong>Add trips</strong> — merges imported trips into your existing data.</p></div>
+                <div class="modal-footer" style="gap:8px">
+                    <button class="btn" id="importChoiceCancel">Cancel</button>
+                    <button class="btn btn-primary" id="importChoiceAdd">Add Trips</button>
+                    <button class="btn btn-danger" id="importChoiceReplace">Replace All</button>
+                </div>
+            `;
+            ov.classList.add('open');
+            body.querySelector('#importChoiceReplace').onclick = () => { ov.classList.remove('open'); resolve('replace'); };
+            body.querySelector('#importChoiceAdd').onclick = () => { ov.classList.remove('open'); resolve('add'); };
+            body.querySelector('#importChoiceCancel').onclick = () => { ov.classList.remove('open'); resolve(null); };
+        });
+    }
+
     let _offlineSyncResolve = null;
     function showOfflineSyncModal() {
         return new Promise(resolve => {
@@ -2046,13 +2067,20 @@
                 const imported = JSON.parse(e.target.result);
                 if (!imported.version || !imported.format) throw new Error('Invalid file format');
                 if (imported.format === 'trip-planner-full') {
-                    const ok = await showConfirm('Import All Data', 'This will replace ALL trips and settings. Continue?');
-                    if (!ok) return;
-                    data = imported.data || { trips: [] };
-                    if (imported.settings) { settings = { ...DEFAULT_SETTINGS, ...imported.settings }; saveSetting(); applyTheme(); }
-                    save();
-                    render();
-                    toast('All data imported');
+                    const choice = await showImportChoice();
+                    if (!choice) return;
+                    if (choice === 'replace') {
+                        data = imported.data || { trips: [] };
+                        if (imported.settings) { settings = { ...DEFAULT_SETTINGS, ...imported.settings }; saveSetting(); applyTheme(); }
+                        save();
+                        render();
+                        toast('All data imported');
+                    } else {
+                        const n = addTripsFromImport(imported);
+                        save();
+                        render();
+                        toast(`${n} trip${n !== 1 ? 's' : ''} added`);
+                    }
                 } else if (imported.format === 'trip-planner-single') {
                     const trip = imported.trip;
                     if (!trip) throw new Error('No trip data found');
@@ -2095,6 +2123,15 @@
         for (const og of trip.optionGroups || []) { og.id = remap(og.id); og.legId = remap(og.legId); }
         for (const p of trip.packingList || []) { p.id = remap(p.id); }
         for (const ho of trip.hotelOptions || []) { ho.id = remap(ho.id); }
+    }
+
+    function addTripsFromImport(imported) {
+        const trips = ((imported.data || {}).trips) || [];
+        for (const trip of trips) {
+            if (data.trips.find(t => t.id === trip.id)) regenerateIds(trip);
+            data.trips.push(ensureTripArrays(trip));
+        }
+        return trips.length;
     }
 
     // --- Android WebView bridge ---
@@ -6389,12 +6426,18 @@
                     openTrip(trip.id);
                     toast(`Imported "${esc(trip.name)}"`);
                 } else if (imported.format === 'trip-planner-full') {
-                    const ok = await showConfirm('Import All Data', 'This will replace ALL trips and settings. Continue?');
-                    if (!ok) continue;
-                    data = imported.data || { trips: [] };
-                    if (imported.settings) { settings = { ...DEFAULT_SETTINGS, ...imported.settings }; saveSetting(); applyTheme(); }
-                    save(); render();
-                    toast('All data imported');
+                    const choice = await showImportChoice();
+                    if (!choice) continue;
+                    if (choice === 'replace') {
+                        data = imported.data || { trips: [] };
+                        if (imported.settings) { settings = { ...DEFAULT_SETTINGS, ...imported.settings }; saveSetting(); applyTheme(); }
+                        save(); render();
+                        toast('All data imported');
+                    } else {
+                        const n = addTripsFromImport(imported);
+                        save(); render();
+                        toast(`${n} trip${n !== 1 ? 's' : ''} added`);
+                    }
                 }
             } catch (err) { toast('Failed to open file: ' + err.message); }
         }
