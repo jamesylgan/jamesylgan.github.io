@@ -300,6 +300,7 @@
     <div class="toast" id="toast"></div>
 
     <input type="file" id="importFile" accept=".json,.trip" style="display:none" onchange="handleImport(event)">
+    <input type="file" id="importLibraryFile" accept=".json,.trip" style="display:none" onchange="importTripFileToLibrary(event)">
 
     <script>
     // HTML5 drag-and-drop touch shim. Translates touch into dragstart/dragover/drop
@@ -430,6 +431,8 @@
         showSheetsSync: false,
         googleClientId: '',
         googleClientSecret: '',
+        freePlanDefaultCity: '',
+        homeDefault: null,
     };
 
     let data = { trips: [] };
@@ -438,7 +441,7 @@
     let map = null;
 
     let state = {
-        view: 'trips',
+        view: 'home',
         tripId: null,
         tripTab: 'dashboard',
         editingId: null,
@@ -451,7 +454,8 @@
         expandedDayPlans: new Set(),
         expandedLodgingActions: new Set(),
         freePlanCity: null,
-        freePlanTab: 'available',
+        freePlanShowDone: false,
+        freePlanGeoDetecting: false,
     };
 
     // --- Exchange Rates ---
@@ -1752,16 +1756,16 @@
     function restoreNavState() {
         try {
             const raw = sessionStorage.getItem(NAV_STATE_KEY);
-            if (!raw) return;
-            const s = JSON.parse(raw);
-            if (s.view === 'trip' && s.tripId && data.trips.some(t => t.id === s.tripId)) {
+            const s = raw ? JSON.parse(raw) : null;
+            if (s && s.view === 'trip' && s.tripId && data.trips.some(t => t.id === s.tripId)) {
                 state.view = 'trip'; state.tripId = s.tripId;
-                if (isTravelMode()) {
-                    state.tripTab = settings.travelDefaultTab || 'map';
-                } else {
-                    state.tripTab = s.tripTab || 'dashboard';
-                }
+                state.tripTab = isTravelMode() ? (settings.travelDefaultTab || 'map') : (s.tripTab || 'dashboard');
+            } else if (s && (s.view === 'trips' || s.view === 'freeplan')) {
+                state.view = s.view;
+            } else if (settings.homeDefault) {
+                state.view = settings.homeDefault;
             }
+            // otherwise stays 'home'
         } catch (e) {}
     }
 
@@ -1772,8 +1776,29 @@
         render();
     }
 
+    function showHomeView() {
+        settings.homeDefault = null;
+        saveSetting();
+        state.view = 'home';
+        persistNavState();
+        render();
+    }
+
+    function enterTripsView() {
+        settings.homeDefault = 'trips';
+        saveSetting();
+        showTripsView();
+    }
+
+    function enterFreePlanView() {
+        settings.homeDefault = 'freeplan';
+        saveSetting();
+        showFreePlanView();
+    }
+
     function showFreePlanView() {
         state.view = 'freeplan';
+        persistNavState();
         render();
     }
 
@@ -1800,7 +1825,10 @@
 
     function render() {
         renderHeader();
-        if (state.view === 'trips') {
+        if (state.view === 'home') {
+            renderHomeView();
+            hideBottomNav();
+        } else if (state.view === 'trips') {
             renderTripsList();
             hideBottomNav();
         } else if (state.view === 'freeplan') {
@@ -1820,9 +1848,19 @@
 
     function renderHeader() {
         const h = document.getElementById('appHeader');
-        if (state.view === 'trips') {
+        if (state.view === 'home') {
             h.innerHTML = `
-                <h1 onclick="showTripsView()">Trip Planner</h1>
+                <h1>Trip Planner</h1>
+                <div class="header-actions">
+                    <button class="btn-icon" onclick="openSettingsModal()" title="Settings">\u2699\uFE0F</button>
+                </div>
+            `;
+        } else if (state.view === 'trips') {
+            h.innerHTML = `
+                <div style="display:flex;align-items:center;gap:8px">
+                    <button class="btn-icon" onclick="showHomeView()" title="Home">\u2190</button>
+                    <h1 style="font-size:1rem">My Trips</h1>
+                </div>
                 <div class="header-actions">
                     <button class="btn-icon" onclick="openSettingsModal()" title="Settings">\u2699\uFE0F</button>
                 </div>
@@ -1830,7 +1868,7 @@
         } else if (state.view === 'freeplan') {
             h.innerHTML = `
                 <div style="display:flex;align-items:center;gap:8px">
-                    <button class="btn-icon" onclick="showTripsView()" title="Back">\u2190</button>
+                    <button class="btn-icon" onclick="showHomeView()" title="Home">\u2190</button>
                     <h1 style="font-size:1rem">Free Plan</h1>
                 </div>
                 <div class="header-actions">
@@ -1947,13 +1985,30 @@
                         <button class="btn btn-sm" onclick="document.getElementById('importFile').click()">Import</button>
                         ${settings.showSheetsSync ? '<button class="btn btn-sm" onclick="openImportFromSheetsModal()">Import from Sheets</button>' : ''}
                         <button class="btn btn-sm" onclick="exportAll()">Export</button>
-                        <button class="btn btn-sm" onclick="showFreePlanView()">🗺️ Free Plan</button>
                         <button class="btn btn-primary btn-sm" onclick="openTripModal()">+ New Trip</button>
                     </div>
                 </div>
                 ${cards}
             </div>
         `;
+    }
+
+    function renderHomeView() {
+        const mc = document.getElementById('mainContent');
+        const tripCount = (data.trips || []).length;
+        const planCount = (data.dayPlanLibrary || []).length;
+        mc.innerHTML = `<div style="padding:16px;display:flex;flex-direction:column;gap:16px;min-height:calc(100svh - 72px)">
+            <div class="card" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:40px 16px;min-height:180px;transition:background .15s" onclick="enterTripsView()" onmouseenter="this.style.background='var(--bg-hover)'" onmouseleave="this.style.background=''">
+                <div style="font-size:52px;margin-bottom:14px">✈️</div>
+                <h2 style="font-size:1.3rem;margin-bottom:6px">My Trips</h2>
+                <p style="color:var(--text-muted);font-size:13px">${tripCount} ${tripCount === 1 ? 'trip' : 'trips'}</p>
+            </div>
+            <div class="card" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:40px 16px;min-height:180px;transition:background .15s" onclick="enterFreePlanView()" onmouseenter="this.style.background='var(--bg-hover)'" onmouseleave="this.style.background=''">
+                <div style="font-size:52px;margin-bottom:14px">🗺️</div>
+                <h2 style="font-size:1.3rem;margin-bottom:6px">Free Plan</h2>
+                <p style="color:var(--text-muted);font-size:13px">${planCount} ${planCount === 1 ? 'day plan' : 'day plans'} in library</p>
+            </div>
+        </div>`;
     }
 
     function renderFreePlanView() {
@@ -1975,12 +2030,18 @@
             ...library.map(p => p.city).filter(Boolean),
             ...(data.trips || []).flatMap(t => (t.legs || []).map(l => l.city).filter(Boolean))
         ])].sort();
-        if (!state.freePlanCity && allCities.length > 0) state.freePlanCity = allCities[0];
+        if (!state.freePlanCity) {
+            if (settings.freePlanDefaultCity) {
+                state.freePlanCity = settings.freePlanDefaultCity;
+            } else if (!state.freePlanGeoDetecting) {
+                state.freePlanGeoDetecting = true;
+                _detectFreePlanCityFromGeo();
+            }
+        }
         const city = state.freePlanCity || '';
-        const tab = state.freePlanTab || 'available';
+        const showDone = !!state.freePlanShowDone;
         const cityPlans = library.filter(p => p.city === city);
-        const availablePlans = cityPlans.filter(p => !p.doneCount);
-        const donePlans = cityPlans.filter(p => p.doneCount > 0);
+        const visiblePlans = showDone ? cityPlans : cityPlans.filter(p => !p.doneCount);
 
         function getSuit(plan) {
             if (plan.type === 'after-work') {
@@ -2038,52 +2099,57 @@
                 + '</div>'
                 + '<div style="display:flex;gap:4px;flex-shrink:0;align-items:flex-start">'
                 + '<button class="btn btn-sm btn-ghost" onclick="' + toggleFn + '">' + (isExpanded ? 'Less' : 'Details') + '</button>'
+                + '<button class="btn btn-sm btn-ghost" onclick="openFreePlanMap(\'' + tid + '\')" title="Map">📍</button>'
                 + '<button class="btn btn-sm btn-primary" onclick="markLibraryPlanDone(\'' + tid + '\')">✓ Done</button>'
                 + '</div></div>' + expandBody + '</div></div>';
         }
 
+        const doneCounts = cityPlans.reduce(function(acc, p) { acc[p.doneCount > 0 ? (p.doneCount >= 2 ? 'fav' : 'once') : 'none']++; return acc; }, { none: 0, fav: 0, once: 0 });
         const citySelector = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px">'
-            + (allCities.length > 0
-                ? '<select class="select" style="width:auto" onchange="state.freePlanCity=this.value;render()">'
-                  + allCities.map(function(c) { return '<option value="' + esc(c) + '"' + (c === city ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('')
-                  + '</select>'
-                : '<span style="font-size:13px;color:var(--text-muted)">No plans in library yet</span>')
-            + '<span style="font-size:13px;color:var(--text-muted)">' + timeStr + ' — ' + timeCtx + '</span>'
-            + '</div>';
+            + (state.freePlanGeoDetecting && !city
+                ? '<span style="font-size:13px;color:var(--text-muted)">📍 Detecting location…</span>'
+                : allCities.length > 0
+                    ? '<select class="select" style="width:auto" onchange="state.freePlanCity=this.value;render()">'
+                      + allCities.map(function(c) { return '<option value="' + esc(c) + '"' + (c === city ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('')
+                      + '</select>'
+                    : '<span style="font-size:13px;color:var(--text-muted)">No plans in library yet — import a trip file to get started</span>')
+            + (city ? '<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;white-space:nowrap"><input type="checkbox"' + (showDone ? ' checked' : '') + ' onchange="state.freePlanShowDone=this.checked;render()"> Show done</label>' : '')
+            + '<button class="btn btn-sm btn-ghost" onclick="document.getElementById(\'importLibraryFile\').click()" style="margin-left:auto">Import trip file</button>'
+            + '</div>'
+            + '<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">' + timeStr + ' — ' + timeCtx + '</div>';
 
-        const tabBar = city ? '<div class="tab-bar" style="margin-bottom:16px">'
-            + '<button class="tab-btn' + (tab === 'available' ? ' active' : '') + '" onclick="state.freePlanTab=\'available\';render()">Available (' + availablePlans.length + ')</button>'
-            + '<button class="tab-btn' + (tab === 'done' ? ' active' : '') + '" onclick="state.freePlanTab=\'done\';render()">Done Before (' + donePlans.length + ')</button>'
-            + '</div>' : '';
+        function sortPlans(plans) {
+            return plans.slice().sort(function(a, b) {
+                // 0x first, then 2x+ (favorites), then 1x
+                function grp(p) { return !p.doneCount ? 0 : p.doneCount >= 2 ? 1 : 2; }
+                const ga = grp(a), gb = grp(b);
+                if (ga !== gb) return ga - gb;
+                // Within undone: suitable-now first
+                if (ga === 0) {
+                    const sa = getSuit(a), sb = getSuit(b);
+                    if (sa.ok === true && sb.ok !== true) return -1;
+                    if (sa.ok !== true && sb.ok === true) return 1;
+                }
+                return 0;
+            });
+        }
 
         let bodyHTML;
         if (!city) {
             bodyHTML = '<div class="empty-state"><div class="empty-icon">🗺️</div><p>Select a city to see day plans.</p></div>';
-        } else if (tab === 'available') {
-            if (availablePlans.length === 0) {
-                bodyHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>All plans for this city have been done at least once!</p></div>';
-            } else {
-                const sorted = availablePlans.slice().sort(function(a, b) {
-                    const sa = getSuit(a), sb = getSuit(b);
-                    if (sa.ok === true && sb.ok !== true) return -1;
-                    if (sa.ok !== true && sb.ok === true) return 1;
-                    return 0;
-                });
-                bodyHTML = sorted.map(planCard).join('');
-            }
+        } else if (visiblePlans.length === 0) {
+            bodyHTML = showDone
+                ? '<div class="empty-state"><div class="empty-icon">📋</div><p>No plans in library for ' + esc(city) + ' yet.</p></div>'
+                : '<div class="empty-state"><div class="empty-icon">✅</div><p>All plans done! Toggle "Show done" to see them.</p></div>';
         } else {
-            if (donePlans.length === 0) {
-                bodyHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>No completed plans yet. Go explore!</p></div>';
-            } else {
-                bodyHTML = donePlans.slice().sort(function(a, b) { return (b.doneCount || 0) - (a.doneCount || 0); }).map(planCard).join('');
-            }
+            bodyHTML = sortPlans(visiblePlans).map(planCard).join('');
         }
 
         const hint = library.length === 0
             ? '<div style="background:var(--accent-light);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:var(--text);margin-bottom:16px">Open a trip, expand a day plan, and tap <strong>📚 Save to Library</strong> to add it here.</div>'
             : '';
 
-        mc.innerHTML = '<div class="view-content"><div class="view-header"><h2>Free Plan</h2></div>' + hint + citySelector + tabBar + bodyHTML + '</div>';
+        mc.innerHTML = '<div class="view-content"><div class="view-header"><h2>Free Plan</h2></div>' + hint + citySelector + bodyHTML + '</div>';
     }
 
     function addDayPlanToLibrary(tripId, dpId) {
@@ -2117,6 +2183,118 @@
         if (!plan.doneHistory) plan.doneHistory = [];
         plan.doneHistory.push(localDateStr(new Date()));
         save().then(function() { toast('Marked done — ' + plan.doneCount + '\xd7 total'); render(); });
+    }
+
+    function addAllDayPlansToLibrary(tripId) {
+        const trip = data.trips.find(function(t) { return t.id === tripId; });
+        if (!trip) return;
+        if (!data.dayPlanLibrary) data.dayPlanLibrary = [];
+        let added = 0, skipped = 0;
+        for (const dp of (trip.dayPlans || [])) {
+            const leg = (trip.legs || []).find(function(l) { return l.id === dp.legId; });
+            const city = leg ? (leg.city || '') : '';
+            if (data.dayPlanLibrary.find(function(p) { return p.name === dp.name && p.city === city; })) { skipped++; continue; }
+            const acts = (dp.activityIds || []).map(function(aid) { return (trip.activities || []).find(function(a) { return a.id === aid; }); }).filter(Boolean);
+            const firstHours = acts.map(function(a) { return a.time; }).filter(Boolean).map(function(t) { return parseInt(t.split(':')[0]); }).filter(function(n) { return !isNaN(n); }).sort(function(a,b){return a-b;});
+            const type = firstHours.length > 0 && firstHours[0] >= 17 ? 'after-work' : 'full-day';
+            data.dayPlanLibrary.push({
+                id: uid(), name: dp.name, city: city, country: leg ? (leg.country || '') : '',
+                type: type, activities: acts.map(function(a) { return Object.assign({}, a, { id: uid() }); }),
+                notes: dp.notes || '', doneCount: 0, doneHistory: [],
+                addedAt: new Date().toISOString(), order: data.dayPlanLibrary.length
+            });
+            added++;
+        }
+        save().then(function() { toast(added + ' plan' + (added !== 1 ? 's' : '') + ' saved to library' + (skipped ? ', ' + skipped + ' already existed' : '')); });
+    }
+
+    function importTripFileToLibrary(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const payload = JSON.parse(e.target.result);
+                if (!payload.version || !payload.format) throw new Error('Not a trip planner file');
+                let trips = [];
+                if (payload.format === 'trip-planner-single') trips = [payload.trip].filter(Boolean);
+                else if (payload.format === 'trip-planner-full') trips = ((payload.data || {}).trips || []);
+                else throw new Error('Unknown format: ' + payload.format);
+                if (!data.dayPlanLibrary) data.dayPlanLibrary = [];
+                let added = 0, skipped = 0;
+                for (const trip of trips) {
+                    for (const dp of (trip.dayPlans || [])) {
+                        const leg = (trip.legs || []).find(function(l) { return l.id === dp.legId; });
+                        const city = leg ? (leg.city || '') : '';
+                        if (data.dayPlanLibrary.find(function(p) { return p.name === dp.name && p.city === city; })) { skipped++; continue; }
+                        const acts = (dp.activityIds || []).map(function(aid) { return (trip.activities || []).find(function(a) { return a.id === aid; }); }).filter(Boolean);
+                        const firstHours = acts.map(function(a) { return a.time; }).filter(Boolean).map(function(t) { return parseInt(t.split(':')[0]); }).filter(function(n) { return !isNaN(n); }).sort(function(a,b){return a-b;});
+                        const type = firstHours.length > 0 && firstHours[0] >= 17 ? 'after-work' : 'full-day';
+                        data.dayPlanLibrary.push({
+                            id: uid(), name: dp.name, city: city, country: leg ? (leg.country || '') : '',
+                            type: type, activities: acts.map(function(a) { return Object.assign({}, a, { id: uid() }); }),
+                            notes: dp.notes || '', doneCount: 0, doneHistory: [],
+                            addedAt: new Date().toISOString(), order: data.dayPlanLibrary.length
+                        });
+                        added++;
+                        if (!state.freePlanCity && city) state.freePlanCity = city;
+                    }
+                }
+                event.target.value = '';
+                save().then(function() { toast(added + ' plan' + (added !== 1 ? 's' : '') + ' added to library' + (skipped ? ', ' + skipped + ' already existed' : '')); render(); });
+            } catch(err) {
+                toast('Import failed: ' + err.message);
+                event.target.value = '';
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function openFreePlanMap(planId) {
+        const plan = (data.dayPlanLibrary || []).find(function(p) { return p.id === planId; });
+        if (!plan) return;
+        const acts = (plan.activities || []).filter(function(a) { return a.coordinates && a.coordinates.lat != null; });
+        if (acts.length === 0) { toast('No location data for this plan'); return; }
+        openModal('<div class="modal-header"><h3 style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(plan.name) + '</h3><button class="btn-icon" onclick="closeModal()">×</button></div><div id="fpMapContainer" style="height:420px;border-radius:0 0 var(--radius) var(--radius);overflow:hidden"></div>');
+        setTimeout(function() {
+            const container = document.getElementById('fpMapContainer');
+            if (!container || !window.L) return;
+            const m = L.map(container, { center: [acts[0].coordinates.lat, acts[0].coordinates.lng], zoom: 14 });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 19 }).addTo(m);
+            const bounds = [];
+            acts.forEach(function(a) {
+                const marker = L.marker([a.coordinates.lat, a.coordinates.lng]).addTo(m);
+                marker.bindPopup('<strong>' + esc(a.name) + '</strong>' + (a.time ? '<br>' + formatTime(a.time) : '') + (a.address ? '<br><span style="font-size:12px">' + esc(a.address) + '</span>' : ''));
+                bounds.push([a.coordinates.lat, a.coordinates.lng]);
+            });
+            if (bounds.length > 1) m.fitBounds(bounds, { padding: [30, 30] });
+            setTimeout(function() { m.invalidateSize(); }, 100);
+        }, 150);
+    }
+
+    function _detectFreePlanCityFromGeo() {
+        if (!navigator.geolocation) { state.freePlanGeoDetecting = false; return; }
+        navigator.geolocation.getCurrentPosition(function(pos) {
+            state.freePlanGeoDetecting = false;
+            const lat = pos.coords.latitude, lng = pos.coords.longitude;
+            const known = [];
+            for (const t of (data.trips || [])) {
+                for (const l of (t.legs || [])) {
+                    if (l.city && l.coordinates && l.coordinates.lat != null) {
+                        known.push({ city: l.city, lat: l.coordinates.lat, lng: l.coordinates.lng });
+                    }
+                }
+            }
+            if (known.length === 0) { if (state.view === 'freeplan') render(); return; }
+            function haverDist(la1, ln1, la2, ln2) {
+                const R = 6371, dLa = (la2-la1)*Math.PI/180, dLn = (ln2-ln1)*Math.PI/180;
+                const a = Math.sin(dLa/2)**2 + Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLn/2)**2;
+                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            }
+            const nearest = known.reduce(function(best, c) { return haverDist(lat,lng,c.lat,c.lng) < haverDist(lat,lng,best.lat,best.lng) ? c : best; });
+            state.freePlanCity = nearest.city;
+            if (state.view === 'freeplan') render();
+        }, function() { state.freePlanGeoDetecting = false; if (state.view === 'freeplan') render(); }, { timeout: 8000 });
     }
 
     // --- Trip CRUD ---
@@ -2819,6 +2997,13 @@
                         ${settings.showSheetsSync && getTrip(state.tripId)?.previousSheetId ? `<button class="btn btn-sm" onclick="closeModal();reuploadToSheets()">Re-upload to Sheets</button>` : ''}
                     </div>
                 ` : ''}
+                <div class="form-group" style="margin-top:12px">
+                    <label>Free Plan — Default City</label>
+                    <input class="input" id="settFreePlanCity" value="${esc(settings.freePlanDefaultCity || '')}"
+                           placeholder="e.g. Madrid (leave blank to auto-detect)"
+                           onchange="settings.freePlanDefaultCity=this.value.trim();saveSetting()">
+                </div>
+
                 <div style="display:flex;gap:8px;flex-wrap:wrap">
                     <button class="btn btn-sm" onclick="document.getElementById('importFile').click();closeModal()">Import</button>
                     <button class="btn btn-sm" onclick="exportAll();closeModal()">Export All Trips</button>
@@ -4641,7 +4826,7 @@
             const floatingPlans = allPlans.filter(dp => !dp.usedDate);
             const archivedPlans = allPlans.filter(dp => dp.usedDate);
 
-            html += `<div style="margin-bottom:12px;display:flex;gap:8px"><button class="btn btn-sm btn-primary" onclick="openDayPlanModal()">+ New Day Plan</button></div>`;
+            html += `<div style="margin-bottom:12px;display:flex;gap:8px"><button class="btn btn-sm btn-primary" onclick="openDayPlanModal()">+ New Day Plan</button>${allPlans.length > 0 ? `<button class="btn btn-sm btn-ghost" onclick="addAllDayPlansToLibrary('${trip.id}')">📚 Save all to Library</button>` : ''}</div>`;
 
             if (floatingPlans.length === 0 && archivedPlans.length === 0) {
                 html += `<div class="empty-state"><div class="empty-icon">\u{1F4CB}</div><p>No day plans yet. Create a day plan to organize activities into reusable daily itineraries.</p></div>`;
