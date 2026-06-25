@@ -450,6 +450,8 @@
         dismissedActivities: new Set(),
         expandedDayPlans: new Set(),
         expandedLodgingActions: new Set(),
+        freePlanCity: null,
+        freePlanTab: 'available',
     };
 
     // --- Exchange Rates ---
@@ -1443,7 +1445,7 @@
                 showPassphraseModal(false);
                 return;
             }
-            data = { trips: [], ...parsed };
+            data = { trips: [], dayPlanLibrary: [], ...parsed };
         } catch (e) {
             console.error('Failed to load data:', e);
         }
@@ -1770,6 +1772,11 @@
         render();
     }
 
+    function showFreePlanView() {
+        state.view = 'freeplan';
+        render();
+    }
+
     function openTrip(tripId) {
         state.view = 'trip';
         state.tripId = tripId;
@@ -1796,6 +1803,9 @@
         if (state.view === 'trips') {
             renderTripsList();
             hideBottomNav();
+        } else if (state.view === 'freeplan') {
+            renderFreePlanView();
+            hideBottomNav();
         } else {
             renderBottomNav();
             switch (state.tripTab) {
@@ -1813,6 +1823,16 @@
         if (state.view === 'trips') {
             h.innerHTML = `
                 <h1 onclick="showTripsView()">Trip Planner</h1>
+                <div class="header-actions">
+                    <button class="btn-icon" onclick="openSettingsModal()" title="Settings">\u2699\uFE0F</button>
+                </div>
+            `;
+        } else if (state.view === 'freeplan') {
+            h.innerHTML = `
+                <div style="display:flex;align-items:center;gap:8px">
+                    <button class="btn-icon" onclick="showTripsView()" title="Back">\u2190</button>
+                    <h1 style="font-size:1rem">Free Plan</h1>
+                </div>
                 <div class="header-actions">
                     <button class="btn-icon" onclick="openSettingsModal()" title="Settings">\u2699\uFE0F</button>
                 </div>
@@ -1927,12 +1947,176 @@
                         <button class="btn btn-sm" onclick="document.getElementById('importFile').click()">Import</button>
                         ${settings.showSheetsSync ? '<button class="btn btn-sm" onclick="openImportFromSheetsModal()">Import from Sheets</button>' : ''}
                         <button class="btn btn-sm" onclick="exportAll()">Export</button>
+                        <button class="btn btn-sm" onclick="showFreePlanView()">🗺️ Free Plan</button>
                         <button class="btn btn-primary btn-sm" onclick="openTripModal()">+ New Trip</button>
                     </div>
                 </div>
                 ${cards}
             </div>
         `;
+    }
+
+    function renderFreePlanView() {
+        const mc = document.getElementById('mainContent');
+        if (!data.dayPlanLibrary) data.dayPlanLibrary = [];
+        const library = data.dayPlanLibrary;
+        const now = new Date();
+        const hour = now.getHours();
+        const min = now.getMinutes();
+        const timeStr = hour + ':' + String(min).padStart(2, '0');
+        let timeCtx;
+        if (hour < 11) timeCtx = 'morning — full-day plans available';
+        else if (hour < 14) timeCtx = 'midday — afternoon start possible';
+        else if (hour < 17) timeCtx = 'afternoon — evening plans coming up';
+        else if (hour < 22) timeCtx = 'evening — after-work plans available';
+        else timeCtx = 'late evening';
+
+        const allCities = [...new Set([
+            ...library.map(p => p.city).filter(Boolean),
+            ...(data.trips || []).flatMap(t => (t.legs || []).map(l => l.city).filter(Boolean))
+        ])].sort();
+        if (!state.freePlanCity && allCities.length > 0) state.freePlanCity = allCities[0];
+        const city = state.freePlanCity || '';
+        const tab = state.freePlanTab || 'available';
+        const cityPlans = library.filter(p => p.city === city);
+        const availablePlans = cityPlans.filter(p => !p.doneCount);
+        const donePlans = cityPlans.filter(p => p.doneCount > 0);
+
+        function getSuit(plan) {
+            if (plan.type === 'after-work') {
+                if (hour >= 17 && hour < 23) return { ok: true, label: 'Perfect for tonight' };
+                if (hour < 17) return { ok: null, label: 'Opens up ~18:00' };
+                return { ok: false, label: 'Too late' };
+            }
+            if (hour < 11) return { ok: true, label: 'Full day ahead' };
+            if (hour < 14) return { ok: true, label: 'Afternoon start' };
+            if (hour < 17) return { ok: true, label: 'Late start' };
+            return { ok: false, label: 'Too late for today' };
+        }
+
+        function planCard(plan) {
+            const suit = getSuit(plan);
+            const typeLabel = plan.type === 'after-work' ? '🌆 After-work' : '🌅 Full day';
+            const preview = (plan.activities || []).slice(0, 5).map(function(a) {
+                return (CATEGORIES[a.category] || '📌') + ' ' + esc(a.name);
+            }).join(' → ');
+            const doneInfo = plan.doneCount > 0
+                ? '<div style="font-size:12px;color:var(--text-muted);margin-top:2px">Done ' + plan.doneCount + '\xd7' + (plan.doneHistory && plan.doneHistory.length ? ' — last ' + formatDate(plan.doneHistory[plan.doneHistory.length - 1]) : '') + '</div>'
+                : '';
+            const suitStyle = suit.ok === true ? 'background:var(--success-light);color:var(--success)' : 'background:var(--border-light);color:var(--text-muted)';
+            const suitBadge = '<span class="badge" style="font-size:10px;' + suitStyle + '">' + (suit.ok === true ? '✓ ' : '') + esc(suit.label) + '</span>';
+            const isExpanded = state.expandedDayPlans.has(plan.id);
+            const tid = plan.id;
+            const toggleFn = "state.expandedDayPlans.has('" + tid + "')?state.expandedDayPlans.delete('" + tid + "'):state.expandedDayPlans.add('" + tid + "');render()";
+            let expandBody = '';
+            if (isExpanded) {
+                expandBody = '<div style="margin-top:8px;border-top:1px solid var(--border-light);padding-top:8px">'
+                    + (plan.activities || []).map(function(a) {
+                        const catIcon = CATEGORIES[a.category] || '📌';
+                        const meta = [a.time ? formatTime(a.time) : '', a.duration ? formatDuration(a.duration) : '', a.cost != null ? formatCurrency(a.cost, a.currency || 'EUR') : ''].filter(Boolean).join(' · ');
+                        return '<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border-light)">'
+                            + '<span class="category-icon">' + catIcon + '</span>'
+                            + '<div style="flex:1;min-width:0">'
+                            + '<div style="font-size:13px;font-weight:500">' + esc(a.name) + '</div>'
+                            + (meta ? '<div style="font-size:12px;color:var(--text-muted)">' + meta + '</div>' : '')
+                            + (a.address ? '<div style="font-size:12px;color:var(--text-muted)">' + esc(a.address) + '</div>' : '')
+                            + (a.notes ? '<div style="font-size:12px;color:var(--text-muted);margin-top:2px">' + esc(a.notes.substring(0, 150)) + (a.notes.length > 150 ? '…' : '') + '</div>' : '')
+                            + '</div></div>';
+                    }).join('') + '</div>';
+            }
+            const dim = suit.ok === false ? 'opacity:0.55;' : '';
+            return '<div class="card" style="margin-bottom:10px;' + dim + '">'
+                + '<div class="card-body">'
+                + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+                + '<div style="flex:1;min-width:0;cursor:pointer" onclick="' + toggleFn + '">'
+                + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px">'
+                + '<strong style="font-size:14px">' + esc(plan.name) + '</strong>'
+                + '<span class="badge" style="font-size:10px;background:var(--bg-hover)">' + typeLabel + '</span>'
+                + suitBadge + '</div>'
+                + doneInfo
+                + (!isExpanded ? '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">' + preview + '</div>' : '')
+                + '</div>'
+                + '<div style="display:flex;gap:4px;flex-shrink:0;align-items:flex-start">'
+                + '<button class="btn btn-sm btn-ghost" onclick="' + toggleFn + '">' + (isExpanded ? 'Less' : 'Details') + '</button>'
+                + '<button class="btn btn-sm btn-primary" onclick="markLibraryPlanDone(\'' + tid + '\')">✓ Done</button>'
+                + '</div></div>' + expandBody + '</div></div>';
+        }
+
+        const citySelector = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px">'
+            + (allCities.length > 0
+                ? '<select class="select" style="width:auto" onchange="state.freePlanCity=this.value;render()">'
+                  + allCities.map(function(c) { return '<option value="' + esc(c) + '"' + (c === city ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('')
+                  + '</select>'
+                : '<span style="font-size:13px;color:var(--text-muted)">No plans in library yet</span>')
+            + '<span style="font-size:13px;color:var(--text-muted)">' + timeStr + ' — ' + timeCtx + '</span>'
+            + '</div>';
+
+        const tabBar = city ? '<div class="tab-bar" style="margin-bottom:16px">'
+            + '<button class="tab-btn' + (tab === 'available' ? ' active' : '') + '" onclick="state.freePlanTab=\'available\';render()">Available (' + availablePlans.length + ')</button>'
+            + '<button class="tab-btn' + (tab === 'done' ? ' active' : '') + '" onclick="state.freePlanTab=\'done\';render()">Done Before (' + donePlans.length + ')</button>'
+            + '</div>' : '';
+
+        let bodyHTML;
+        if (!city) {
+            bodyHTML = '<div class="empty-state"><div class="empty-icon">🗺️</div><p>Select a city to see day plans.</p></div>';
+        } else if (tab === 'available') {
+            if (availablePlans.length === 0) {
+                bodyHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>All plans for this city have been done at least once!</p></div>';
+            } else {
+                const sorted = availablePlans.slice().sort(function(a, b) {
+                    const sa = getSuit(a), sb = getSuit(b);
+                    if (sa.ok === true && sb.ok !== true) return -1;
+                    if (sa.ok !== true && sb.ok === true) return 1;
+                    return 0;
+                });
+                bodyHTML = sorted.map(planCard).join('');
+            }
+        } else {
+            if (donePlans.length === 0) {
+                bodyHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>No completed plans yet. Go explore!</p></div>';
+            } else {
+                bodyHTML = donePlans.slice().sort(function(a, b) { return (b.doneCount || 0) - (a.doneCount || 0); }).map(planCard).join('');
+            }
+        }
+
+        const hint = library.length === 0
+            ? '<div style="background:var(--accent-light);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:var(--text);margin-bottom:16px">Open a trip, expand a day plan, and tap <strong>📚 Save to Library</strong> to add it here.</div>'
+            : '';
+
+        mc.innerHTML = '<div class="view-content"><div class="view-header"><h2>Free Plan</h2></div>' + hint + citySelector + tabBar + bodyHTML + '</div>';
+    }
+
+    function addDayPlanToLibrary(tripId, dpId) {
+        const trip = data.trips.find(function(t) { return t.id === tripId; });
+        const dp = ((trip && trip.dayPlans) || []).find(function(d) { return d.id === dpId; });
+        if (!dp || !trip) return;
+        if (!data.dayPlanLibrary) data.dayPlanLibrary = [];
+        const leg = (trip.legs || []).find(function(l) { return l.id === dp.legId; });
+        const city = leg ? (leg.city || '') : '';
+        if (data.dayPlanLibrary.find(function(p) { return p.name === dp.name && p.city === city; })) {
+            toast('"' + dp.name + '" is already in the library');
+            return;
+        }
+        const acts = (dp.activityIds || []).map(function(aid) { return (trip.activities || []).find(function(a) { return a.id === aid; }); }).filter(Boolean);
+        const firstHours = acts.map(function(a) { return a.time; }).filter(Boolean).map(function(t) { return parseInt(t.split(':')[0]); }).filter(function(n) { return !isNaN(n); }).sort(function(a,b){return a-b;});
+        const type = firstHours.length > 0 && firstHours[0] >= 17 ? 'after-work' : 'full-day';
+        data.dayPlanLibrary.push({
+            id: uid(), name: dp.name, city: city, country: leg ? (leg.country || '') : '',
+            type: type, activities: acts.map(function(a) { return Object.assign({}, a, { id: uid() }); }),
+            notes: dp.notes || '', doneCount: 0, doneHistory: [],
+            addedAt: new Date().toISOString(), order: data.dayPlanLibrary.length
+        });
+        save().then(function() { toast('"' + dp.name + '" saved to Free Plan library'); });
+    }
+
+    function markLibraryPlanDone(planId) {
+        if (!data.dayPlanLibrary) return;
+        const plan = data.dayPlanLibrary.find(function(p) { return p.id === planId; });
+        if (!plan) return;
+        plan.doneCount = (plan.doneCount || 0) + 1;
+        if (!plan.doneHistory) plan.doneHistory = [];
+        plan.doneHistory.push(localDateStr(new Date()));
+        save().then(function() { toast('Marked done — ' + plan.doneCount + '\xd7 total'); render(); });
     }
 
     // --- Trip CRUD ---
@@ -3618,7 +3802,8 @@
         const flights = transport.filter(t => t.type === 'flight').sort((a, b) => (a.departure || '').localeCompare(b.departure || ''));
         const trains = transport.filter(t => t.type === 'train').sort((a, b) => (a.departure || '').localeCompare(b.departure || ''));
         const otherTransport = transport.filter(t => !['flight', 'train'].includes(t.type)).sort((a, b) => (a.departure || '').localeCompare(b.departure || ''));
-        const hotels = [...lodging].sort((a, b) => (a.checkIn || '').localeCompare(b.checkIn || ''));
+        const _homeLegIds = new Set((trip.legs || []).filter(l => l.legType === 'home' || l.legType === 'stayingWithFriend').map(l => l.id));
+        const hotels = [...lodging].filter(l => !l.legId || !_homeLegIds.has(l.legId)).sort((a, b) => (a.checkIn || '').localeCompare(b.checkIn || ''));
         const reservedActivities = activities.filter(a => a.reservationNeeded);
 
         function fmtDT(dtStr) { if (!dtStr) return ''; if (dtStr.includes('T')) { const p = dtStr.split('T'); return formatDate(p[0]) + ' ' + formatTime(p[1]); } return formatDate(dtStr); }
@@ -4327,6 +4512,7 @@
                 <div style="display:flex;gap:4px;flex-shrink:0">
                     ${opts?.archived ? `<button class="btn btn-sm btn-ghost" onclick="unarchiveDayPlan('${dp.id}')">Restore</button>` : ''}
                     ${!opts?.archived && days.length > 0 ? `<select class="select" style="width:auto;height:30px;font-size:12px" onchange="if(this.value)useDayPlanForDate('${dp.id}',this.value)"><option value="">Use on\u2026</option>${days.map(d => `<option value="${d}">${formatDate(d)}</option>`).join('')}</select>` : ''}
+                    <button class="btn btn-sm btn-ghost" onclick="addDayPlanToLibrary('${trip.id}','${dp.id}')" title="Save to Free Plan library">📚</button>
                     <button class="btn btn-sm btn-ghost" onclick="openDayPlanModal('${dp.id}')">Edit</button>
                 </div>
             </div>
