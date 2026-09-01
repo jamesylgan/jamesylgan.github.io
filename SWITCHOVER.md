@@ -1,3 +1,5 @@
+> **DNS follow-up (2026-08-31):** `www.bellevue.tech` has no DNS record at all, which GitHub Pages flags as `InvalidDNSError`. Add a `CNAME` record for `www` → `jamesylgan.github.io` in Cloudflare DNS (proxy status "DNS only", not proxied) to clear it. The apex `bellevue.tech` A records already point correctly at GitHub Pages (185.199.108-111.153).
+
 # Switching GitHub Pages over to this repo
 
 This repo (`jamesylgan.github.io2`) is a clean copy of `master` from the
